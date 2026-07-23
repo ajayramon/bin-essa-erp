@@ -1,0 +1,260 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  moduleFormat = "cjs"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ================= ENUMS (9) =================
+
+// ASSUMED: matches frontend BrandId type — verify against lib/types/index.ts
+enum BrandId {
+  BIN_ESSA_SMOKING_CENTER
+  BIN_ESSA_KHIRAN
+  JM_ART_ZONE
+}
+
+// ASSUMED: matches frontend Role type — verify values/casing
+enum Role {
+  ADMIN
+  MANAGER
+  CASHIER
+  ACCOUNTANT
+}
+
+// ASSUMED: matches frontend ItemCategory — verify exact category list
+enum ItemCategory {
+  TOBACCO
+  ACCESSORIES
+  ELECTRONICS
+  ART_SUPPLIES
+  OTHER
+}
+
+// ASSUMED: matches frontend ItemVisibility
+enum ItemVisibility {
+  ALL_BRANCHES
+  SPECIFIC_BRANCHES
+}
+
+// ASSUMED: matches frontend PaymentMethod
+enum PaymentMethod {
+  CASH
+  CARD
+  CREDIT
+  BANK_TRANSFER
+}
+
+// ASSUMED: matches frontend AccountType (standard chart-of-accounts types)
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+// NOT explicitly in your type list — added because a real SalesInvoice needs a status.
+// FLAG: confirm this doesn't already exist under a different name in sales-invoice.ts
+enum InvoiceStatus {
+  DRAFT
+  POSTED
+  PAID
+  VOID
+}
+
+// NOT explicitly in your type list — added so JournalEntry has a lifecycle state.
+// FLAG: confirm against lib/types/index.ts JournalEntry definition
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+}
+
+// NOT explicitly in your type list — added for ItemStock audit trail readiness.
+// FLAG: only needed if you track stock movement history; otherwise can be deleted
+enum StockMovementType {
+  SALE
+  PURCHASE
+  ADJUSTMENT
+}
+
+// ================= MODELS (11) =================
+
+model Branch {
+  id       String  @id @default(uuid())
+  code     String  @unique // e.g. "br-01"
+  name     String
+  brandId  BrandId
+  address  String?
+  isActive Boolean @default(true)
+
+  users          User[]
+  itemStocks     ItemStock[]
+  customers      Customer[]
+  suppliers      Supplier[]
+  salesInvoices  SalesInvoice[]
+  journalEntries JournalEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           String  @id @default(uuid())
+  username     String  @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  branchId     String?
+  branch       Branch? @relation(fields: [branchId], references: [id])
+  isActive     Boolean @default(true)
+
+  salesInvoices SalesInvoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Item {
+  id         String         @id @default(uuid())
+  sku        String         @unique
+  barcode    String?        @unique
+  name       String
+  category   ItemCategory
+  visibility ItemVisibility @default(ALL_BRANCHES)
+  price      Decimal        @db.Decimal(10, 3) // KWD uses 3 decimal places
+  cost       Decimal        @db.Decimal(10, 3)
+  unit       String         @default("pcs")
+  isActive   Boolean        @default(true)
+
+  stocks            ItemStock[]
+  salesInvoiceLines SalesInvoiceLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ItemStock {
+  id       String  @id @default(uuid())
+  itemId   String
+  branchId String
+  quantity Decimal @default(0) @db.Decimal(10, 3)
+
+  item   Item   @relation(fields: [itemId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, branchId])
+}
+
+model Customer {
+  id       String  @id @default(uuid())
+  code     String  @unique // e.g. "cust-0001" — FLAG: confirm code format with client
+  name     String
+  phone    String?
+  email    String?
+  address  String?
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  salesInvoices SalesInvoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Supplier {
+  id       String  @id @default(uuid())
+  code     String  @unique
+  name     String
+  phone    String?
+  email    String?
+  address  String?
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id   String      @id @default(uuid())
+  code String      @unique // e.g. "1000" for Cash
+  name String
+  type AccountType
+
+  journalEntryLines JournalEntryLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JournalEntry {
+  id          String             @id @default(uuid())
+  reference   String             @unique // e.g. "JE-0001"
+  date        DateTime           @default(now())
+  description String?
+  status      JournalEntryStatus @default(POSTED)
+  branchId    String?
+  branch      Branch?            @relation(fields: [branchId], references: [id])
+
+  // Links back to the sale that auto-generated this entry (nullable — not all JEs come from sales)
+  salesInvoiceId String?       @unique
+  salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+
+  lines JournalEntryLine[]
+
+  createdAt DateTime @default(now())
+}
+
+model JournalEntryLine {
+  id             String  @id @default(uuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal @default(0) @db.Decimal(10, 3)
+  credit         Decimal @default(0) @db.Decimal(10, 3)
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id])
+  account      Account      @relation(fields: [accountId], references: [id])
+}
+
+model SalesInvoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique // e.g. "INV-0001"
+  date          DateTime      @default(now())
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  branchId      String
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  paymentMethod PaymentMethod
+  status        InvoiceStatus @default(POSTED)
+  subtotal      Decimal       @db.Decimal(10, 3)
+  taxAmount     Decimal       @default(0) @db.Decimal(10, 3)
+  totalAmount   Decimal       @db.Decimal(10, 3)
+
+  lines        SalesInvoiceLine[]
+  journalEntry JournalEntry?
+
+  createdAt DateTime @default(now())
+}
+
+model SalesInvoiceLine {
+  id             String  @id @default(uuid())
+  salesInvoiceId String
+  itemId         String
+  quantity       Decimal @db.Decimal(10, 3)
+  unitPrice      Decimal @db.Decimal(10, 3)
+  lineTotal      Decimal @db.Decimal(10, 3)
+
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id])
+  item         Item         @relation(fields: [itemId], references: [id])
+}

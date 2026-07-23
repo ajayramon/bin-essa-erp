@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-ink: #000000;
+  --color-ink-soft: #1A1A1A;
+  --color-ink-muted: #4D4D4D;
+  --color-ink-faint: #8C8C8C;
+
+  --color-gold: #FDCE0C;
+  --color-gold-soft: #FFE372;
+  --color-gold-deep: #C9A400;
+
+  --color-paper: #FFFFFF;
+  --color-paper-sunk: #F7F7F5;
+  --color-paper-line: #E7E7E4;
+
+  --color-brand-smoking: #000000;
+  --color-brand-khiran: #0F5C4A;
+  --color-brand-jmart: #7A2E2E;
+
+  --color-status-success: #1E7B45;
+  --color-status-warning: #B8860B;
+  --color-status-danger: #B3261E;
+
+  --font-display: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-ar-display: 'IBM Plex Sans Arabic', sans-serif;
+  --font-ar-body: 'IBM Plex Sans Arabic', sans-serif;
+
+  --radius-sm: 4px;
+  --radius-DEFAULT: 6px;
+  --radius-lg: 10px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[dir="rtl"] body {
+  font-family: var(--font-ar-body);
+}
+[dir="ltr"] body {
+  font-family: var(--font-body);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.numeric-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+::selection {
+  background: #FDCE0C;
+  color: #000000;
+}
+
+:focus-visible {
+  outline: 2px solid #FDCE0C;
+  outline-offset: 2px;
 }
