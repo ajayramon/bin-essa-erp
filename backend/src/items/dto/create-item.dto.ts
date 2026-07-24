@@ -1,0 +1,37 @@
+import { IsString, IsOptional, IsEnum, IsNumber, IsBoolean, Min } from 'class-validator';
+import { ItemCategory, ItemVisibility } from '../../../generated/prisma/client';
+
+export class CreateItemDto {
+  @IsString()
+  sku: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @IsString()
+  name: string;
+
+  @IsEnum(ItemCategory)
+  category: ItemCategory;
+
+  @IsOptional()
+  @IsEnum(ItemVisibility)
+  visibility?: ItemVisibility;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsNumber()
+  @Min(0)
+  cost: number;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}

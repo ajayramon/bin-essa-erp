@@ -10,7 +10,8 @@ import {
 import { users } from "@/lib/mock-data/users";
 import { branches } from "@/lib/mock-data/branches";
 import { brands } from "@/lib/mock-data/brands";
-import { User, Branch, Brand, BrandId } from "@/lib/types";
+import { User, Branch, Brand, BrandId, Role } from "@/lib/types";
+import { loginRequest } from "@/lib/api";
 
 interface SessionContextValue {
   user: User | null;
@@ -19,6 +20,7 @@ interface SessionContextValue {
   currentBranch: Branch | null;
   branchesForCurrentBrand: Branch[];
   loginAs: (userId: string) => void;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   switchBrand: (brandId: BrandId) => void;
   switchBranch: (branchId: string) => void;
@@ -31,6 +33,7 @@ const SessionContext = createContext<SessionContextValue | undefined>(
 const USER_KEY = "bin-essa-session-user-id";
 const BRAND_KEY = "bin-essa-session-brand-id";
 const BRANCH_KEY = "bin-essa-session-branch-id";
+const TOKEN_KEY = "bin-essa-access-token";
 
 const DEFAULT_BRAND_ID: BrandId = "smoking";
 
@@ -58,27 +61,45 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setCurrentBranchId(savedBranchId ?? foundUser.branchId);
   }, []);
 
-  function loginAs(userId: string) {
-    const foundUser = users.find((u) => u.id === userId) ?? null;
-    if (!foundUser) return;
-
-    setUser(foundUser);
-    localStorage.setItem(USER_KEY, foundUser.id);
+  function applySessionForUser(u: User) {
+    setUser(u);
+    localStorage.setItem(USER_KEY, u.id);
 
     let brandId: BrandId = DEFAULT_BRAND_ID;
-    if (foundUser.branchId) {
-      const homeBranch = branches.find((b) => b.id === foundUser.branchId);
+    if (u.branchId) {
+      const homeBranch = branches.find((b) => b.id === u.branchId);
       if (homeBranch) brandId = homeBranch.brandId;
     }
 
     setCurrentBrandId(brandId);
-    setCurrentBranchId(foundUser.branchId);
+    setCurrentBranchId(u.branchId);
     localStorage.setItem(BRAND_KEY, brandId);
-    if (foundUser.branchId) {
-      localStorage.setItem(BRANCH_KEY, foundUser.branchId);
+    if (u.branchId) {
+      localStorage.setItem(BRANCH_KEY, u.branchId);
     } else {
       localStorage.removeItem(BRANCH_KEY);
     }
+  }
+
+  function loginAs(userId: string) {
+    const foundUser = users.find((u) => u.id === userId) ?? null;
+    if (!foundUser) return;
+    applySessionForUser(foundUser);
+  }
+
+  async function login(username: string, password: string) {
+    const data = await loginRequest(username, password);
+
+    const mappedUser: User = {
+      id: data.user.id,
+      nameEn: data.user.fullName,
+      nameAr: data.user.fullName,
+      role: data.user.role as Role,
+      branchId: data.user.branchId,
+    };
+
+    localStorage.setItem(TOKEN_KEY, data.access_token);
+    applySessionForUser(mappedUser);
   }
 
   function logout() {
@@ -88,6 +109,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(BRAND_KEY);
     localStorage.removeItem(BRANCH_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   }
 
   function switchBrand(brandId: BrandId) {
@@ -128,6 +150,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         currentBranch,
         branchesForCurrentBrand,
         loginAs,
+        login,
         logout,
         switchBrand,
         switchBranch,
