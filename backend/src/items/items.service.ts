@@ -21,4 +21,10 @@ export class ItemsService {
       },
     });
   }
+
+  async findAll() {
+    return this.prisma.item.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
