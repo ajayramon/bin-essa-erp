@@ -17,7 +17,6 @@ async function main() {
   });
 
   const passwordHash = await bcrypt.hash('demo1234', 10);
-
   const admin = await prisma.user.upsert({
     where: { username: 'admin' },
     update: {},
@@ -30,8 +29,30 @@ async function main() {
     },
   });
 
+  const cashAccount = await prisma.account.upsert({
+    where: { code: '1000' },
+    update: {},
+    create: {
+      code: '1000',
+      name: 'Cash',
+      type: 'ASSET',
+    },
+  });
+
+  const salesRevenueAccount = await prisma.account.upsert({
+    where: { code: '4000' },
+    update: {},
+    create: {
+      code: '4000',
+      name: 'Sales Revenue',
+      type: 'REVENUE',
+    },
+  });
+
   console.log('Seeded branch:', branch.code);
   console.log('Seeded user:', admin.username, '(password: demo1234)');
+  console.log('Seeded account:', cashAccount.code, cashAccount.name, '- id:', cashAccount.id);
+  console.log('Seeded account:', salesRevenueAccount.code, salesRevenueAccount.name, '- id:', salesRevenueAccount.id);
 }
 
 main()
