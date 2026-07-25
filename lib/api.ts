@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:3000";
+const API_BASE = "https://emphases-manger-imaginary.ngrok-free.dev";
 
 export interface LoginResponse {
   access_token: string;
@@ -17,7 +17,10 @@ export async function loginRequest(
 ): Promise<LoginResponse> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
+    },
     body: JSON.stringify({ username, password }),
   });
 
