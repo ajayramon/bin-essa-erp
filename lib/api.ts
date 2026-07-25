@@ -1,4 +1,4 @@
-const API_BASE = "https://emphases-manger-imaginary.ngrok-free.dev";
+const API_BASE = "https://bin-essa-erp.onrender.com";
 
 export interface LoginResponse {
   access_token: string;
@@ -19,7 +19,6 @@ export async function loginRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true",
     },
     body: JSON.stringify({ username, password }),
   });
@@ -74,7 +73,6 @@ export async function createItemRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(payload),
@@ -82,6 +80,86 @@ export async function createItemRequest(
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create item");
+  }
+  return res.json();
+}
+
+export interface CreateCustomerPayload {
+  code: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  branchId?: string;
+}
+
+export interface CreateCustomerResponse {
+  id: string;
+  code: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  branchId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function createCustomerRequest(
+  payload: CreateCustomerPayload
+): Promise<CreateCustomerResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/customers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to create customer");
+  }
+  return res.json();
+}
+
+export interface CreateSupplierPayload {
+  code: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  branchId?: string;
+}
+
+export interface CreateSupplierResponse {
+  id: string;
+  code: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  branchId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function createSupplierRequest(
+  payload: CreateSupplierPayload
+): Promise<CreateSupplierResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/suppliers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to create supplier");
   }
   return res.json();
 }
