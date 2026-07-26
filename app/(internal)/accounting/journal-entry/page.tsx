@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { useSession } from "@/lib/context/SessionContext";
-import { accounts } from "@/lib/mock-data/accounts";
-import type { JournalEntryLine } from "@/lib/types";
+import {
+  createJournalEntryRequest,
+  getAccountsRequest,
+  type AccountResponse,
+} from "@/lib/api";
+
+interface LocalLine {
+  accountId: string;
+  debitKd: number;
+  creditKd: number;
+}
 
 function formatKD(amount: number) {
   return amount.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
@@ -15,26 +23,44 @@ function todayISO() {
 }
 
 export default function JournalEntryPage() {
-  const { locale, t } = useLocale();
-  const { currentBrand } = useSession();
+  const { t } = useLocale();
 
   const [date, setDate] = useState(todayISO());
   const [memo, setMemo] = useState("");
-  const [lines, setLines] = useState<JournalEntryLine[]>([]);
+  const [lines, setLines] = useState<LocalLine[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
 
-  const brandAccounts = currentBrand
-    ? accounts.filter((a) => a.brandId === currentBrand.id)
-    : [];
+  const [accountsList, setAccountsList] = useState<AccountResponse[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [accountsError, setAccountsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadAccounts() {
+      setAccountsLoading(true);
+      setAccountsError(null);
+      try {
+        const data = await getAccountsRequest();
+        setAccountsList(data);
+      } catch (err) {
+        setAccountsError(err instanceof Error ? err.message : "Failed to load accounts");
+      } finally {
+        setAccountsLoading(false);
+      }
+    }
+    loadAccounts();
+  }, []);
 
   function addLine() {
-    const firstAccount = brandAccounts[0];
+    const firstAccount = accountsList[0];
     if (!firstAccount) return;
     setLines([...lines, { accountId: firstAccount.id, debitKd: 0, creditKd: 0 }]);
     setMessage(null);
+    setErrorMessage(null);
   }
 
-  function updateLine(index: number, patch: Partial<JournalEntryLine>) {
+  function updateLine(index: number, patch: Partial<LocalLine>) {
     const next = [...lines];
     next[index] = { ...next[index], ...patch };
     setLines(next);
@@ -45,10 +71,9 @@ export default function JournalEntryPage() {
   }
 
   function accountLabel(accountId: string) {
-    const acc = accounts.find((a) => a.id === accountId);
+    const acc = accountsList.find((a) => a.id === accountId);
     if (!acc) return accountId;
-    const name = locale === "ar" ? acc.nameAr : acc.nameEn;
-    return `${acc.code} — ${name}`;
+    return `${acc.code} — ${acc.name}`;
   }
 
   const totalDebit = lines.reduce((sum, l) => sum + l.debitKd, 0);
@@ -56,11 +81,29 @@ export default function JournalEntryPage() {
   const difference = Math.round((totalDebit - totalCredit) * 1000) / 1000;
   const isBalanced = difference === 0 && lines.length > 0;
 
-  function handlePost() {
-    if (!isBalanced || !memo.trim()) return;
-    setMessage(t.journalEntry.entryPosted);
-    setLines([]);
-    setMemo("");
+  async function handlePost() {
+    if (!isBalanced || !memo.trim() || isPosting) return;
+    setIsPosting(true);
+    setMessage(null);
+    setErrorMessage(null);
+    try {
+      const result = await createJournalEntryRequest({
+        date,
+        description: memo.trim(),
+        lines: lines.map((l) => ({
+          accountId: l.accountId,
+          debit: l.debitKd,
+          credit: l.creditKd,
+        })),
+      });
+      setMessage(`${t.journalEntry.entryPosted} (${result.reference})`);
+      setLines([]);
+      setMemo("");
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to post journal entry");
+    } finally {
+      setIsPosting(false);
+    }
   }
 
   return (
@@ -69,6 +112,12 @@ export default function JournalEntryPage() {
         <h1 className="text-2xl font-semibold text-ink">{t.journalEntry.title}</h1>
         <p className="mt-1 text-ink/60">{t.journalEntry.subtitle}</p>
       </div>
+
+      {accountsError && (
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+          {accountsError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-ink/10 bg-white p-5 shadow-sm sm:grid-cols-2">
         <div>
@@ -96,13 +145,16 @@ export default function JournalEntryPage() {
           <h2 className="text-lg font-semibold text-ink">{t.journalEntry.account}</h2>
           <button
             onClick={addLine}
-            className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-gold hover:text-ink"
+            disabled={accountsLoading || accountsList.length === 0}
+            className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-gold hover:text-ink disabled:opacity-40"
           >
             {t.journalEntry.addLine}
           </button>
         </div>
 
-        {lines.length === 0 ? (
+        {accountsLoading ? (
+          <p className="py-6 text-center text-sm text-ink/40">Loading accounts…</p>
+        ) : lines.length === 0 ? (
           <p className="py-6 text-center text-sm text-ink/40">{t.journalEntry.noLines}</p>
         ) : (
           <div className="overflow-x-auto">
@@ -124,7 +176,7 @@ export default function JournalEntryPage() {
                         onChange={(e) => updateLine(index, { accountId: e.target.value })}
                         className="w-full rounded-lg border border-ink/10 px-2 py-1.5 text-sm sm:w-64"
                       >
-                        {brandAccounts.map((a) => (
+                        {accountsList.map((a) => (
                           <option key={a.id} value={a.id}>
                             {accountLabel(a.id)}
                           </option>
@@ -193,14 +245,17 @@ export default function JournalEntryPage() {
 
         <button
           onClick={handlePost}
-          disabled={!isBalanced || !memo.trim()}
+          disabled={!isBalanced || !memo.trim() || isPosting}
           className="w-full rounded-xl bg-ink py-3 text-sm font-semibold text-white hover:bg-gold hover:text-ink disabled:opacity-40"
         >
-          {t.journalEntry.post}
+          {isPosting ? "Posting…" : t.journalEntry.post}
         </button>
 
         {message && (
           <p className="mt-3 text-center text-sm font-medium text-green-600">{message}</p>
+        )}
+        {errorMessage && (
+          <p className="mt-3 text-center text-sm font-medium text-red-600">{errorMessage}</p>
         )}
       </div>
     </div>

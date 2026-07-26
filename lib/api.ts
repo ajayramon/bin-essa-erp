@@ -163,3 +163,76 @@ export async function createSupplierRequest(
   }
   return res.json();
 }
+
+export interface AccountResponse {
+  id: string;
+  code: string;
+  name: string;
+  type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+}
+
+export async function getAccountsRequest(): Promise<AccountResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/accounts`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load accounts");
+  }
+  return res.json();
+}
+
+export interface CreateJournalEntryLinePayload {
+  accountId: string;
+  debit: number;
+  credit: number;
+}
+
+export interface CreateJournalEntryPayload {
+  date: string;
+  description: string;
+  lines: CreateJournalEntryLinePayload[];
+}
+
+export interface JournalEntryLineResponse {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  debit: string;
+  credit: string;
+}
+
+export interface CreateJournalEntryResponse {
+  id: string;
+  reference: string;
+  date: string;
+  description: string;
+  status: "DRAFT" | "POSTED";
+  branchId: string | null;
+  salesInvoiceId: string | null;
+  lines: JournalEntryLineResponse[];
+}
+
+export async function createJournalEntryRequest(
+  payload: CreateJournalEntryPayload
+): Promise<CreateJournalEntryResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/journal-entries`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to create journal entry");
+  }
+  return res.json();
+}
