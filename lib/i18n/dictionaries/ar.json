@@ -193,6 +193,19 @@
     "outOfBalance": "غير متوازن بمقدار",
     "noResults": "لا توجد حسابات"
   },
+  "generalLedger": {
+    "title": "دفتر الأستاذ العام",
+    "subtitle": "سجل المعاملات والرصيد الجاري لحساب معيّن",
+    "selectAccount": "اختر الحساب",
+    "reference": "المرجع",
+    "date": "التاريخ",
+    "description": "البيان",
+    "debit": "مدين",
+    "credit": "دائن",
+    "runningBalance": "الرصيد الجاري",
+    "noEntries": "لا توجد معاملات لهذا الحساب بعد",
+    "noAccountSelected": "اختر حسابًا لعرض دفتر أستاذه"
+  },
   "employees": {
     "title": "الموظفون",
     "subtitle": "دليل الموظفين عبر الفروع",

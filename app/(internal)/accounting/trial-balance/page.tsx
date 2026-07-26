@@ -1,41 +1,37 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { useSession } from "@/lib/context/SessionContext";
-import { accounts } from "@/lib/mock-data/accounts";
-import type { AccountType } from "@/lib/types";
+import { getTrialBalanceRequest, type TrialBalanceResponse } from "@/lib/api";
 
 function formatKD(amount: number) {
   return amount.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
-// Accounts with these types carry a natural debit balance; the rest (liability,
-// equity, revenue) carry a natural credit balance — standard accounting convention.
-const DEBIT_TYPES: AccountType[] = ["asset", "expense"];
-
 export default function TrialBalancePage() {
-  const { locale, t } = useLocale();
-  const { currentBrand } = useSession();
+  const { t } = useLocale();
 
-  const brandAccounts = currentBrand
-    ? [...accounts.filter((a) => a.brandId === currentBrand.id)].sort((a, b) =>
-        a.code.localeCompare(b.code)
-      )
-    : [];
+  const [data, setData] = useState<TrialBalanceResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const rows = brandAccounts.map((a) => {
-    const isDebit = DEBIT_TYPES.includes(a.type);
-    return {
-      account: a,
-      debit: isDebit ? a.balanceKd : 0,
-      credit: isDebit ? 0 : a.balanceKd,
-    };
-  });
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const result = await getTrialBalanceRequest();
+        setData(result);
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to load trial balance");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-  const totalDebit = rows.reduce((sum, r) => sum + r.debit, 0);
-  const totalCredit = rows.reduce((sum, r) => sum + r.credit, 0);
-  const difference = Math.round((totalDebit - totalCredit) * 1000) / 1000;
-  const isBalanced = difference === 0;
+  const rows = data?.rows ?? [];
 
   return (
     <div className="space-y-6 p-6">
@@ -43,6 +39,10 @@ export default function TrialBalancePage() {
         <h1 className="text-2xl font-semibold text-ink">{t.trialBalance.title}</h1>
         <p className="mt-1 text-ink/60">{t.trialBalance.subtitle}</p>
       </div>
+
+      {errorMessage && (
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</div>
+      )}
 
       <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
         <table className="w-full text-sm">
@@ -56,11 +56,9 @@ export default function TrialBalancePage() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.account.id} className="border-b border-ink/5 last:border-0 hover:bg-ink/5">
-                <td className="numeric-ltr px-4 py-3 text-ink/60">{r.account.code}</td>
-                <td className="px-4 py-3 text-ink">
-                  {locale === "ar" ? r.account.nameAr : r.account.nameEn}
-                </td>
+              <tr key={r.accountId} className="border-b border-ink/5 last:border-0 hover:bg-ink/5">
+                <td className="numeric-ltr px-4 py-3 text-ink/60">{r.code}</td>
+                <td className="px-4 py-3 text-ink">{r.name}</td>
                 <td className="numeric-ltr px-4 py-3 text-end text-ink">
                   {r.debit > 0 ? `${formatKD(r.debit)} KD` : "—"}
                 </td>
@@ -75,25 +73,30 @@ export default function TrialBalancePage() {
               <td className="px-4 py-3" colSpan={2}>
                 {t.trialBalance.total}
               </td>
-              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(totalDebit)} KD</td>
-              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(totalCredit)} KD</td>
+              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(data?.totalDebit ?? 0)} KD</td>
+              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(data?.totalCredit ?? 0)} KD</td>
             </tr>
           </tfoot>
         </table>
-        {rows.length === 0 && (
+        {isLoading && (
+          <p className="px-4 py-8 text-center text-sm text-ink/40">Loading…</p>
+        )}
+        {!isLoading && rows.length === 0 && (
           <p className="px-4 py-8 text-center text-sm text-ink/40">{t.trialBalance.noResults}</p>
         )}
       </div>
 
-      {rows.length > 0 && (
+      {!isLoading && data && rows.length > 0 && (
         <div
           className={`rounded-2xl px-4 py-3 text-center text-sm font-medium shadow-sm ${
-            isBalanced ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+            data.isBalanced ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
           }`}
         >
-          {isBalanced
+          {data.isBalanced
             ? t.trialBalance.balanced
-            : `${t.trialBalance.outOfBalance} ${formatKD(Math.abs(difference))} KD`}
+            : `${t.trialBalance.outOfBalance} ${formatKD(
+                Math.abs(data.totalDebit - data.totalCredit)
+              )} KD`}
         </div>
       )}
     </div>

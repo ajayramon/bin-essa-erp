@@ -1,273 +1,104 @@
-{
-  "common": {
-    "appName": "Bin Essa ERP",
-    "search": "Search",
-    "save": "Save changes",
-    "cancel": "Cancel",
-    "edit": "Edit",
-    "delete": "Delete",
-    "add": "Add",
-    "comingSoonTitle": "Coming in Stage 2",
-    "comingSoonBody": "This module will be built once backend integration begins.",
-    "allBranches": "All branches",
-    "language": "Language"
-  },
-  "nav": {
-    "dashboard": "Dashboard",
-    "pos": "Point of Sale",
-    "inventory": "Inventory & Items",
-    "accounting": "Accounting",
-    "purchasing": "Purchasing",
-    "hr": "HR & Payroll",
-    "settings": "Settings",
-    "customerPortal": "Customer Portal",
-    "costCenters": "Cost Centers",
-    "budgetVsActual": "Budget vs Actual",
-    "pdcTracking": "PDC / Securities",
-    "itemModifiers": "Item Modifiers",
-    "serialTracking": "Serial Tracking",
-    "cashClosing": "Daily Cash Closing"
-  },
-  "login": {
-    "title": "Sign in",
-    "subtitle": "Select your role to continue (Stage 1 demo)",
-    "signInAs": "Sign in as"
-  },
-  "roles": {
-    "admin": "Admin",
-    "branch_manager": "Branch Manager",
-    "accountant": "Accountant",
-    "cashier": "Cashier",
-    "storekeeper": "Storekeeper",
-    "sales_rep": "Sales Representative"
-  },
-  "groupDashboard": {
-    "title": "Group Dashboard",
-    "subtitle": "Consolidated view across all three companies",
-    "todaySales": "Today's Sales",
-    "monthSales": "This Month's Sales",
-    "monthTarget": "Monthly Target",
-    "perCompanySales": "Sales by Company",
-    "topBranches": "Top Performing Branches",
-    "bottomBranches": "Lowest Performing Branches",
-    "lowStockAlerts": "Low Stock Alerts",
-    "itemRemaining": "remaining",
-    "reorderLevel": "reorder level",
-    "cashPosition": "Cash Position",
-    "cashOnHand": "Cash on Hand",
-    "bankBalance": "Bank Balance",
-    "pendingPurchaseOrders": "Pending Purchase Orders",
-    "awaitingApproval": "awaiting approval",
-    "daysWaiting": "days waiting",
-    "viewAll": "View all"
-  },
-  "posScreen": {
-    "searchPlaceholder": "Search by name, SKU, or barcode",
-    "cart": "Cart",
-    "emptyCart": "Cart is empty",
-    "qty": "Qty",
-    "subtotal": "Subtotal",
-    "discount": "Discount",
-    "discountApprovalNeeded": "Above 10% requires approval",
-    "total": "Total",
-    "paymentMethod": "Payment Method",
-    "cash": "Cash",
-    "card": "Card",
-    "knet": "KNET",
-    "online": "Online",
-    "charge": "Charge",
-    "clearCart": "Clear cart",
-    "outOfStock": "Out of stock",
-    "inStock": "in stock",
-    "addToCart": "Add",
-    "remove": "Remove",
-    "saleComplete": "Sale completed",
-    "newSale": "New Sale"
-  },
-  "categories": {
-    "disposable_vapes": "Disposable Vapes",
-    "pod_systems": "Pod Systems",
-    "nicotine_pouches": "Nicotine Pouches",
-    "dokha_medwakh": "Dokha & Medwakh",
-    "cigarette_lighters": "Cigarette Lighters",
-    "rolling_papers": "Rolling Papers",
-    "rolling_tobacco_hbt": "Rolling Tobacco (HBT)",
-    "pipe_accessories": "Pipe Accessories",
-    "general_smoking_accessories": "General Smoking Accessories",
-    "marine_outdoor": "Marine & Outdoor",
-    "custom_gifts_signage": "Custom Gifts & Signage",
-    "licensed_collectibles": "Licensed Collectibles"
-  },
-  "inventory": {
-    "title": "Inventory & Item Master",
-    "subtitle": "Browse items, stock levels, and pricing",
-    "searchPlaceholder": "Search by name, SKU, or barcode",
-    "allCategories": "All categories",
-    "category": "Category",
-    "sku": "SKU",
-    "barcode": "Barcode",
-    "sellPrice": "Sell Price",
-    "costPrice": "Cost Price",
-    "wholesalePrice": "Wholesale Price",
-    "totalStock": "Total Stock",
-    "viewDetails": "View",
-    "backToList": "Back to Inventory",
-    "stockByBranch": "Stock by Branch",
-    "branch": "Branch",
-    "quantity": "Quantity",
-    "visibility": "Visibility",
-    "visibleIn": "Visible in",
-    "hasVariants": "Has Variants",
-    "hasSerials": "Has Serial Tracking",
-    "yes": "Yes",
-    "no": "No",
-    "noResults": "No items found",
-    "itemName": "Item"
-  },
-  "purchaseOrders": {
-    "title": "New Purchase Order",
-    "subtitle": "Create a purchase order for a supplier",
-    "supplier": "Supplier",
-    "selectSupplier": "Select a supplier",
-    "addLine": "Add item",
-    "item": "Item",
-    "quantity": "Quantity",
-    "unitCost": "Unit Cost",
-    "lineTotal": "Line Total",
-    "remove": "Remove",
-    "noLines": "No items added yet",
-    "subtotal": "Subtotal",
-    "landedCost": "Landed Cost (freight, customs, handling)",
-    "landedCostNote": "Allocated proportionally across line items by value",
-    "grandTotal": "Grand Total",
-    "status": "Status",
-    "draft": "Draft",
-    "pending_approval": "Pending Approval",
-    "approved": "Approved",
-    "received": "Received",
-    "saveDraft": "Save as Draft",
-    "submitForApproval": "Submit for Approval",
-    "poCreated": "Purchase order created"
-  },
-  "chartOfAccounts": {
-    "title": "Chart of Accounts",
-    "subtitle": "Sample account list — Stage 1 placeholder, to be replaced with your actual chart",
-    "code": "Code",
-    "accountName": "Account Name",
-    "type": "Type",
-    "balance": "Balance",
-    "asset": "Assets",
-    "liability": "Liabilities",
-    "equity": "Equity",
-    "revenue": "Revenue",
-    "expense": "Expenses",
-    "noResults": "No accounts found"
-  },
-  "journalEntry": {
-    "title": "Journal Entry",
-    "subtitle": "Record a manual accounting entry",
-    "date": "Date",
-    "memo": "Memo / Description",
-    "addLine": "Add line",
-    "account": "Account",
-    "debit": "Debit",
-    "credit": "Credit",
-    "remove": "Remove",
-    "noLines": "No lines added yet",
-    "totalDebit": "Total Debit",
-    "totalCredit": "Total Credit",
-    "balanced": "Balanced",
-    "outOfBalance": "Out of balance by",
-    "post": "Post Entry",
-    "entryPosted": "Journal entry posted"
-  },
-  "trialBalance": {
-    "title": "Trial Balance",
-    "subtitle": "Debit and credit balances across all accounts",
-    "code": "Code",
-    "accountName": "Account Name",
-    "debit": "Debit",
-    "credit": "Credit",
-    "total": "Total",
-    "balanced": "Balanced",
-    "outOfBalance": "Out of balance by",
-    "noResults": "No accounts found"
-  },
-  "employees": {
-    "title": "Employees",
-    "subtitle": "Staff directory across branches",
-    "searchPlaceholder": "Search by name or phone",
-    "allRoles": "All roles",
-    "role": "Role",
-    "branch": "Branch",
-    "headOffice": "Head Office",
-    "phone": "Phone",
-    "joinDate": "Join Date",
-    "basicSalary": "Basic Salary",
-    "allowances": "Allowances",
-    "status": "Status",
-    "active": "Active",
-    "inactive": "Inactive",
-    "noResults": "No employees found"
-  },
-  "payroll": {
-    "title": "Payroll",
-    "subtitle": "Monthly payroll run summary",
-    "month": "Month",
-    "employee": "Employee",
-    "basicSalary": "Basic Salary",
-    "allowances": "Allowances",
-    "deductions": "Deductions",
-    "netPay": "Net Pay",
-    "status": "Status",
-    "draft": "Draft",
-    "processed": "Processed",
-    "paid": "Paid",
-    "runPayroll": "Run Payroll",
-    "noResults": "No payroll entries found"
-  },
-  "settings": {
-    "title": "Settings & Administration",
-    "subtitle": "Manage branches, roles, and system configuration",
-    "branches": "Branches",
-    "branchesDesc": "View and manage all branch locations",
-    "rolesPermissions": "Roles & Permissions",
-    "rolesPermissionsDesc": "Define staff roles and access levels",
-    "visibilityAdmin": "Product Visibility",
-    "visibilityAdminDesc": "Control which products appear per brand",
-    "comingSoon": "Coming Soon",
-    "manage": "Manage",
-    "branchName": "Branch Name",
-    "city": "City",
-    "branchType": "Type",
-    "retail": "Retail",
-    "wholesale": "Wholesale",
-    "retailWholesale": "Retail & Wholesale",
-    "totalBranches": "Total Branches",
-    "smokingBranchNote": "Note: branch count for this company is still pending final confirmation from the client.",
-    "rolesPermissionsPageTitle": "Roles & Permissions",
-    "rolesPermissionsPageSubtitle": "Read-only view of which modules each role can access",
-    "roleColumnHeader": "Role",
-    "modulesColumnHeader": "Accessible Modules",
-    "readOnlyNote": "This is a read-only view. Role permissions are not editable in Stage 1."
-  },
-  "b2b": {
-    "title": "B2B Customer Portal",
-    "subtitle": "Customer accounts and balances",
-    "searchPlaceholder": "Search by customer name",
-    "customerName": "Customer Name",
-    "customerType": "Customer Type",
-    "retail": "Retail",
-    "wholesale": "Wholesale",
-    "b2bPortal": "B2B Portal",
-    "brand": "Company",
-    "balance": "Balance",
-    "creditLimit": "Credit Limit",
-    "noResults": "No customers found",
-    "allTypes": "All Types"
-  },
-  "dashboard": {
-    "title": "Dashboard",
-    "subtitle": "Overview for this company"
-  }
+"use client";
+
+import { useEffect, useState } from "react";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getTrialBalanceRequest, type TrialBalanceResponse } from "@/lib/api";
+
+function formatKD(amount: number) {
+  return amount.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
+
+export default function TrialBalancePage() {
+  const { t } = useLocale();
+
+  const [data, setData] = useState<TrialBalanceResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const result = await getTrialBalanceRequest();
+        setData(result);
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : "Failed to load trial balance");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const rows = data?.rows ?? [];
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-ink">{t.trialBalance.title}</h1>
+        <p className="mt-1 text-ink/60">{t.trialBalance.subtitle}</p>
+      </div>
+
+      {errorMessage && (
+        <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{errorMessage}</div>
+      )}
+
+      <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink/10 text-start text-ink/50">
+              <th className="px-4 py-3 text-start font-medium">{t.trialBalance.code}</th>
+              <th className="px-4 py-3 text-start font-medium">{t.trialBalance.accountName}</th>
+              <th className="px-4 py-3 text-end font-medium">{t.trialBalance.debit}</th>
+              <th className="px-4 py-3 text-end font-medium">{t.trialBalance.credit}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.accountId} className="border-b border-ink/5 last:border-0 hover:bg-ink/5">
+                <td className="numeric-ltr px-4 py-3 text-ink/60">{r.code}</td>
+                <td className="px-4 py-3 text-ink">{r.name}</td>
+                <td className="numeric-ltr px-4 py-3 text-end text-ink">
+                  {r.debit > 0 ? `${formatKD(r.debit)} KD` : "—"}
+                </td>
+                <td className="numeric-ltr px-4 py-3 text-end text-ink">
+                  {r.credit > 0 ? `${formatKD(r.credit)} KD` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-ink/20 font-semibold text-ink">
+              <td className="px-4 py-3" colSpan={2}>
+                {t.trialBalance.total}
+              </td>
+              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(data?.totalDebit ?? 0)} KD</td>
+              <td className="numeric-ltr px-4 py-3 text-end">{formatKD(data?.totalCredit ?? 0)} KD</td>
+            </tr>
+          </tfoot>
+        </table>
+        {isLoading && (
+          <p className="px-4 py-8 text-center text-sm text-ink/40">Loading…</p>
+        )}
+        {!isLoading && rows.length === 0 && (
+          <p className="px-4 py-8 text-center text-sm text-ink/40">{t.trialBalance.noResults}</p>
+        )}
+      </div>
+
+      {!isLoading && data && rows.length > 0 && (
+        <div
+          className={`rounded-2xl px-4 py-3 text-center text-sm font-medium shadow-sm ${
+            data.isBalanced ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
+          }`}
+        >
+          {data.isBalanced
+            ? t.trialBalance.balanced
+            : `${t.trialBalance.outOfBalance} ${formatKD(
+                Math.abs(data.totalDebit - data.totalCredit)
+              )} KD`}
+        </div>
+      )}
+    </div>
+  );
 }

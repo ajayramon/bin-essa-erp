@@ -236,3 +236,73 @@ export async function createJournalEntryRequest(
   }
   return res.json();
 }
+
+export interface TrialBalanceRow {
+  accountId: string;
+  code: string;
+  name: string;
+  type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+  debit: number;
+  credit: number;
+}
+
+export interface TrialBalanceResponse {
+  rows: TrialBalanceRow[];
+  totalDebit: number;
+  totalCredit: number;
+  isBalanced: boolean;
+}
+
+export async function getTrialBalanceRequest(): Promise<TrialBalanceResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/trial-balance`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load trial balance");
+  }
+  return res.json();
+}
+
+export interface LedgerEntry {
+  journalEntryId: string;
+  reference: string;
+  date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
+export interface AccountLedgerResponse {
+  account: {
+    id: string;
+    code: string;
+    name: string;
+    type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE";
+  };
+  entries: LedgerEntry[];
+}
+
+export async function getAccountLedgerRequest(
+  accountId: string
+): Promise<AccountLedgerResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/accounts/${accountId}/ledger`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load account ledger");
+  }
+  return res.json();
+}

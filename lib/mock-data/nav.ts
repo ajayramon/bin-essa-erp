@@ -10,6 +10,7 @@ import {
   Clock,
   Building2,
   Store,
+  BookOpen,
 } from "lucide-react";
 
 export interface NavLeaf {
@@ -100,6 +101,13 @@ export const brandModules: NavEntry[] = [
         labelAr: "ميزان المراجعة",
         href: "/accounting/trial-balance",
         icon: Calculator,
+      },
+      {
+        key: "general-ledger",
+        labelEn: "General Ledger",
+        labelAr: "دفتر الأستاذ العام",
+        href: "/accounting/general-ledger",
+        icon: BookOpen,
       },
     ],
   },
