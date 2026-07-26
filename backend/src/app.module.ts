@@ -10,7 +10,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { SalesInvoicesModule } from './sales-invoices/sales-invoices.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { JournalEntriesModule } from './journal-entries/journal-entries.module';
-
+import { TrialBalanceModule } from './trial-balance/trial-balance.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +24,7 @@ import { JournalEntriesModule } from './journal-entries/journal-entries.module';
     SalesInvoicesModule,
     AccountsModule,
     JournalEntriesModule,
+    TrialBalanceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
