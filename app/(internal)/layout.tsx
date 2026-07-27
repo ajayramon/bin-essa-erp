@@ -11,20 +11,21 @@ export default function InternalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user } = useSession();
+  const { user, isRestoringSession } = useSession();
   const router = useRouter();
 
-  // Stage 1: no real auth, just a mock session. Anyone without an active
-  // "logged in as" user gets sent back to the sign-in screen.
+  // Only redirect once session restoration has actually finished - never
+  // redirect while it's still in flight, or a valid saved session gets
+  // bounced to login before it's had a chance to load.
   useEffect(() => {
-    if (!user) {
+    if (!isRestoringSession && !user) {
       router.replace("/");
     }
-  }, [user, router]);
+  }, [user, isRestoringSession, router]);
 
-  if (!user) {
-    // Brief flash while the redirect above fires, or while SessionContext
-    // is still restoring a saved session from localStorage on first load.
+  if (isRestoringSession || !user) {
+    // Brief flash while SessionContext restores a saved session from
+    // localStorage on first load, or while the redirect above fires.
     return (
       <div className="flex h-screen items-center justify-center bg-paper">
         <p className="text-sm text-ink/50">Loading…</p>

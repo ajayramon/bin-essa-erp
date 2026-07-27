@@ -306,3 +306,20 @@ export async function getAccountLedgerRequest(
   }
   return res.json();
 }
+export type ItemResponse = CreateItemResponse;
+
+export async function listItemsRequest(): Promise<ItemResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/items`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load items");
+  }
+  return res.json();
+}

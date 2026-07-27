@@ -19,6 +19,7 @@ interface SessionContextValue {
   currentBrand: Brand | null;
   currentBranch: Branch | null;
   branchesForCurrentBrand: Branch[];
+  isRestoringSession: boolean;
   loginAs: (userId: string) => void;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -30,7 +31,16 @@ const SessionContext = createContext<SessionContextValue | undefined>(
   undefined
 );
 
-const USER_KEY = "bin-essa-session-user-id";
+// USER_KEY now stores the full serialized user object, not just an id.
+// This is required because real logins (via /auth/login) return users from
+// the real backend database - their ids do NOT exist in the mock `users`
+// array below, so a previous version of this file that looked the user up
+// via users.find(u => u.id === savedUserId) would always fail to find a
+// real logged-in user on refresh, silently leaving `user` as null and
+// bouncing the person back to the login screen even though their token
+// was still valid and sitting in localStorage. Storing (and restoring)
+// the full user object sidesteps that mismatch entirely.
+const USER_KEY = "bin-essa-session-user";
 const BRAND_KEY = "bin-essa-session-brand-id";
 const BRANCH_KEY = "bin-essa-session-branch-id";
 const TOKEN_KEY = "bin-essa-access-token";
@@ -43,27 +53,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     DEFAULT_BRAND_ID
   );
   const [currentBranchId, setCurrentBranchId] = useState<string | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(true);
 
-  // Restore a mock session from localStorage on mount (Stage 1 only — no real auth)
+  // Restore a session from localStorage on mount. Works for both real
+  // backend logins and mock loginAs() sessions, since both now store the
+  // full user object under USER_KEY rather than just an id to re-look-up.
   useEffect(() => {
-    const savedUserId = localStorage.getItem(USER_KEY);
-    if (!savedUserId) return;
+    try {
+      const savedUserRaw = localStorage.getItem(USER_KEY);
+      if (!savedUserRaw) {
+        setIsRestoringSession(false);
+        return;
+      }
 
-    const foundUser = users.find((u) => u.id === savedUserId) ?? null;
-    if (!foundUser) return;
+      const savedUser = JSON.parse(savedUserRaw) as User;
+      setUser(savedUser);
 
-    setUser(foundUser);
+      const savedBrandId = localStorage.getItem(BRAND_KEY) as BrandId | null;
+      const savedBranchId = localStorage.getItem(BRANCH_KEY);
 
-    const savedBrandId = localStorage.getItem(BRAND_KEY) as BrandId | null;
-    const savedBranchId = localStorage.getItem(BRANCH_KEY);
-
-    setCurrentBrandId(savedBrandId ?? DEFAULT_BRAND_ID);
-    setCurrentBranchId(savedBranchId ?? foundUser.branchId);
+      setCurrentBrandId(savedBrandId ?? DEFAULT_BRAND_ID);
+      setCurrentBranchId(savedBranchId ?? savedUser.branchId);
+    } catch {
+      // Corrupted/unparseable saved session - clear it out rather than
+      // getting stuck in a broken state.
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(BRAND_KEY);
+      localStorage.removeItem(BRANCH_KEY);
+      localStorage.removeItem(TOKEN_KEY);
+    } finally {
+      setIsRestoringSession(false);
+    }
   }, []);
 
   function applySessionForUser(u: User) {
     setUser(u);
-    localStorage.setItem(USER_KEY, u.id);
+    localStorage.setItem(USER_KEY, JSON.stringify(u));
 
     let brandId: BrandId = DEFAULT_BRAND_ID;
     if (u.branchId) {
@@ -149,6 +174,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         currentBrand,
         currentBranch,
         branchesForCurrentBrand,
+        isRestoringSession,
         loginAs,
         login,
         logout,
