@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getTrialBalanceRequest, type TrialBalanceResponse } from "@/lib/api";
 
@@ -15,21 +15,46 @@ export default function TrialBalancePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const result = await getTrialBalanceRequest();
+      setData(result);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Failed to load trial balance");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load on mount
   useEffect(() => {
-    async function load() {
-      setIsLoading(true);
-      setErrorMessage(null);
-      try {
-        const result = await getTrialBalanceRequest();
-        setData(result);
-      } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : "Failed to load trial balance");
-      } finally {
-        setIsLoading(false);
+    load();
+  }, [load]);
+
+  // Refetch whenever the user returns to this tab/window, or navigates back
+  // to this page without a full reload (e.g. after posting a journal entry
+  // elsewhere and switching back). Without this, the numbers shown can go
+  // stale even though the underlying data is correct.
+  useEffect(() => {
+    function handleFocus() {
+      load();
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        load();
       }
     }
-    load();
-  }, []);
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [load]);
 
   const rows = data?.rows ?? [];
 
