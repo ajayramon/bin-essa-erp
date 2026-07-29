@@ -49,9 +49,31 @@ async function main() {
     },
   });
 
+  const inventoryAccount = await prisma.account.upsert({
+    where: { code: '1200' },
+    update: {},
+    create: {
+      code: '1200',
+      name: 'Inventory',
+      type: 'ASSET',
+    },
+  });
+
+  const accountsPayableAccount = await prisma.account.upsert({
+    where: { code: '2000' },
+    update: {},
+    create: {
+      code: '2000',
+      name: 'Accounts Payable',
+      type: 'LIABILITY',
+    },
+  });
+
   console.log('Seeded branch:', branch.code);
   console.log('Seeded user:', admin.username, '(password: demo1234)');
   console.log('Seeded account:', cashAccount.code, cashAccount.name, '- id:', cashAccount.id);
+  console.log('Seeded account:', inventoryAccount.code, inventoryAccount.name, '- id:', inventoryAccount.id);
+  console.log('Seeded account:', accountsPayableAccount.code, accountsPayableAccount.name, '- id:', accountsPayableAccount.id);
   console.log('Seeded account:', salesRevenueAccount.code, salesRevenueAccount.name, '- id:', salesRevenueAccount.id);
 }
 

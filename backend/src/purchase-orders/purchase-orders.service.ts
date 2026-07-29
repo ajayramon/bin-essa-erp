@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto';
+import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 
 @Injectable()
-export class SalesInvoicesService {
+export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.salesInvoice.findMany({
+    return this.prisma.purchaseOrder.findMany({
       include: {
-        customer: true,
+        supplier: true,
         branch: true,
         lines: {
           include: {
@@ -26,13 +26,13 @@ export class SalesInvoicesService {
     });
   }
 
-  async create(dto: CreateSalesInvoiceDto) {
+  async create(dto: CreatePurchaseOrderDto) {
     const lineData = dto.lines.map((line) => {
-      const lineTotal = line.quantity * line.unitPrice;
+      const lineTotal = line.quantity * line.unitCost;
       return {
         itemId: line.itemId,
         quantity: line.quantity,
-        unitPrice: line.unitPrice,
+        unitCost: line.unitCost,
         lineTotal,
       };
     });
@@ -42,29 +42,28 @@ export class SalesInvoicesService {
     const totalAmount = subtotal + taxAmount;
 
     return this.prisma.$transaction(async (tx) => {
-      // Dynamic account resolution for Cash (1000) and Sales Revenue (4000)
-      let cashAccount = await tx.account.findUnique({ where: { code: '1000' } });
-      if (!cashAccount) {
-        cashAccount = await tx.account.create({
-          data: { code: '1000', name: 'Cash', type: 'ASSET' },
+      // Find or create Inventory Account (code 1200) and Accounts Payable Account (code 2000)
+      let inventoryAccount = await tx.account.findUnique({ where: { code: '1200' } });
+      if (!inventoryAccount) {
+        inventoryAccount = await tx.account.create({
+          data: { code: '1200', name: 'Inventory', type: 'ASSET' },
         });
       }
 
-      let salesRevenueAccount = await tx.account.findUnique({ where: { code: '4000' } });
-      if (!salesRevenueAccount) {
-        salesRevenueAccount = await tx.account.create({
-          data: { code: '4000', name: 'Sales Revenue', type: 'REVENUE' },
+      let apAccount = await tx.account.findUnique({ where: { code: '2000' } });
+      if (!apAccount) {
+        apAccount = await tx.account.create({
+          data: { code: '2000', name: 'Accounts Payable', type: 'LIABILITY' },
         });
       }
 
-      // 1. Create the invoice with its lines
-      const invoice = await tx.salesInvoice.create({
+      // 1. Create the Purchase Order
+      const purchaseOrder = await tx.purchaseOrder.create({
         data: {
-          invoiceNumber: dto.invoiceNumber,
-          customerId: dto.customerId,
+          poNumber: dto.poNumber,
+          supplierId: dto.supplierId,
           branchId: dto.branchId,
-          userId: dto.userId,
-          paymentMethod: dto.paymentMethod,
+          status: dto.status ?? 'POSTED',
           subtotal,
           taxAmount,
           totalAmount,
@@ -74,20 +73,21 @@ export class SalesInvoicesService {
         },
         include: {
           lines: true,
+          supplier: true,
         },
       });
 
-      // 2. Decrease stock for each line item (both Item.stockQuantity and ItemStock.quantity)
+      // 2. Increase stock for each item (both Item.stockQuantity and ItemStock.quantity)
       for (const line of dto.lines) {
-        // Decrease scalar stock on Item
+        // Increase scalar stock on Item
         await tx.item.update({
           where: { id: line.itemId },
           data: {
-            stockQuantity: { decrement: Math.round(line.quantity) },
+            stockQuantity: { increment: Math.round(line.quantity) },
           },
         });
 
-        // Decrease branch stock on ItemStock
+        // Increase branch stock on ItemStock
         await tx.itemStock.upsert({
           where: {
             itemId_branchId: {
@@ -96,33 +96,33 @@ export class SalesInvoicesService {
             },
           },
           update: {
-            quantity: { decrement: line.quantity },
+            quantity: { increment: line.quantity },
           },
           create: {
             itemId: line.itemId,
             branchId: dto.branchId,
-            quantity: -line.quantity,
+            quantity: line.quantity,
           },
         });
       }
 
-      // 3. Auto-post journal entry: debit Cash, credit Sales Revenue
+      // 3. Auto-post journal entry: DEBIT Inventory, CREDIT Accounts Payable
       const journalEntry = await tx.journalEntry.create({
         data: {
-          reference: `JE-${dto.invoiceNumber}`,
-          description: `Auto-posted from sales invoice ${dto.invoiceNumber}`,
+          reference: `JE-${dto.poNumber}`,
+          description: `Auto-posted from purchase order ${dto.poNumber}`,
           status: 'POSTED',
           branchId: dto.branchId,
-          salesInvoiceId: invoice.id,
+          purchaseOrderId: purchaseOrder.id,
           lines: {
             create: [
               {
-                accountId: cashAccount.id,
+                accountId: inventoryAccount.id,
                 debit: totalAmount,
                 credit: 0,
               },
               {
-                accountId: salesRevenueAccount.id,
+                accountId: apAccount.id,
                 debit: 0,
                 credit: totalAmount,
               },
@@ -134,7 +134,7 @@ export class SalesInvoicesService {
         },
       });
 
-      return { ...invoice, journalEntry };
+      return { ...purchaseOrder, journalEntry };
     });
   }
 }

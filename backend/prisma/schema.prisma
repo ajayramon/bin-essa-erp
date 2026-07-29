@@ -76,6 +76,12 @@ enum JournalEntryStatus {
   POSTED
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
 // NOT explicitly in your type list — added for ItemStock audit trail readiness.
 // FLAG: only needed if you track stock movement history; otherwise can be deleted
 enum StockMovementType {
@@ -100,6 +106,7 @@ model Branch {
   suppliers      Supplier[]
   salesInvoices  SalesInvoice[]
   journalEntries JournalEntry[]
+  purchaseOrders PurchaseOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -132,9 +139,11 @@ model Item {
   cost       Decimal        @db.Decimal(10, 3)
   unit       String         @default("pcs")
   isActive   Boolean        @default(true)
+  stockQuantity Int          @default(0)
 
   stocks            ItemStock[]
   salesInvoiceLines SalesInvoiceLine[]
+  purchaseOrderLines PurchaseOrderLine[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,6 +189,8 @@ model Supplier {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id])
 
+  purchaseOrders PurchaseOrder[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -208,6 +219,9 @@ model JournalEntry {
   // Links back to the sale that auto-generated this entry (nullable — not all JEs come from sales)
   salesInvoiceId String?       @unique
   salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+
+  purchaseOrderId String?        @unique
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
 
   lines JournalEntryLine[]
 
@@ -257,4 +271,36 @@ model SalesInvoiceLine {
 
   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id])
   item         Item         @relation(fields: [itemId], references: [id])
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  poNumber    String              @unique // e.g. "PO-0001"
+  date        DateTime            @default(now())
+  supplierId  String
+  supplier    Supplier            @relation(fields: [supplierId], references: [id])
+  branchId    String
+  branch      Branch              @relation(fields: [branchId], references: [id])
+  status      PurchaseOrderStatus @default(POSTED)
+  subtotal    Decimal             @db.Decimal(10, 3)
+  taxAmount   Decimal             @default(0) @db.Decimal(10, 3)
+  totalAmount Decimal             @db.Decimal(10, 3)
+
+  lines        PurchaseOrderLine[]
+  journalEntry JournalEntry?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseOrderLine {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  itemId          String
+  quantity        Decimal       @db.Decimal(10, 3)
+  unitCost        Decimal       @db.Decimal(10, 3)
+  lineTotal       Decimal       @db.Decimal(10, 3)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
 }
