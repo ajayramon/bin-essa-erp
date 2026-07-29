@@ -6,6 +6,12 @@ import { CreateSupplierDto } from './dto/create-supplier.dto';
 export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
+  async findAll() {
+    return this.prisma.supplier.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async create(dto: CreateSupplierDto) {
     return this.prisma.supplier.create({
       data: {
