@@ -323,3 +323,168 @@ export async function listItemsRequest(): Promise<ItemResponse[]> {
   }
   return res.json();
 }
+
+export type SupplierResponse = CreateSupplierResponse;
+
+export async function listSuppliersRequest(): Promise<SupplierResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/suppliers`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load suppliers");
+  }
+  return res.json();
+}
+
+export interface PurchaseOrderLinePayload {
+  itemId: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface CreatePurchaseOrderPayload {
+  poNumber: string;
+  supplierId: string;
+  branchId: string;
+  taxAmount?: number;
+  lines: PurchaseOrderLinePayload[];
+}
+
+export interface PurchaseOrderResponse {
+  id: string;
+  poNumber: string;
+  date: string;
+  supplierId: string;
+  branchId: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  totalAmount: string;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: SupplierResponse;
+  lines?: {
+    id: string;
+    itemId: string;
+    quantity: string;
+    unitCost: string;
+    lineTotal: string;
+    item?: ItemResponse;
+  }[];
+}
+
+export async function createPurchaseOrderRequest(
+  payload: CreatePurchaseOrderPayload
+): Promise<PurchaseOrderResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/purchase-orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to create purchase order");
+  }
+  return res.json();
+}
+
+export async function listPurchaseOrdersRequest(): Promise<PurchaseOrderResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/purchase-orders`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load purchase orders");
+  }
+  return res.json();
+}
+
+export interface SalesInvoiceLinePayload {
+  itemId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreateSalesInvoicePayload {
+  invoiceNumber: string;
+  customerId?: string;
+  branchId: string;
+  userId: string;
+  paymentMethod: "CASH" | "CARD" | "CREDIT" | "BANK_TRANSFER";
+  taxAmount?: number;
+  lines: SalesInvoiceLinePayload[];
+}
+
+export interface SalesInvoiceResponse {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  customerId: string | null;
+  branchId: string;
+  userId: string;
+  paymentMethod: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  totalAmount: string;
+  createdAt: string;
+  lines?: {
+    id: string;
+    itemId: string;
+    quantity: string;
+    unitPrice: string;
+    lineTotal: string;
+    item?: ItemResponse;
+  }[];
+}
+
+export async function createSalesInvoiceRequest(
+  payload: CreateSalesInvoicePayload
+): Promise<SalesInvoiceResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/sales-invoices`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to create sales invoice");
+  }
+  return res.json();
+}
+
+export async function listSalesInvoicesRequest(): Promise<SalesInvoiceResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/sales-invoices`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load sales invoices");
+  }
+  return res.json();
+}
+
