@@ -6,12 +6,6 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
-    return this.prisma.customer.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-  }
-
   async create(dto: CreateCustomerDto) {
     return this.prisma.customer.create({
       data: {

@@ -124,24 +124,6 @@ export async function createCustomerRequest(
   return res.json();
 }
 
-export type CustomerResponse = CreateCustomerResponse;
-
-export async function listCustomersRequest(): Promise<CustomerResponse[]> {
-  const token = localStorage.getItem("bin-essa-access-token");
-  const res = await fetch(`${API_BASE}/customers`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.message ?? "Failed to load customers");
-  }
-  return res.json();
-}
-
 export interface CreateSupplierPayload {
   code: string;
   name: string;
