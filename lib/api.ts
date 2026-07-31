@@ -79,6 +79,7 @@ export interface CreateItemPayload {
   cost: number;
   unit?: string;
   isActive?: boolean;
+  stockQuantity?: number;
 }
 
 export interface CreateItemResponse {
@@ -92,6 +93,7 @@ export interface CreateItemResponse {
   cost: string;
   unit: string;
   isActive: boolean;
+  stockQuantity?: number;
   createdAt: string;
   updatedAt: string;
 }

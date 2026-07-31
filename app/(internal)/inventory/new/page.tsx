@@ -26,6 +26,7 @@ export default function NewItemPage() {
     price: "",
     cost: "",
     unit: "pcs",
+    stockQuantity: "0",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +47,17 @@ export default function NewItemPage() {
     }
     const price = Number(form.price);
     const cost = Number(form.cost);
+    const stockQuantity = Number(form.stockQuantity);
     if (Number.isNaN(price) || price < 0) {
       setError("Price must be a valid non-negative number.");
       return;
     }
     if (Number.isNaN(cost) || cost < 0) {
       setError("Cost must be a valid non-negative number.");
+      return;
+    }
+    if (Number.isNaN(stockQuantity) || stockQuantity < 0) {
+      setError("Stock Quantity must be a valid non-negative number.");
       return;
     }
 
@@ -63,6 +69,7 @@ export default function NewItemPage() {
       cost,
       unit: form.unit.trim() || undefined,
       barcode: form.barcode.trim() || undefined,
+      stockQuantity,
     };
 
     setSubmitting(true);
@@ -77,7 +84,11 @@ export default function NewItemPage() {
         price: "",
         cost: "",
         unit: "pcs",
+        stockQuantity: "0",
       });
+      setTimeout(() => {
+        router.push("/inventory");
+      }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create item.");
     } finally {
@@ -170,14 +181,26 @@ export default function NewItemPage() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Unit</label>
-          <input
-            type="text"
-            value={form.unit}
-            onChange={(e) => update("unit", e.target.value)}
-            className="w-full border rounded px-3 py-2"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Initial Stock Quantity</label>
+            <input
+              type="number"
+              min="0"
+              value={form.stockQuantity}
+              onChange={(e) => update("stockQuantity", e.target.value)}
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Unit</label>
+            <input
+              type="text"
+              value={form.unit}
+              onChange={(e) => update("unit", e.target.value)}
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
         </div>
 
         {error && (
@@ -187,7 +210,7 @@ export default function NewItemPage() {
         )}
         {success && (
           <p className="text-sm" style={{ color: "#15803d" }}>
-            Item created successfully.
+            Item created successfully! Redirecting to inventory...
           </p>
         )}
 

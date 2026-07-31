@@ -39,6 +39,7 @@ export default function ItemDetailPage() {
     category: "OTHER" as ItemCategory,
     price: "",
     cost: "",
+    stockQuantity: "0",
     unit: "pcs",
     isActive: true,
   });
@@ -78,6 +79,7 @@ export default function ItemDetailPage() {
       category: item.category,
       price: String(item.price),
       cost: String(item.cost),
+      stockQuantity: String((item as any).stockQuantity ?? 0),
       unit: item.unit || "pcs",
       isActive: item.isActive,
     });
@@ -97,6 +99,7 @@ export default function ItemDetailPage() {
         category: editFormData.category,
         price: parseFloat(editFormData.price) || 0,
         cost: parseFloat(editFormData.cost) || 0,
+        stockQuantity: parseInt(editFormData.stockQuantity, 10) || 0,
         unit: editFormData.unit.trim() || "pcs",
         isActive: editFormData.isActive,
       });
@@ -149,6 +152,8 @@ export default function ItemDetailPage() {
     );
   }
 
+  const stock = (item as any).stockQuantity ?? 0;
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
@@ -165,7 +170,7 @@ export default function ItemDetailPage() {
             onClick={openEditModal}
             className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-gold hover:text-ink transition-colors"
           >
-            Edit Item
+            Edit / Restock Item
           </button>
           <button
             type="button"
@@ -177,7 +182,16 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
+          <p className="text-sm text-ink/50">Current Stock Quantity</p>
+          <p className="mt-1 text-2xl font-bold text-ink">
+            <span className={stock > 0 ? "text-emerald-700" : "text-red-600"}>
+              {stock}
+            </span>{" "}
+            <span className="text-sm font-normal text-ink/40">{item.unit || "pcs"}</span>
+          </p>
+        </div>
         <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
           <p className="text-sm text-ink/50">{t.inventory.sellPrice}</p>
           <p className="numeric-ltr mt-1 text-xl font-semibold text-ink">
@@ -218,12 +232,15 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      {/* Edit Item Modal */}
+      {/* Edit Item & Restock Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-ink/10 space-y-4">
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
-              <h3 className="text-lg font-semibold text-ink">Edit Item</h3>
+              <div>
+                <h3 className="text-lg font-semibold text-ink">Edit Item & Restock</h3>
+                <p className="text-xs text-ink/60">Adjust stock quantity or edit item details</p>
+              </div>
               <button
                 onClick={() => setIsEditing(false)}
                 className="text-ink/40 hover:text-ink text-xl font-bold"
@@ -290,6 +307,30 @@ export default function ItemDetailPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">
+                    Stock Quantity (Edit to Restock)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editFormData.stockQuantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: e.target.value })}
+                    className="w-full rounded-xl border-2 border-gold/60 bg-gold/5 px-3 py-2 text-sm font-bold text-ink outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editFormData.unit}
+                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-medium text-ink/70 mb-1">Cost Price (KD)</label>
                   <input
                     type="number"
@@ -315,17 +356,7 @@ export default function ItemDetailPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-ink/70 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={editFormData.unit}
-                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
-                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
-                  />
-                </div>
-
-                <div className="flex items-center pt-5">
+                <div className="flex items-center sm:col-span-2 pt-2">
                   <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
                     <input
                       type="checkbox"
@@ -351,7 +382,7 @@ export default function ItemDetailPage() {
                   disabled={isSaving}
                   className="rounded-xl bg-ink px-4 py-2 text-xs font-medium text-white hover:bg-gold hover:text-ink disabled:opacity-50 transition-colors"
                 >
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isSaving ? "Saving..." : "Save & Update Stock"}
                 </button>
               </div>
             </form>

@@ -39,4 +39,9 @@ export class UpdateItemDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stockQuantity?: number;
 }

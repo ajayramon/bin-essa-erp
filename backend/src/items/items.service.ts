@@ -18,6 +18,7 @@ export class ItemsService {
         cost: dto.cost,
         unit: dto.unit,
         isActive: dto.isActive,
+        stockQuantity: dto.stockQuantity ?? 0,
       },
     });
   }

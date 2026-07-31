@@ -37,6 +37,7 @@ export default function InventoryPage() {
     category: "OTHER" as ItemCategory,
     price: "",
     cost: "",
+    stockQuantity: "0",
     unit: "pcs",
     isActive: true,
   });
@@ -102,6 +103,7 @@ export default function InventoryPage() {
       category: item.category,
       price: String(item.price),
       cost: String(item.cost),
+      stockQuantity: String((item as any).stockQuantity ?? 0),
       unit: item.unit || "pcs",
       isActive: item.isActive,
     });
@@ -120,6 +122,7 @@ export default function InventoryPage() {
         category: editFormData.category,
         price: parseFloat(editFormData.price) || 0,
         cost: parseFloat(editFormData.cost) || 0,
+        stockQuantity: parseInt(editFormData.stockQuantity, 10) || 0,
         unit: editFormData.unit.trim() || "pcs",
         isActive: editFormData.isActive,
       });
@@ -214,13 +217,24 @@ export default function InventoryPage() {
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                          stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {stock} {item.unit || "pcs"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                            stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700 font-bold"
+                          }`}
+                        >
+                          {stock > 0 ? `${stock} ${item.unit || "pcs"}` : "Stock Finished (0 pcs)"}
+                        </span>
+                        {stock === 0 && (
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="rounded bg-gold/20 px-2 py-0.5 text-xs font-bold text-ink hover:bg-gold transition-colors"
+                          >
+                            + Restock
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="numeric-ltr px-4 py-3 text-ink/70">
                       {formatKD(Number(item.cost))} KD
@@ -241,7 +255,7 @@ export default function InventoryPage() {
                           onClick={() => openEditModal(item)}
                           className="rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-gold hover:text-ink transition-colors"
                         >
-                          Edit
+                          Edit / Adjust Stock
                         </button>
                         <button
                           type="button"
@@ -263,12 +277,15 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Edit Item Modal */}
+      {/* Edit Item & Adjust Stock Modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-ink/10 space-y-4">
             <div className="flex items-center justify-between border-b border-ink/10 pb-3">
-              <h3 className="text-lg font-semibold text-ink">Edit Item</h3>
+              <div>
+                <h3 className="text-lg font-semibold text-ink">Edit Item & Adjust Stock</h3>
+                <p className="text-xs text-ink/60">Update details or replenish stock after stock finishes</p>
+              </div>
               <button
                 onClick={() => setEditingItem(null)}
                 className="text-ink/40 hover:text-ink text-xl font-bold"
@@ -335,6 +352,30 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">
+                    Current Stock Quantity (Edit to Restock)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={editFormData.stockQuantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: e.target.value })}
+                    className="w-full rounded-xl border-2 border-gold/60 bg-gold/5 px-3 py-2 text-sm font-bold text-ink outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editFormData.unit}
+                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-medium text-ink/70 mb-1">Cost Price (KD)</label>
                   <input
                     type="number"
@@ -360,17 +401,7 @@ export default function InventoryPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-ink/70 mb-1">Unit</label>
-                  <input
-                    type="text"
-                    value={editFormData.unit}
-                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
-                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
-                  />
-                </div>
-
-                <div className="flex items-center pt-5">
+                <div className="flex items-center sm:col-span-2 pt-2">
                   <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
                     <input
                       type="checkbox"
@@ -396,7 +427,7 @@ export default function InventoryPage() {
                   disabled={isSaving}
                   className="rounded-xl bg-ink px-4 py-2 text-xs font-medium text-white hover:bg-gold hover:text-ink disabled:opacity-50 transition-colors"
                 >
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {isSaving ? "Saving..." : "Save & Update Stock"}
                 </button>
               </div>
             </form>
