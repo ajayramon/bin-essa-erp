@@ -80,10 +80,27 @@ export default function InventoryPage() {
     };
   }, [load]);
 
+  const [stockFilter, setStockFilter] = useState<"all" | "inStock" | "lowStock" | "outOfStock">("all");
+
   const categories = Array.from(new Set(allItems.map((i) => i.category)));
+
+  // Smart Inventory Metrics
+  const totalValuation = allItems.reduce(
+    (sum, i) => sum + (Number(i.cost) || 0) * (i.stockQuantity ?? 0),
+    0
+  );
+  const lowStockCount = allItems.filter(
+    (i) => (i.stockQuantity ?? 0) > 0 && (i.stockQuantity ?? 0) <= 10
+  ).length;
+  const outOfStockCount = allItems.filter((i) => (i.stockQuantity ?? 0) <= 0).length;
 
   const filteredItems = allItems.filter((item) => {
     if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+    const stock = item.stockQuantity ?? 0;
+    if (stockFilter === "inStock" && stock <= 0) return false;
+    if (stockFilter === "lowStock" && (stock <= 0 || stock > 10)) return false;
+    if (stockFilter === "outOfStock" && stock > 0) return false;
+
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -160,7 +177,45 @@ export default function InventoryPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Executive Smart Analytics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Total Active SKUs</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{allItems.length}</p>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Inventory Valuation</p>
+          <p className="numeric-ltr mt-1 text-2xl font-bold text-ink">
+            {formatKD(totalValuation)} <span className="text-xs font-normal text-ink/40">KD</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setStockFilter(stockFilter === "lowStock" ? "all" : "lowStock")}
+          className={`rounded-2xl border p-4 text-start transition shadow-sm ${
+            stockFilter === "lowStock"
+              ? "border-amber-400 bg-amber-50/70 ring-2 ring-amber-400"
+              : "border-ink/10 bg-white hover:border-amber-300"
+          }`}
+        >
+          <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Low Stock Alerts (≤10)</p>
+          <p className="mt-1 text-2xl font-bold text-amber-900">{lowStockCount}</p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStockFilter(stockFilter === "outOfStock" ? "all" : "outOfStock")}
+          className={`rounded-2xl border p-4 text-start transition shadow-sm ${
+            stockFilter === "outOfStock"
+              ? "border-red-400 bg-red-50/70 ring-2 ring-red-400"
+              : "border-ink/10 bg-white hover:border-red-300"
+          }`}
+        >
+          <p className="text-xs font-medium text-red-600 uppercase tracking-wider">Out of Stock</p>
+          <p className="mt-1 text-2xl font-bold text-red-800">{outOfStockCount}</p>
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           type="text"
           value={query}
@@ -171,7 +226,7 @@ export default function InventoryPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-gold sm:w-64"
+          className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-gold sm:w-56"
         >
           <option value="all">{t.inventory.allCategories}</option>
           {categories.map((c) => (
@@ -180,6 +235,30 @@ export default function InventoryPage() {
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-1 bg-ink/5 p-1 rounded-2xl border border-ink/10">
+          {(["all", "inStock", "lowStock", "outOfStock"] as const).map((filterKey) => {
+            const labels = {
+              all: "All",
+              inStock: "In Stock",
+              lowStock: "Low Stock",
+              outOfStock: "Finished",
+            };
+            return (
+              <button
+                key={filterKey}
+                type="button"
+                onClick={() => setStockFilter(filterKey)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition ${
+                  stockFilter === filterKey
+                    ? "bg-white text-ink shadow-sm"
+                    : "text-ink/60 hover:text-ink"
+                }`}
+              >
+                {labels[filterKey]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {isLoading && (
@@ -415,7 +494,22 @@ export default function InventoryPage() {
                   />
                 </div>
 
-                <div className="flex items-center sm:col-span-2 pt-2">
+                <div className="sm:col-span-2 rounded-xl bg-ink/5 p-3 border border-ink/10 flex items-center justify-between text-xs">
+                  <span className="font-semibold text-ink/70">Estimated Profit & Gross Margin:</span>
+                  {(() => {
+                    const price = parseFloat(editFormData.price) || 0;
+                    const cost = parseFloat(editFormData.cost) || 0;
+                    const profit = price - cost;
+                    const margin = price > 0 ? (profit / price) * 100 : 0;
+                    return (
+                      <span className={`font-bold ${profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                        {formatKD(profit)} KD ({margin.toFixed(1)}% margin)
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex items-center sm:col-span-2 pt-1">
                   <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
                     <input
                       type="checkbox"
