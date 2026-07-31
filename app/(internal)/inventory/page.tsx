@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { listItemsRequest, type ItemResponse } from "@/lib/api";
 
@@ -22,29 +22,41 @@ export default function InventoryPage() {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await listItemsRequest();
+      setAllItems(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load items");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-    async function load() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const data = await listItemsRequest();
-        if (!cancelled) setAllItems(data);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load items");
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    function handleFocus() {
+      load();
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        load();
       }
     }
 
-    load();
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
-      cancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [load]);
 
   const categories = Array.from(new Set(allItems.map((i) => i.category)));
 
@@ -112,33 +124,48 @@ export default function InventoryPage() {
         <div className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink/10 text-start text-ink/50">
+              <tr className="border-b border-ink/10 text-xs font-semibold uppercase tracking-wider text-ink/50">
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.itemName}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.category}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sku}</th>
+                <th className="px-4 py-3 text-start font-medium">Current Stock</th>
+                <th className="px-4 py-3 text-start font-medium">Cost Price</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sellPrice}</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
-            <tbody>
-              {filteredItems.map((item) => (
-                <tr key={item.id} className="border-b border-ink/5 last:border-0 hover:bg-ink/5">
-                  <td className="px-4 py-3 font-medium text-ink">{item.name}</td>
-                  <td className="px-4 py-3 text-ink/70">{item.category}</td>
-                  <td className="numeric-ltr px-4 py-3 text-ink/60">{item.sku}</td>
-                  <td className="numeric-ltr px-4 py-3 text-ink">
-                    {formatKD(Number(item.price))} KD
-                  </td>
-                  <td className="px-4 py-3 text-end">
-                    <Link
-                      href={`/inventory/${item.id}`}
-                      className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-gold hover:text-ink"
-                    >
-                      {t.inventory.viewDetails}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-ink/5">
+              {filteredItems.map((item) => {
+                const stock = (item as any).stockQuantity ?? 0;
+                return (
+                  <tr key={item.id} className="hover:bg-ink/5">
+                    <td className="px-4 py-3 font-medium text-ink">{item.name}</td>
+                    <td className="px-4 py-3 text-ink/70">{item.category}</td>
+                    <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
+                      }`}>
+                        {stock} {item.unit || "pcs"}
+                      </span>
+                    </td>
+                    <td className="numeric-ltr px-4 py-3 text-ink/70">
+                      {formatKD(Number(item.cost))} KD
+                    </td>
+                    <td className="numeric-ltr px-4 py-3 font-semibold text-ink">
+                      {formatKD(Number(item.price))} KD
+                    </td>
+                    <td className="px-4 py-3 text-end">
+                      <Link
+                        href={`/inventory/${item.id}`}
+                        className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-gold hover:text-ink"
+                      >
+                        {t.inventory.viewDetails}
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {filteredItems.length === 0 && (

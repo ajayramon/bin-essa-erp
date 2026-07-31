@@ -42,20 +42,15 @@ export class SalesInvoicesService {
     const totalAmount = subtotal + taxAmount;
 
     return this.prisma.$transaction(async (tx) => {
-      // Dynamic account resolution for Cash (1000) and Sales Revenue (4000)
-      let cashAccount = await tx.account.findUnique({ where: { code: '1000' } });
-      if (!cashAccount) {
-        cashAccount = await tx.account.create({
-          data: { code: '1000', name: 'Cash', type: 'ASSET' },
-        });
-      }
-
-      let salesRevenueAccount = await tx.account.findUnique({ where: { code: '4000' } });
-      if (!salesRevenueAccount) {
-        salesRevenueAccount = await tx.account.create({
-          data: { code: '4000', name: 'Sales Revenue', type: 'REVENUE' },
-        });
-      }
+      // Parallelize account lookups
+      const [cashAccount, salesRevenueAccount] = await Promise.all([
+        tx.account.findUnique({ where: { code: '1000' } }).then(async (acc) => {
+          return acc ?? tx.account.create({ data: { code: '1000', name: 'Cash', type: 'ASSET' } });
+        }),
+        tx.account.findUnique({ where: { code: '4000' } }).then(async (acc) => {
+          return acc ?? tx.account.create({ data: { code: '4000', name: 'Sales Revenue', type: 'REVENUE' } });
+        }),
+      ]);
 
       // 1. Create the invoice with its lines
       const invoice = await tx.salesInvoice.create({
@@ -77,34 +72,22 @@ export class SalesInvoicesService {
         },
       });
 
-      // 2. Decrease stock for each line item (both Item.stockQuantity and ItemStock.quantity)
-      for (const line of dto.lines) {
-        // Decrease scalar stock on Item
-        await tx.item.update({
-          where: { id: line.itemId },
-          data: {
-            stockQuantity: { decrement: Math.round(line.quantity) },
-          },
-        });
-
-        // Decrease branch stock on ItemStock
-        await tx.itemStock.upsert({
-          where: {
-            itemId_branchId: {
-              itemId: line.itemId,
-              branchId: dto.branchId,
+      // 2. Decrease stock for all line items concurrently in parallel
+      await Promise.all(
+        dto.lines.flatMap((line) => [
+          tx.item.update({
+            where: { id: line.itemId },
+            data: { stockQuantity: { decrement: Math.round(line.quantity) } },
+          }),
+          tx.itemStock.upsert({
+            where: {
+              itemId_branchId: { itemId: line.itemId, branchId: dto.branchId },
             },
-          },
-          update: {
-            quantity: { decrement: line.quantity },
-          },
-          create: {
-            itemId: line.itemId,
-            branchId: dto.branchId,
-            quantity: -line.quantity,
-          },
-        });
-      }
+            update: { quantity: { decrement: line.quantity } },
+            create: { itemId: line.itemId, branchId: dto.branchId, quantity: -line.quantity },
+          }),
+        ]),
+      );
 
       // 3. Auto-post journal entry: debit Cash, credit Sales Revenue
       const journalEntry = await tx.journalEntry.create({

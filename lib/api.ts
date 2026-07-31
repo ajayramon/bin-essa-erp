@@ -1,5 +1,36 @@
 const API_BASE = "https://bin-essa-erp.onrender.com";
 
+const apiCache = new Map<string, { data: any; expiresAt: number }>();
+
+export function clearApiCache() {
+  apiCache.clear();
+}
+
+async function fetchWithCache<T>(url: string, init?: RequestInit, ttlMs = 10000): Promise<T> {
+  const cacheKey = `${init?.method || 'GET'}:${url}`;
+  const now = Date.now();
+
+  if ((!init?.method || init.method === 'GET') && apiCache.has(cacheKey)) {
+    const entry = apiCache.get(cacheKey)!;
+    if (entry.expiresAt > now) {
+      return entry.data;
+    }
+  }
+
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Request failed");
+  }
+  const data = await res.json();
+
+  if (!init?.method || init.method === 'GET') {
+    apiCache.set(cacheKey, { data, expiresAt: now + ttlMs });
+  }
+
+  return data;
+}
+
 export interface LoginResponse {
   access_token: string;
   user: {
@@ -81,6 +112,7 @@ export async function createItemRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create item");
   }
+  clearApiCache();
   return res.json();
 }
 
@@ -121,6 +153,7 @@ export async function createCustomerRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create customer");
   }
+  clearApiCache();
   return res.json();
 }
 
@@ -161,6 +194,7 @@ export async function createSupplierRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create supplier");
   }
+  clearApiCache();
   return res.json();
 }
 
@@ -234,6 +268,7 @@ export async function createJournalEntryRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create journal entry");
   }
+  clearApiCache();
   return res.json();
 }
 
@@ -395,6 +430,7 @@ export async function createPurchaseOrderRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create purchase order");
   }
+  clearApiCache();
   return res.json();
 }
 
@@ -469,6 +505,7 @@ export async function createSalesInvoiceRequest(
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Failed to create sales invoice");
   }
+  clearApiCache();
   return res.json();
 }
 
