@@ -74,22 +74,36 @@ export class PurchaseOrdersService {
           },
         });
 
-        // 2. Increase stock for all items concurrently in parallel
-        await Promise.all(
-          dto.lines.flatMap((line) => [
-            tx.item.update({
+        // 2. Increase stock & update Weighted Average Cost (WAC) for each purchased item
+        for (const line of dto.lines) {
+          const currentItem = await tx.item.findUnique({ where: { id: line.itemId } });
+          if (currentItem) {
+            const currentQty = currentItem.stockQuantity ?? 0;
+            const currentCost = Number(currentItem.cost) || 0;
+            const newQty = currentQty + Math.round(line.quantity);
+
+            // Weighted Average Cost formula
+            const newWacCost = newQty > 0
+              ? ((currentQty * currentCost) + (line.quantity * line.unitCost)) / newQty
+              : line.unitCost;
+
+            await tx.item.update({
               where: { id: line.itemId },
-              data: { stockQuantity: { increment: Math.round(line.quantity) } },
-            }),
-            tx.itemStock.upsert({
-              where: {
-                itemId_branchId: { itemId: line.itemId, branchId: dto.branchId },
+              data: {
+                stockQuantity: newQty,
+                cost: newWacCost,
               },
-              update: { quantity: { increment: line.quantity } },
-              create: { itemId: line.itemId, branchId: dto.branchId, quantity: line.quantity },
-            }),
-          ]),
-        );
+            });
+          }
+
+          await tx.itemStock.upsert({
+            where: {
+              itemId_branchId: { itemId: line.itemId, branchId: dto.branchId },
+            },
+            update: { quantity: { increment: line.quantity } },
+            create: { itemId: line.itemId, branchId: dto.branchId, quantity: line.quantity },
+          });
+        }
 
         // 3. Auto-post journal entry: DEBIT Inventory, CREDIT Accounts Payable
         const journalEntry = await tx.journalEntry.create({
