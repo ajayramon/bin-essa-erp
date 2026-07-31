@@ -93,7 +93,7 @@ export interface CreateItemResponse {
   cost: string;
   unit: string;
   isActive: boolean;
-  stockQuantity?: number;
+  stockQuantity: number;
   createdAt: string;
   updatedAt: string;
 }

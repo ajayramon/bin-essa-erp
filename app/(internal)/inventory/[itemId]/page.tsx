@@ -152,7 +152,7 @@ export default function ItemDetailPage() {
     );
   }
 
-  const stock = (item as any).stockQuantity ?? 0;
+  const stock = item.stockQuantity ?? 0;
 
   return (
     <div className="space-y-6 p-6">

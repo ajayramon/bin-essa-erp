@@ -202,20 +202,24 @@ export default function InventoryPage() {
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.itemName}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.category}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sku}</th>
-                <th className="px-4 py-3 text-start font-medium">Current Stock</th>
-                <th className="px-4 py-3 text-start font-medium">Cost Price</th>
+                <th className="px-4 py-3 text-start font-medium">{t.inventory.barcode}</th>
+                <th className="px-4 py-3 text-start font-medium">Stock Qty</th>
+                <th className="px-4 py-3 text-start font-medium">Unit</th>
+                <th className="px-4 py-3 text-start font-medium">{t.inventory.costPrice}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sellPrice}</th>
+                <th className="px-4 py-3 text-start font-medium">Status</th>
                 <th className="px-4 py-3 text-end font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/5">
               {filteredItems.map((item) => {
-                const stock = (item as any).stockQuantity ?? 0;
+                const stock = item.stockQuantity ?? 0;
                 return (
                   <tr key={item.id} className="hover:bg-ink/5">
                     <td className="px-4 py-3 font-medium text-ink">{item.name}</td>
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
+                    <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.barcode || "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span
@@ -223,7 +227,7 @@ export default function InventoryPage() {
                             stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700 font-bold"
                           }`}
                         >
-                          {stock > 0 ? `${stock} ${item.unit || "pcs"}` : "Stock Finished (0 pcs)"}
+                          {stock}
                         </span>
                         {stock === 0 && (
                           <button
@@ -236,11 +240,21 @@ export default function InventoryPage() {
                         )}
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-ink/70 font-medium">{item.unit || "pcs"}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/70">
                       {formatKD(Number(item.cost))} KD
                     </td>
                     <td className="numeric-ltr px-4 py-3 font-semibold text-ink">
                       {formatKD(Number(item.price))} KD
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${
+                          item.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {item.isActive ? t.inventory.yes : t.inventory.no}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-end">
                       <div className="flex items-center justify-end gap-2">

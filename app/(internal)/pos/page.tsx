@@ -196,7 +196,7 @@ export default function PosPage() {
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
                       stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
                     }`}>
-                      Stock: {stock}
+                      Stock: {stock} {item.unit || "pcs"}
                     </span>
                   </div>
                 </button>

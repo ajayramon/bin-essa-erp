@@ -310,6 +310,7 @@ export default function NewPurchaseOrderPage() {
                 <thead>
                   <tr className="border-b border-ink/10 text-xs font-semibold uppercase tracking-wider text-ink/50">
                     <th className="px-3 py-3 text-start">Product</th>
+                    <th className="px-3 py-3 text-start">Current Stock</th>
                     <th className="px-3 py-3 text-start">Quantity</th>
                     <th className="px-3 py-3 text-start">Unit Cost (KWD)</th>
                     <th className="px-3 py-3 text-start">Line Total (KWD)</th>
@@ -317,21 +318,28 @@ export default function NewPurchaseOrderPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ink/5">
-                  {lines.map((line, idx) => (
-                    <tr key={idx}>
-                      <td className="px-3 py-3">
-                        <select
-                          value={line.itemId}
-                          onChange={(e) => updateLine(idx, { itemId: e.target.value })}
-                          className="w-full min-w-[200px] rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-gold"
-                        >
-                          {items.map((it) => (
-                            <option key={it.id} value={it.id}>
-                              {it.name} (SKU: {it.sku})
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                  {lines.map((line, idx) => {
+                    const selectedItem = items.find((i) => i.id === line.itemId);
+                    return (
+                      <tr key={idx}>
+                        <td className="px-3 py-3">
+                          <select
+                            value={line.itemId}
+                            onChange={(e) => updateLine(idx, { itemId: e.target.value })}
+                            className="w-full min-w-[200px] rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm font-medium outline-none focus:border-gold"
+                          >
+                            {items.map((it) => (
+                              <option key={it.id} value={it.id}>
+                                {it.name} (SKU: {it.sku})
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-3 font-semibold text-ink/70">
+                          <span className="inline-flex rounded-md bg-ink/5 px-2 py-1 text-xs">
+                            {selectedItem?.stockQuantity ?? 0} {selectedItem?.unit || "pcs"}
+                          </span>
+                        </td>
                       <td className="px-3 py-3">
                         <input
                           type="number"
@@ -365,7 +373,8 @@ export default function NewPurchaseOrderPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

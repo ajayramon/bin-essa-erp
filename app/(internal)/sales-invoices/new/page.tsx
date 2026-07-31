@@ -258,7 +258,7 @@ export default function NewSalesInvoicePage() {
                         </td>
                         <td className="px-3 py-3 font-semibold text-ink/70">
                           <span className="inline-flex rounded-md bg-ink/5 px-2 py-1 text-xs">
-                            {(selectedItem as any)?.stockQuantity ?? 0} {selectedItem?.unit || "pcs"}
+                            {selectedItem?.stockQuantity ?? 0} {selectedItem?.unit || "pcs"}
                           </span>
                         </td>
                         <td className="px-3 py-3">
