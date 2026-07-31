@@ -282,8 +282,7 @@ export default function InventoryPage() {
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.category}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sku}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.barcode}</th>
-                <th className="px-4 py-3 text-start font-medium">Stock Qty</th>
-                <th className="px-4 py-3 text-start font-medium">Unit</th>
+                <th className="px-4 py-3 text-start font-medium">Stock Qty & Unit</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.costPrice}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sellPrice}</th>
                 <th className="px-4 py-3 text-start font-medium">Status</th>
@@ -299,28 +298,29 @@ export default function InventoryPage() {
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.barcode || "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 font-semibold">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700 font-bold"
+                          className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                            stock > 0
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              : "bg-red-100 text-red-700 border border-red-200"
                           }`}
                         >
-                          {stock}
+                          {stock} {item.unit || "pcs"}
                         </span>
                         {stock === 0 && (
                           <button
                             type="button"
                             onClick={() => openEditModal(item)}
-                            className="rounded bg-gold/20 px-2 py-0.5 text-xs font-bold text-ink hover:bg-gold transition-colors"
+                            className="rounded-md bg-gold/20 px-2 py-0.5 text-xs font-bold text-ink hover:bg-gold transition-colors"
                           >
                             + Restock
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-ink/70 font-medium">{item.unit || "pcs"}</td>
-                    <td className="numeric-ltr px-4 py-3 text-ink/70">
+                    <td className="numeric-ltr px-4 py-3 text-ink/70 font-medium">
                       {formatKD(Number(item.cost))} KD
                     </td>
                     <td className="numeric-ltr px-4 py-3 font-semibold text-ink">
@@ -336,26 +336,29 @@ export default function InventoryPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-end">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Link
                           href={`/inventory/${item.id}`}
-                          className="rounded-lg border border-ink/10 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-ink/5"
+                          className="inline-flex items-center gap-1 rounded-lg border border-ink/15 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-ink/5 shadow-xs transition-colors"
+                          title="View Details"
                         >
-                          View
+                          <span>👁️</span> View
                         </Link>
                         <button
                           type="button"
                           onClick={() => openEditModal(item)}
-                          className="rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-gold hover:text-ink transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-gold hover:text-ink shadow-xs transition-colors"
+                          title="Edit Item & Stock"
                         >
-                          Edit / Adjust Stock
+                          <span>✏️</span> Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(item)}
-                          className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+                          className="inline-flex items-center gap-1 rounded-lg bg-red-50 border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-600 hover:text-white shadow-xs transition-colors"
+                          title="Delete Item"
                         >
-                          Delete
+                          <span>🗑️</span> Delete
                         </button>
                       </div>
                     </td>
