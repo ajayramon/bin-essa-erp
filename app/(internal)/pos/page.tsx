@@ -27,6 +27,8 @@ export default function PosPage() {
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "CREDIT" | "BANK_TRANSFER">("CASH");
   const [saleMessage, setSaleMessage] = useState<string | null>(null);
 
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+
   async function loadItems() {
     setIsLoading(true);
     setError(null);
@@ -42,9 +44,26 @@ export default function PosPage() {
 
   useEffect(() => {
     loadItems();
+    function handleFocus() {
+      loadItems();
+    }
+    function handleVisibility() {
+      if (document.visibilityState === "visible") {
+        loadItems();
+      }
+    }
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
+  const categories = ["ALL", ...Array.from(new Set(items.map((i) => i.category)))];
+
   const searchedItems = items.filter((i) => {
+    if (selectedCategory !== "ALL" && i.category !== selectedCategory) return false;
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -55,7 +74,7 @@ export default function PosPage() {
   });
 
   function addToCart(item: ItemResponse) {
-    const stock = Number((item as any).stockQuantity ?? 0);
+    const stock = Number(item.stockQuantity ?? 0);
     const current = cart[item.id] ?? 0;
     if (current >= stock && stock > 0) {
       setError(`Cannot add more than available stock (${stock} units)`);
@@ -74,7 +93,7 @@ export default function PosPage() {
       return;
     }
     const item = items.find((i) => i.id === itemId);
-    const stock = item ? Number((item as any).stockQuantity ?? 0) : 9999;
+    const stock = item ? Number(item.stockQuantity ?? 0) : 9999;
     if (qty > stock && stock > 0) {
       setError(`Cannot exceed available stock (${stock} units)`);
       return;
@@ -142,13 +161,40 @@ export default function PosPage() {
       <div className="space-y-4 lg:col-span-2">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-ink">Point of Sale (POS)</h1>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search items by name, SKU, barcode..."
-            className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-gold sm:w-80"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, SKU, barcode..."
+              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-gold sm:w-72"
+            />
+            <button
+              type="button"
+              onClick={() => loadItems()}
+              className="rounded-xl border border-ink/10 bg-white px-3 py-2.5 text-xs font-semibold text-ink hover:bg-gold transition-colors whitespace-nowrap shadow-sm"
+              title="Refresh Products Catalog"
+            >
+              ↻ Sync
+            </button>
+          </div>
+        </div>
+
+        {/* Category Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`rounded-xl px-3 py-1.5 font-semibold transition whitespace-nowrap ${
+                selectedCategory === cat
+                  ? "bg-ink text-white shadow-sm"
+                  : "bg-white border border-ink/10 text-ink/70 hover:bg-ink/5"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
 
         {error && (
@@ -168,9 +214,10 @@ export default function PosPage() {
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {searchedItems.map((item) => {
-              const stock = Number((item as any).stockQuantity ?? 0);
-              const inCart = cart[item.id] ?? 0;
+              const stock = Number(item.stockQuantity ?? 0);
               const outOfStock = stock <= 0;
+              const isLowStock = stock > 0 && stock <= 10;
+              const unitStr = item.unit || "pcs";
 
               return (
                 <button
@@ -179,25 +226,41 @@ export default function PosPage() {
                   disabled={outOfStock}
                   className={`flex flex-col justify-between rounded-2xl border p-4 text-start transition shadow-sm ${
                     outOfStock
-                      ? "border-ink/10 bg-ink/5 opacity-50 cursor-not-allowed"
+                      ? "border-red-200 bg-red-50/30 opacity-60 cursor-not-allowed"
+                      : isLowStock
+                      ? "border-amber-200 bg-white hover:border-amber-400 hover:shadow-md"
                       : "border-ink/10 bg-white hover:border-gold hover:shadow-md"
                   }`}
                 >
                   <div>
                     <span className="text-xs font-semibold text-gold uppercase tracking-wider">{item.category}</span>
                     <h3 className="line-clamp-2 text-sm font-bold text-ink mt-0.5">{item.name}</h3>
-                    <p className="numeric-ltr text-xs text-ink/50">SKU: {item.sku}</p>
+                    <p className="numeric-ltr text-xs text-ink/50 font-mono">SKU: {item.sku}</p>
                   </div>
 
-                  <div className="mt-4 flex items-end justify-between">
-                    <span className="numeric-ltr text-sm font-bold text-ink">
-                      {formatKD(Number(item.price))} KD
-                    </span>
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                      stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
-                    }`}>
-                      Stock: {stock} {item.unit || "pcs"}
-                    </span>
+                  <div className="mt-4 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="numeric-ltr text-sm font-bold text-ink">
+                        {formatKD(Number(item.price))} KD
+                      </span>
+                    </div>
+                    <div>
+                      <span
+                        className={`inline-block text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                          outOfStock
+                            ? "bg-red-100 text-red-700 border border-red-200"
+                            : isLowStock
+                            ? "bg-amber-100 text-amber-800 border border-amber-200"
+                            : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        }`}
+                      >
+                        {outOfStock
+                          ? "Out of Stock (0)"
+                          : isLowStock
+                          ? `Low Stock: ${stock} ${unitStr}`
+                          : `Stock: ${stock} ${unitStr}`}
+                      </span>
+                    </div>
                   </div>
                 </button>
               );

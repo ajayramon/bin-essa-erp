@@ -349,6 +349,7 @@ export async function listItemsRequest(): Promise<ItemResponse[]> {
   const token = localStorage.getItem("bin-essa-access-token");
   const res = await fetch(`${API_BASE}/items`, {
     method: "GET",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
