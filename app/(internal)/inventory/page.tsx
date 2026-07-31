@@ -302,12 +302,18 @@ export default function InventoryPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                            stock > 0
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                              : "bg-red-100 text-red-700 border border-red-200"
+                            stock <= 0
+                              ? "bg-red-100 text-red-700 border border-red-200"
+                              : stock <= 10
+                              ? "bg-amber-100 text-amber-800 border border-amber-200"
+                              : "bg-emerald-100 text-emerald-800 border border-emerald-200"
                           }`}
                         >
-                          {stock} {item.unit || "pcs"}
+                          {stock <= 0
+                            ? `🔴 Out of Stock (0 ${item.unit || "pcs"})`
+                            : stock <= 10
+                            ? `🟡 Low Stock (${stock} ${item.unit || "pcs"})`
+                            : `🟢 High Stock (${stock} ${item.unit || "pcs"})`}
                         </span>
                         {stock === 0 && (
                           <button
@@ -459,6 +465,17 @@ export default function InventoryPage() {
                     onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: e.target.value })}
                     className="w-full rounded-xl border-2 border-gold/60 bg-gold/5 px-3 py-2 text-sm font-bold text-ink outline-none focus:border-gold"
                   />
+                  {(() => {
+                    const q = parseInt(editFormData.stockQuantity, 10) || 0;
+                    const u = editFormData.unit || "pcs";
+                    if (q <= 0) {
+                      return <span className="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">🔴 Out of Stock (0 {u})</span>;
+                    }
+                    if (q <= 10) {
+                      return <span className="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">🟡 Low Stock ({q} {u})</span>;
+                    }
+                    return <span className="inline-block mt-1.5 text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">🟢 High Stock ({q} {u})</span>;
+                  })()}
                 </div>
 
                 <div>

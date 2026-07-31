@@ -7,7 +7,8 @@ export class ItemsService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: CreateItemDto) {
-    return this.prisma.item.create({
+    const stockQty = dto.stockQuantity ?? 0;
+    const item = await this.prisma.item.create({
       data: {
         sku: dto.sku,
         barcode: dto.barcode,
@@ -18,9 +19,28 @@ export class ItemsService {
         cost: dto.cost,
         unit: dto.unit,
         isActive: dto.isActive,
-        stockQuantity: dto.stockQuantity ?? 0,
+        stockQuantity: stockQty,
       },
     });
+
+    try {
+      const branches = await this.prisma.branch.findMany();
+      if (branches.length > 0) {
+        await Promise.all(
+          branches.map((b) =>
+            this.prisma.itemStock.upsert({
+              where: { itemId_branchId: { itemId: item.id, branchId: b.id } },
+              update: { quantity: stockQty },
+              create: { itemId: item.id, branchId: b.id, quantity: stockQty },
+            })
+          )
+        );
+      }
+    } catch {
+      // Non-blocking branch sync fallback
+    }
+
+    return item;
   }
 
   async findAll() {
@@ -39,10 +59,31 @@ export class ItemsService {
 
   async update(id: string, dto: any) {
     await this.findOne(id);
-    return this.prisma.item.update({
+    const updated = await this.prisma.item.update({
       where: { id },
       data: dto,
     });
+
+    if (dto.stockQuantity !== undefined) {
+      try {
+        const branches = await this.prisma.branch.findMany();
+        if (branches.length > 0) {
+          await Promise.all(
+            branches.map((b) =>
+              this.prisma.itemStock.upsert({
+                where: { itemId_branchId: { itemId: id, branchId: b.id } },
+                update: { quantity: dto.stockQuantity },
+                create: { itemId: id, branchId: b.id, quantity: dto.stockQuantity },
+              })
+            )
+          );
+        }
+      } catch {
+        // Non-blocking branch sync fallback
+      }
+    }
+
+    return updated;
   }
 
   async remove(id: string) {
