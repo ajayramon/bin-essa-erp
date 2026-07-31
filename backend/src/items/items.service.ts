@@ -50,6 +50,9 @@ export class ItemsService {
     if (!item) {
       throw new NotFoundException(`Item with id ${id} not found`);
     }
-    return this.prisma.item.delete({ where: { id } });
+    return this.prisma.$transaction(async (tx) => {
+      await tx.itemStock.deleteMany({ where: { itemId: id } });
+      return tx.item.delete({ where: { id } });
+    });
   }
 }
