@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { listItemsRequest, type ItemResponse } from "@/lib/api";
+import {
+  listItemsRequest,
+  updateItemRequest,
+  deleteItemRequest,
+  type ItemResponse,
+  type ItemCategory,
+} from "@/lib/api";
 
 function formatKD(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -21,6 +27,21 @@ export default function InventoryPage() {
 
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
+
+  // Edit Modal State
+  const [editingItem, setEditingItem] = useState<ItemResponse | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    sku: "",
+    barcode: "",
+    category: "OTHER" as ItemCategory,
+    price: "",
+    cost: "",
+    unit: "pcs",
+    isActive: true,
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -71,6 +92,56 @@ export default function InventoryPage() {
     );
   });
 
+  const openEditModal = (item: ItemResponse) => {
+    setEditingItem(item);
+    setEditError(null);
+    setEditFormData({
+      name: item.name,
+      sku: item.sku,
+      barcode: item.barcode ?? "",
+      category: item.category,
+      price: String(item.price),
+      cost: String(item.cost),
+      unit: item.unit || "pcs",
+      isActive: item.isActive,
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setIsSaving(true);
+    setEditError(null);
+    try {
+      await updateItemRequest(editingItem.id, {
+        name: editFormData.name.trim(),
+        sku: editFormData.sku.trim(),
+        barcode: editFormData.barcode.trim() || undefined,
+        category: editFormData.category,
+        price: parseFloat(editFormData.price) || 0,
+        cost: parseFloat(editFormData.cost) || 0,
+        unit: editFormData.unit.trim() || "pcs",
+        isActive: editFormData.isActive,
+      });
+      setEditingItem(null);
+      await load();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to update item");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (item: ItemResponse) => {
+    if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+    try {
+      await deleteItemRequest(item.id);
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete item");
+    }
+  };
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
@@ -80,7 +151,7 @@ export default function InventoryPage() {
         </div>
         <Link
           href="/inventory/new"
-          className="whitespace-nowrap rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-gold hover:text-ink"
+          className="whitespace-nowrap rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-gold hover:text-ink transition-colors"
         >
           + Add Item
         </Link>
@@ -131,7 +202,7 @@ export default function InventoryPage() {
                 <th className="px-4 py-3 text-start font-medium">Current Stock</th>
                 <th className="px-4 py-3 text-start font-medium">Cost Price</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sellPrice}</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 text-end font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/5">
@@ -143,9 +214,11 @@ export default function InventoryPage() {
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                          stock > 0 ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-700"
+                        }`}
+                      >
                         {stock} {item.unit || "pcs"}
                       </span>
                     </td>
@@ -156,12 +229,28 @@ export default function InventoryPage() {
                       {formatKD(Number(item.price))} KD
                     </td>
                     <td className="px-4 py-3 text-end">
-                      <Link
-                        href={`/inventory/${item.id}`}
-                        className="rounded-lg bg-ink px-3 py-1.5 text-xs font-medium text-white hover:bg-gold hover:text-ink"
-                      >
-                        {t.inventory.viewDetails}
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/inventory/${item.id}`}
+                          className="rounded-lg border border-ink/10 bg-white px-2.5 py-1 text-xs font-medium text-ink hover:bg-ink/5"
+                        >
+                          View
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(item)}
+                          className="rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-white hover:bg-gold hover:text-ink transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item)}
+                          className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -171,6 +260,147 @@ export default function InventoryPage() {
           {filteredItems.length === 0 && (
             <p className="px-4 py-8 text-center text-sm text-ink/40">{t.inventory.noResults}</p>
           )}
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-ink/10 space-y-4">
+            <div className="flex items-center justify-between border-b border-ink/10 pb-3">
+              <h3 className="text-lg font-semibold text-ink">Edit Item</h3>
+              <button
+                onClick={() => setEditingItem(null)}
+                className="text-ink/40 hover:text-ink text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Item Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Category</label>
+                  <select
+                    value={editFormData.category}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, category: e.target.value as ItemCategory })
+                    }
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  >
+                    <option value="TOBACCO">Tobacco</option>
+                    <option value="ACCESSORIES">Accessories</option>
+                    <option value="ELECTRONICS">Electronics</option>
+                    <option value="ART_SUPPLIES">Art Supplies</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">SKU</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.sku}
+                    onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Barcode</label>
+                  <input
+                    type="text"
+                    value={editFormData.barcode}
+                    onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Cost Price (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    required
+                    value={editFormData.cost}
+                    onChange={(e) => setEditFormData({ ...editFormData, cost: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Selling Price (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    required
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editFormData.unit}
+                    onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editFormData.isActive}
+                      onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                      className="rounded border-ink/20 text-gold focus:ring-gold"
+                    />
+                    Active Item
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-ink/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingItem(null)}
+                  className="rounded-xl border border-ink/10 px-4 py-2 text-xs font-medium text-ink hover:bg-ink/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="rounded-xl bg-ink px-4 py-2 text-xs font-medium text-white hover:bg-gold hover:text-ink disabled:opacity-50 transition-colors"
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -28,6 +28,22 @@ export class ItemsService {
     });
   }
 
+  async findOne(id: string) {
+    const item = await this.prisma.item.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException(`Item with id ${id} not found`);
+    }
+    return item;
+  }
+
+  async update(id: string, dto: any) {
+    await this.findOne(id);
+    return this.prisma.item.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
   async remove(id: string) {
     const item = await this.prisma.item.findUnique({ where: { id } });
     if (!item) {

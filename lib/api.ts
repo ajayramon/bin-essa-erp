@@ -359,6 +359,43 @@ export async function listItemsRequest(): Promise<ItemResponse[]> {
   return res.json();
 }
 
+export async function updateItemRequest(
+  id: string,
+  payload: Partial<CreateItemPayload>
+): Promise<ItemResponse> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/items/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to update item");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function deleteItemRequest(id: string): Promise<void> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/items/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to delete item");
+  }
+  clearApiCache();
+}
+
 export type SupplierResponse = CreateSupplierResponse;
 
 export async function listSuppliersRequest(): Promise<SupplierResponse[]> {
