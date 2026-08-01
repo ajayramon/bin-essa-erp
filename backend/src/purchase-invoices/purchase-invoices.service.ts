@@ -1,14 +1,14 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
+import { CreatePurchaseInvoiceDto } from './dto/create-purchase-invoice.dto';
 
 @Injectable()
-export class PurchaseOrdersService {
+export class PurchaseInvoicesService {
   constructor(private prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.purchaseOrder.findMany({
+    return this.prisma.purchaseInvoice.findMany({
       include: {
         supplier: true,
         branch: true,
@@ -32,7 +32,7 @@ export class PurchaseOrdersService {
   }
 
   async findOne(id: string) {
-    const po = await this.prisma.purchaseOrder.findUnique({
+    const invoice = await this.prisma.purchaseInvoice.findUnique({
       where: { id },
       include: {
         supplier: true,
@@ -54,14 +54,14 @@ export class PurchaseOrdersService {
       },
     });
 
-    if (!po) {
-      throw new NotFoundException(`Purchase order with ID "${id}" not found.`);
+    if (!invoice) {
+      throw new NotFoundException(`Purchase invoice with ID "${id}" not found.`);
     }
 
-    return po;
+    return invoice;
   }
 
-  async create(dto: CreatePurchaseOrderDto) {
+  async create(dto: CreatePurchaseInvoiceDto) {
     const lineData = dto.lines.map((line) => {
       const lineTotal = line.quantity * line.unitCost;
       return {
@@ -78,7 +78,7 @@ export class PurchaseOrdersService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Parallelize account lookups
+        // Parallelize account lookups for Inventory (1200) & Accounts Payable (2000)
         const [inventoryAccount, apAccount] = await Promise.all([
           tx.account.findUnique({ where: { code: '1200' } }).then(async (acc) => {
             return acc ?? tx.account.create({ data: { code: '1200', name: 'Inventory', type: 'ASSET' } });
@@ -88,13 +88,14 @@ export class PurchaseOrdersService {
           }),
         ]);
 
-        // 1. Create the Purchase Order
-        const purchaseOrder = await tx.purchaseOrder.create({
+        // 1. Create the Purchase Invoice
+        const purchaseInvoice = await tx.purchaseInvoice.create({
           data: {
-            poNumber: dto.poNumber,
+            invoiceNumber: dto.invoiceNumber,
             supplierId: dto.supplierId,
             branchId: dto.branchId,
-            status: dto.status ?? 'POSTED',
+            paymentTerms: dto.paymentTerms ?? 'IMMEDIATE',
+            status: 'POSTED',
             subtotal,
             taxAmount,
             totalAmount,
@@ -105,10 +106,11 @@ export class PurchaseOrdersService {
           include: {
             lines: true,
             supplier: true,
+            branch: true,
           },
         });
 
-        // 2. Increase stock & update Weighted Average Cost (WAC) for each purchased item
+        // 2. Increment stock & update Weighted Average Cost (WAC) for each item purchased
         for (const line of dto.lines) {
           const currentItem = await tx.item.findUnique({ where: { id: line.itemId } });
           if (currentItem) {
@@ -142,11 +144,11 @@ export class PurchaseOrdersService {
         // 3. Auto-post journal entry: DEBIT Inventory, CREDIT Accounts Payable
         const journalEntry = await tx.journalEntry.create({
           data: {
-            reference: `JE-${dto.poNumber}`,
-            description: `Auto-posted from purchase order ${dto.poNumber}`,
+            reference: `JE-${dto.invoiceNumber}`,
+            description: `Auto-posted from purchase invoice ${dto.invoiceNumber}`,
             status: 'POSTED',
             branchId: dto.branchId,
-            purchaseOrderId: purchaseOrder.id,
+            purchaseInvoiceId: purchaseInvoice.id,
             lines: {
               create: [
                 {
@@ -163,17 +165,21 @@ export class PurchaseOrdersService {
             },
           },
           include: {
-            lines: true,
+            lines: {
+              include: {
+                account: true,
+              },
+            },
           },
         });
 
-        return { ...purchaseOrder, journalEntry };
+        return { ...purchaseInvoice, journalEntry };
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new ConflictException(
-            `Purchase order number "${dto.poNumber}" already exists.`,
+            `Purchase invoice number "${dto.invoiceNumber}" already exists.`,
           );
         }
         if (error.code === 'P2003') {

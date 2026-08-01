@@ -63,10 +63,39 @@ export const brandModules: NavEntry[] = [
   },
   {
     key: "purchasing",
-    labelEn: "Purchasing",
-    labelAr: "المشتريات",
-    href: "/purchasing/purchase-orders/new",
+    labelEn: "Purchasing & Invoices",
+    labelAr: "المشتريات والفواتير",
     icon: Truck,
+    children: [
+      {
+        key: "purchase-invoices-list",
+        labelEn: "Purchase Invoices (Bills)",
+        labelAr: "فواتير المشتريات",
+        href: "/purchasing/purchase-invoices",
+        icon: Truck,
+      },
+      {
+        key: "new-purchase-invoice",
+        labelEn: "New Purchase Invoice",
+        labelAr: "فاتورة شراء جديدة",
+        href: "/purchasing/purchase-invoices/new",
+        icon: Truck,
+      },
+      {
+        key: "purchase-orders-list",
+        labelEn: "Purchase Orders",
+        labelAr: "أوامر الشراء",
+        href: "/purchasing/purchase-orders",
+        icon: Truck,
+      },
+      {
+        key: "new-purchase-order",
+        labelEn: "New Purchase Order",
+        labelAr: "أمر شراء جديد",
+        href: "/purchasing/purchase-orders/new",
+        icon: Truck,
+      },
+    ],
   },
   {
     key: "b2b",

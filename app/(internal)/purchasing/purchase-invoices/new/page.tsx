@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { FileText, Printer, ArrowLeft } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   listItemsRequest,
   listSuppliersRequest,
-  createPurchaseOrderRequest,
+  createPurchaseInvoiceRequest,
   createSupplierRequest,
   type ItemResponse,
   type SupplierResponse,
-  type PurchaseOrderResponse,
+  type PurchaseInvoiceResponse,
 } from "@/lib/api";
-
-import { FileText, Printer } from "lucide-react";
 import { PurchaseInvoiceModal } from "@/components/domain/PurchaseInvoiceModal";
 
 function formatKD(amount: number) {
@@ -24,14 +23,14 @@ function formatKD(amount: number) {
   });
 }
 
-interface POLineState {
+interface InvoiceLineState {
   itemId: string;
   quantity: number;
   unitCost: number;
 }
 
-export default function NewPurchaseOrderPage() {
-  const { locale, t } = useLocale();
+export default function NewPurchaseInvoicePage() {
+  const { locale } = useLocale();
   const { user, currentBranch } = useSession();
   const router = useRouter();
 
@@ -41,15 +40,16 @@ export default function NewPurchaseOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [createdPo, setCreatedPo] = useState<PurchaseOrderResponse | null>(null);
+  const [createdInvoice, setCreatedInvoice] = useState<PurchaseInvoiceResponse | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   // Form fields
-  const [poNumber, setPoNumber] = useState(`PO-${Date.now().toString().slice(-6)}`);
+  const [invoiceNumber, setInvoiceNumber] = useState(`PINV-${Date.now().toString().slice(-6)}`);
   const [supplierId, setSupplierId] = useState("");
-  const [lines, setLines] = useState<POLineState[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState("IMMEDIATE");
+  const [lines, setLines] = useState<InvoiceLineState[]>([]);
 
-  // New supplier modal / inline state
+  // Inline supplier modal state
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierCode, setNewSupplierCode] = useState("");
@@ -101,12 +101,11 @@ export default function NewPurchaseOrderPage() {
     ]);
   }
 
-  function updateLine(index: number, patch: Partial<POLineState>) {
+  function updateLine(index: number, patch: Partial<InvoiceLineState>) {
     const updated = [...lines];
     const current = updated[index];
     const next = { ...current, ...patch };
 
-    // If item changed, default unit cost to that item's cost
     if (patch.itemId && patch.itemId !== current.itemId) {
       const selected = items.find((i) => i.id === patch.itemId);
       if (selected) {
@@ -147,7 +146,7 @@ export default function NewPurchaseOrderPage() {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-    setCreatedPo(null);
+    setCreatedInvoice(null);
 
     if (!supplierId) {
       setError("Please select or add a supplier.");
@@ -162,10 +161,11 @@ export default function NewPurchaseOrderPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await createPurchaseOrderRequest({
-        poNumber,
+      const res = await createPurchaseInvoiceRequest({
+        invoiceNumber,
         supplierId,
         branchId,
+        paymentTerms,
         lines: lines.map((l) => ({
           itemId: l.itemId,
           quantity: Number(l.quantity),
@@ -173,12 +173,12 @@ export default function NewPurchaseOrderPage() {
         })),
       });
 
-      setCreatedPo(res);
-      setSuccessMsg(`Purchase Order ${res.poNumber} created successfully! Inventory stock incremented & GL journal entry auto-posted.`);
+      setCreatedInvoice(res);
+      setSuccessMsg(`Purchase Invoice ${res.invoiceNumber} posted successfully! Inventory stock incremented & GL entry created.`);
       setLines([]);
-      setPoNumber(`PO-${Date.now().toString().slice(-6)}`);
+      setInvoiceNumber(`PINV-${Date.now().toString().slice(-6)}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create purchase order");
+      setError(err instanceof Error ? err.message : "Failed to create purchase invoice");
     } finally {
       setIsSubmitting(false);
     }
@@ -188,7 +188,7 @@ export default function NewPurchaseOrderPage() {
     return (
       <div className="space-y-6 p-6">
         <div className="rounded-2xl border border-ink/10 bg-white p-8 text-center text-sm text-ink/50 shadow-sm">
-          Loading Purchase Order page...
+          Loading Purchase Invoice form...
         </div>
       </div>
     );
@@ -199,18 +199,19 @@ export default function NewPurchaseOrderPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-ink">New Purchase Order</h1>
+          <h1 className="text-2xl font-bold text-ink">New Purchase Invoice (Vendor Bill)</h1>
           <p className="mt-1 text-sm text-ink/60">
-            Create a real purchase order to receive stock into inventory, post GL entries, and generate printable Purchase Invoices.
+            Record an official vendor invoice to receive stock into inventory and auto-post to Accounts Payable & General Ledger.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => router.push("/purchasing/purchase-orders")}
-          className="rounded-xl border border-ink/15 bg-white px-4 py-2 text-xs font-semibold text-ink hover:bg-ink/5"
+          onClick={() => router.push("/purchasing/purchase-invoices")}
+          className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-white px-4 py-2 text-xs font-semibold text-ink hover:bg-ink/5"
         >
-          View All Purchase Orders & Invoices
+          <ArrowLeft className="h-4 w-4" />
+          <span>View All Purchase Invoices</span>
         </button>
       </div>
 
@@ -223,7 +224,7 @@ export default function NewPurchaseOrderPage() {
       {successMsg && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">
           <div>{successMsg}</div>
-          {createdPo && (
+          {createdInvoice && (
             <button
               type="button"
               onClick={() => setShowInvoiceModal(true)}
@@ -237,16 +238,16 @@ export default function NewPurchaseOrderPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Details */}
-        <div className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm sm:grid-cols-2">
+        {/* Invoice Metadata */}
+        <div className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm sm:grid-cols-3">
           <div>
             <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-ink/70">
-              PO Number
+              Invoice / Vendor Bill #
             </label>
             <input
               type="text"
-              value={poNumber}
-              onChange={(e) => setPoNumber(e.target.value)}
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
               required
               className="w-full rounded-xl border border-ink/15 bg-ink/5 px-4 py-2.5 text-sm font-medium text-ink outline-none focus:border-gold focus:bg-white"
             />
@@ -255,7 +256,7 @@ export default function NewPurchaseOrderPage() {
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-ink/70">
-                Supplier
+                Supplier / Vendor
               </label>
               <button
                 type="button"
@@ -306,12 +307,29 @@ export default function NewPurchaseOrderPage() {
               </select>
             )}
           </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-ink/70">
+              Payment Terms
+            </label>
+            <select
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(e.target.value)}
+              className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm font-medium text-ink outline-none focus:border-gold"
+            >
+              <option value="IMMEDIATE">Immediate / Cash</option>
+              <option value="NET 15">Net 15 Days</option>
+              <option value="NET 30">Net 30 Days</option>
+              <option value="NET 60">Net 60 Days</option>
+              <option value="CREDIT">Credit / On Account</option>
+            </select>
+          </div>
         </div>
 
         {/* Line Items Table */}
         <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-ink">Line Items</h2>
+            <h2 className="text-base font-bold text-ink">Purchase Line Items</h2>
             <button
               type="button"
               onClick={addLine}
@@ -328,7 +346,7 @@ export default function NewPurchaseOrderPage() {
             </div>
           ) : lines.length === 0 ? (
             <div className="py-8 text-center text-sm text-ink/40">
-              No line items added yet. Click "+ Add Item Line" to begin.
+              No items added. Click "+ Add Item Line" to add products to this invoice.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -366,39 +384,39 @@ export default function NewPurchaseOrderPage() {
                             {selectedItem?.stockQuantity ?? 0} {selectedItem?.unit || "pcs"}
                           </span>
                         </td>
-                      <td className="px-3 py-3">
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={line.quantity}
-                          onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
-                          className="numeric-ltr w-24 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-gold"
-                        />
-                      </td>
-                      <td className="px-3 py-3">
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.001}
-                          value={line.unitCost}
-                          onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
-                          className="numeric-ltr w-28 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-gold"
-                        />
-                      </td>
-                      <td className="numeric-ltr px-3 py-3 font-semibold text-ink">
-                        {formatKD(line.quantity * line.unitCost)} KD
-                      </td>
-                      <td className="px-3 py-3 text-end">
-                        <button
-                          type="button"
-                          onClick={() => removeLine(idx)}
-                          className="text-xs font-semibold text-red-600 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={line.quantity}
+                            onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
+                            className="numeric-ltr w-24 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-gold"
+                          />
+                        </td>
+                        <td className="px-3 py-3">
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.001}
+                            value={line.unitCost}
+                            onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                            className="numeric-ltr w-28 rounded-xl border border-ink/15 px-3 py-2 text-sm outline-none focus:border-gold"
+                          />
+                        </td>
+                        <td className="numeric-ltr px-3 py-3 font-semibold text-ink">
+                          {formatKD(line.quantity * line.unitCost)} KD
+                        </td>
+                        <td className="px-3 py-3 text-end">
+                          <button
+                            type="button"
+                            onClick={() => removeLine(idx)}
+                            className="text-xs font-semibold text-red-600 hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>
@@ -411,7 +429,7 @@ export default function NewPurchaseOrderPage() {
         <div className="flex flex-col items-end gap-4 rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-6 text-lg font-bold text-ink">
             <span>Total Purchase Amount:</span>
-            <span className="numeric-ltr text-xl text-gold">{formatKD(subtotal)} KWD</span>
+            <span className="numeric-ltr text-xl text-amber-600">{formatKD(subtotal)} KWD</span>
           </div>
 
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
@@ -420,16 +438,17 @@ export default function NewPurchaseOrderPage() {
               disabled={isSubmitting || lines.length === 0 || !supplierId}
               className="w-full rounded-xl bg-ink px-8 py-3 text-sm font-bold text-white shadow hover:bg-gold hover:text-ink disabled:opacity-40 sm:w-auto"
             >
-              {isSubmitting ? "Posting Purchase Order..." : "Post Purchase Order & Post to GL"}
+              {isSubmitting ? "Posting Purchase Invoice..." : "Post Purchase Invoice & Post to GL"}
             </button>
           </div>
         </div>
       </form>
 
-      {showInvoiceModal && createdPo && (
+      {/* Invoice Viewer Modal */}
+      {showInvoiceModal && createdInvoice && (
         <PurchaseInvoiceModal
-          poId={createdPo.id}
-          initialPoData={createdPo}
+          poId={createdInvoice.id}
+          initialPoData={createdInvoice as any}
           onClose={() => setShowInvoiceModal(false)}
         />
       )}

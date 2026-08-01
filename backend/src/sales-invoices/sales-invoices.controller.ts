@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { SalesInvoicesService } from './sales-invoices.service';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,5 +16,10 @@ export class SalesInvoicesController {
   @Get()
   findAll() {
     return this.salesInvoicesService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.salesInvoicesService.findOne(id);
   }
 }

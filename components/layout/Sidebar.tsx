@@ -50,7 +50,9 @@ export function Sidebar() {
   // Which nested groups (accounting, hr, settings, coming-soon) are
   // expanded, keyed "brandId:groupKey" so the same module can be open in
   // one brand section and closed in another.
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () => new Set(["smoking:purchasing", "khiran:purchasing", "jmart:purchasing"])
+  );
 
   // Whichever brand becomes current (via a Sidebar click or the Topbar
   // selector) auto-expands, without collapsing sections the user already

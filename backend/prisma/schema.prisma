@@ -97,16 +97,20 @@ model Branch {
   code     String  @unique // e.g. "br-01"
   name     String
   brandId  BrandId
+  nameEn   String?
+  nameAr   String?
+  city     String?
   address  String?
   isActive Boolean @default(true)
 
-  users          User[]
-  itemStocks     ItemStock[]
-  customers      Customer[]
-  suppliers      Supplier[]
-  salesInvoices  SalesInvoice[]
-  journalEntries JournalEntry[]
-  purchaseOrders PurchaseOrder[]
+  users            User[]
+  itemStocks       ItemStock[]
+  customers        Customer[]
+  suppliers        Supplier[]
+  salesInvoices    SalesInvoice[]
+  journalEntries   JournalEntry[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseInvoices PurchaseInvoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -141,9 +145,10 @@ model Item {
   isActive   Boolean        @default(true)
   stockQuantity Int          @default(0)
 
-  stocks            ItemStock[]
-  salesInvoiceLines SalesInvoiceLine[]
-  purchaseOrderLines PurchaseOrderLine[]
+  stocks               ItemStock[]
+  salesInvoiceLines    SalesInvoiceLine[]
+  purchaseOrderLines   PurchaseOrderLine[]
+  purchaseInvoiceLines PurchaseInvoiceLine[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -189,7 +194,8 @@ model Supplier {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id])
 
-  purchaseOrders PurchaseOrder[]
+  purchaseOrders   PurchaseOrder[]
+  purchaseInvoices PurchaseInvoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,12 +222,15 @@ model JournalEntry {
   branchId    String?
   branch      Branch?            @relation(fields: [branchId], references: [id])
 
-  // Links back to the sale that auto-generated this entry (nullable — not all JEs come from sales)
+  // Links back to auto-generated entries
   salesInvoiceId String?       @unique
   salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
 
   purchaseOrderId String?        @unique
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+
+  purchaseInvoiceId String?          @unique
+  purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
 
   lines JournalEntryLine[]
 
@@ -303,4 +312,38 @@ model PurchaseOrderLine {
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   item          Item          @relation(fields: [itemId], references: [id])
+}
+
+model PurchaseInvoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique // e.g. "PINV-0001" or vendor bill #
+  date          DateTime      @default(now())
+  dueDate       DateTime?
+  paymentTerms  String?       @default("IMMEDIATE") // e.g. NET 30, IMMEDIATE, CREDIT
+  supplierId    String
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+  branchId      String
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  status        InvoiceStatus @default(POSTED)
+  subtotal      Decimal       @db.Decimal(10, 3)
+  taxAmount     Decimal       @default(0) @db.Decimal(10, 3)
+  totalAmount   Decimal       @db.Decimal(10, 3)
+
+  lines        PurchaseInvoiceLine[]
+  journalEntry JournalEntry?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseInvoiceLine {
+  id                String  @id @default(uuid())
+  purchaseInvoiceId String
+  itemId            String
+  quantity          Decimal @db.Decimal(10, 3)
+  unitCost          Decimal @db.Decimal(10, 3)
+  lineTotal         Decimal @db.Decimal(10, 3)
+
+  purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  item            Item            @relation(fields: [itemId], references: [id])
 }

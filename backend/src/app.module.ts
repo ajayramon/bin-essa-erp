@@ -12,6 +12,7 @@ import { AccountsModule } from './accounts/accounts.module';
 import { JournalEntriesModule } from './journal-entries/journal-entries.module';
 import { TrialBalanceModule } from './trial-balance/trial-balance.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { PurchaseInvoicesModule } from './purchase-invoices/purchase-invoices.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +25,7 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
     SuppliersModule,
     SalesInvoicesModule,
     PurchaseOrdersModule,
+    PurchaseInvoicesModule,
     AccountsModule,
     JournalEntriesModule,
     TrialBalanceModule,
