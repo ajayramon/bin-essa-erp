@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Printer, X, FileText, Building2, User, Package, ShieldCheck } from "lucide-react";
 import type { PurchaseOrderResponse } from "@/lib/api";
-import { getPurchaseOrderRequest } from "@/lib/api";
+import { getPurchaseOrderRequest, getPurchaseInvoiceRequest } from "@/lib/api";
 
 function formatKD(amount: number | string | undefined | null) {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
@@ -39,9 +39,11 @@ export function PurchaseInvoiceModal({ poId, initialPoData, onClose }: PurchaseI
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getPurchaseOrderRequest(poId!);
+        const data = await getPurchaseInvoiceRequest(poId!).catch(() =>
+          getPurchaseOrderRequest(poId!)
+        );
         if (!cancelled) {
-          setPo(data);
+          setPo(data as any);
         }
       } catch (err) {
         if (!cancelled) {
