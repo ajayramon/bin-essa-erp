@@ -114,6 +114,7 @@ model Branch {
   journalEntries   JournalEntry[]
   purchaseOrders   PurchaseOrder[]
   purchaseInvoices PurchaseInvoice[]
+  posShifts        PosShift[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -130,6 +131,7 @@ model User {
   isActive     Boolean @default(true)
 
   salesInvoices SalesInvoice[]
+  posShifts     PosShift[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -350,3 +352,77 @@ model PurchaseInvoiceLine {
   purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
   item            Item            @relation(fields: [itemId], references: [id])
 }
+
+// ================= ENTERPRISE COMMERCIAL MODULES =================
+
+enum TransferStatus {
+  DRAFT
+  DISPATCHED
+  RECEIVED
+  CANCELLED
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+model StockTransfer {
+  id             String         @id @default(uuid())
+  transferNumber String         @unique // e.g. "TR-0001"
+  fromBranchId   String
+  toBranchId     String
+  status         TransferStatus @default(DRAFT)
+  notes          String?
+  dispatchedAt   DateTime?
+  receivedAt     DateTime?
+
+  lines StockTransferLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StockTransferLine {
+  id                 String  @id @default(uuid())
+  stockTransferId    String
+  itemId             String
+  quantityRequested  Decimal @db.Decimal(10, 3)
+  quantityDispatched Decimal @default(0) @db.Decimal(10, 3)
+  quantityReceived   Decimal @default(0) @db.Decimal(10, 3)
+
+  stockTransfer StockTransfer @relation(fields: [stockTransferId], references: [id], onDelete: Cascade)
+  item          Item          @relation(fields: [itemId], references: [id])
+}
+
+model PosShift {
+  id                 String      @id @default(uuid())
+  shiftNumber        String      @unique // e.g. "SHIFT-0001"
+  userId             String
+  branchId           String
+  openingFloat       Decimal     @default(0) @db.Decimal(10, 3)
+  closingCashExpected Decimal    @default(0) @db.Decimal(10, 3)
+  closingCashActual  Decimal     @default(0) @db.Decimal(10, 3)
+  cashVariance       Decimal     @default(0) @db.Decimal(10, 3)
+  status             ShiftStatus @default(OPEN)
+  openedAt           DateTime    @default(now())
+  closedAt           DateTime?
+
+  user   User   @relation(fields: [userId], references: [id])
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // e.g. "STOCK_TRANSFER", "PRICE_OVERRIDE", "INVOICE_VOID"
+  entity      String   // e.g. "SalesInvoice", "ItemStock"
+  entityId    String?
+  details     String?  // JSON formatted details of change
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
