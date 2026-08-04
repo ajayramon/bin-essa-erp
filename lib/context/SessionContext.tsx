@@ -62,6 +62,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     try {
       const savedUserRaw = localStorage.getItem(USER_KEY);
       if (!savedUserRaw) {
+        document.cookie = "bin_essa_session=; path=/; max-age=0";
+        document.cookie = "bin_essa_token=; path=/; max-age=0";
         setIsRestoringSession(false);
         return;
       }
@@ -74,6 +76,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
       setCurrentBrandId(savedBrandId ?? DEFAULT_BRAND_ID);
       setCurrentBranchId(savedBranchId ?? savedUser.branchId);
+
+      // Keep cookies in sync for server-side middleware route guards
+      document.cookie = "bin_essa_session=1; path=/; max-age=86400; SameSite=Lax";
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (token) {
+        document.cookie = `bin_essa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      }
     } catch {
       // Corrupted/unparseable saved session - clear it out rather than
       // getting stuck in a broken state.
@@ -81,6 +90,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(BRAND_KEY);
       localStorage.removeItem(BRANCH_KEY);
       localStorage.removeItem(TOKEN_KEY);
+      document.cookie = "bin_essa_session=; path=/; max-age=0";
+      document.cookie = "bin_essa_token=; path=/; max-age=0";
     } finally {
       setIsRestoringSession(false);
     }
@@ -89,6 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   function applySessionForUser(u: User) {
     setUser(u);
     localStorage.setItem(USER_KEY, JSON.stringify(u));
+    document.cookie = "bin_essa_session=1; path=/; max-age=86400; SameSite=Lax";
 
     let brandId: BrandId = DEFAULT_BRAND_ID;
     if (u.branchId) {
@@ -124,6 +136,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
 
     localStorage.setItem(TOKEN_KEY, data.access_token);
+    document.cookie = `bin_essa_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`;
     applySessionForUser(mappedUser);
   }
 
@@ -135,6 +148,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(BRAND_KEY);
     localStorage.removeItem(BRANCH_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    document.cookie = "bin_essa_session=; path=/; max-age=0";
+    document.cookie = "bin_essa_token=; path=/; max-age=0";
   }
 
   function switchBrand(brandId: BrandId) {
