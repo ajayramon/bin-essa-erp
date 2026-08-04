@@ -154,6 +154,7 @@ model Item {
   salesInvoiceLines    SalesInvoiceLine[]
   purchaseOrderLines   PurchaseOrderLine[]
   purchaseInvoiceLines PurchaseInvoiceLine[]
+  stockTransferLines   StockTransferLine[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
