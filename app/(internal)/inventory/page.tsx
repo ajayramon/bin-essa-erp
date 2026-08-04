@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
+import { useSession } from "@/lib/context/SessionContext";
 import {
   listItemsRequest,
   updateItemRequest,
@@ -20,6 +21,8 @@ function formatKD(amount: number) {
 
 export default function InventoryPage() {
   const { t } = useLocale();
+  const { user } = useSession();
+  const canViewCosts = user?.role !== "storekeeper";
 
   const [allItems, setAllItems] = useState<ItemResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -183,12 +186,14 @@ export default function InventoryPage() {
           <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Total Active SKUs</p>
           <p className="mt-1 text-2xl font-bold text-ink">{allItems.length}</p>
         </div>
-        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Inventory Valuation</p>
-          <p className="numeric-ltr mt-1 text-2xl font-bold text-ink">
-            {formatKD(totalValuation)} <span className="text-xs font-normal text-ink/40">KD</span>
-          </p>
-        </div>
+        {canViewCosts && (
+          <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+            <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Inventory Valuation</p>
+            <p className="numeric-ltr mt-1 text-2xl font-bold text-ink">
+              {formatKD(totalValuation)} <span className="text-xs font-normal text-ink/40">KD</span>
+            </p>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setStockFilter(stockFilter === "lowStock" ? "all" : "lowStock")}
@@ -262,12 +267,12 @@ export default function InventoryPage() {
       </div>
 
       {isLoading && (
-        <div className="rounded-2xl border border-ink/10 bg-white p-8 text-center text-sm text-ink/50 shadow-sm">
-          Loading items…
+        <div className="flex justify-center p-12">
+          <p className="text-sm text-ink/50">Loading inventory data…</p>
         </div>
       )}
 
-      {!isLoading && error && (
+      {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
@@ -283,7 +288,9 @@ export default function InventoryPage() {
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sku}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.barcode}</th>
                 <th className="px-4 py-3 text-start font-medium">Stock Qty & Unit</th>
-                <th className="px-4 py-3 text-start font-medium">{t.inventory.costPrice}</th>
+                {canViewCosts && (
+                  <th className="px-4 py-3 text-start font-medium">{t.inventory.costPrice}</th>
+                )}
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sellPrice}</th>
                 <th className="px-4 py-3 text-start font-medium">Status</th>
                 <th className="px-4 py-3 text-end font-medium">Actions</th>
@@ -326,9 +333,11 @@ export default function InventoryPage() {
                         )}
                       </div>
                     </td>
-                    <td className="numeric-ltr px-4 py-3 text-ink/70 font-medium">
-                      {formatKD(Number(item.cost))} KD
-                    </td>
+                    {canViewCosts && (
+                      <td className="numeric-ltr px-4 py-3 text-ink/70 font-medium">
+                        {formatKD(Number(item.cost))} KD
+                      </td>
+                    )}
                     <td className="numeric-ltr px-4 py-3 font-semibold text-ink">
                       {formatKD(Number(item.price))} KD
                     </td>

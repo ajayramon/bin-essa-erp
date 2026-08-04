@@ -26,7 +26,8 @@ export type Role =
   | "accountant"
   | "cashier"
   | "storekeeper"
-  | "sales_rep";
+  | "sales_rep"
+  | "b2b_customer";
 
 export interface User {
   id: string;

@@ -26,6 +26,9 @@ enum Role {
   MANAGER
   CASHIER
   ACCOUNTANT
+  STOREKEEPER
+  SALES_REP
+  B2B_CUSTOMER
 }
 
 // ASSUMED: matches frontend ItemCategory — verify exact category list

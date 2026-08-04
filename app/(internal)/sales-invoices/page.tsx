@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
+import { useSession } from "@/lib/context/SessionContext";
 import { listSalesInvoicesRequest, type SalesInvoiceResponse } from "@/lib/api";
 
 function formatKD(amount: number) {
@@ -14,6 +15,7 @@ function formatKD(amount: number) {
 
 export default function SalesInvoicesListPage() {
   const { t } = useLocale();
+  const { user } = useSession();
 
   const [invoices, setInvoices] = useState<SalesInvoiceResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +44,14 @@ export default function SalesInvoicesListPage() {
       cancelled = true;
     };
   }, []);
+
+  // Cashier role boundary: Cashiers view invoices strictly within their assigned branch
+  const filteredInvoices = invoices.filter((inv) => {
+    if (user?.role === "cashier" && user.branchId) {
+      return inv.branchId === user.branchId;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6 p-6">
@@ -85,7 +95,7 @@ export default function SalesInvoicesListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/5">
-              {invoices.map((inv) => (
+              {filteredInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-ink/5">
                   <td className="px-4 py-3 font-semibold text-ink">{inv.invoiceNumber}</td>
                   <td className="px-4 py-3 text-ink/70">{inv.paymentMethod}</td>

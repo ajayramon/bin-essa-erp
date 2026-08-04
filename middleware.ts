@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Internal routes that require authentication
+  // Internal routes requiring authentication
   const protectedPrefixes = [
     "/dashboard",
     "/group-dashboard",
@@ -29,7 +29,10 @@ export function middleware(request: NextRequest) {
     const tokenCookie = request.cookies.get("bin_essa_token")?.value;
 
     if (!sessionCookie && !tokenCookie) {
-      const loginUrl = new URL("/login", request.url);
+      // Choose appropriate login page based on target route
+      const isB2BRoute = pathname.startsWith("/b2b");
+      const loginPath = isB2BRoute ? "/b2b-login" : "/login";
+      const loginUrl = new URL(loginPath, request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }

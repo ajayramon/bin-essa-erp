@@ -92,9 +92,22 @@ export function Sidebar() {
   const GroupIcon = groupDashboardItem.icon;
   const isGroupDashboardActive = pathname === groupDashboardItem.href;
 
+  const roleAllowedKeys: Record<string, string[]> = {
+    cashier: ["pos", "sales-invoices"],
+    sales_rep: ["pos", "sales-invoices", "customers"],
+    storekeeper: ["inventory", "purchasing"],
+    accountant: ["inventory", "purchasing", "sales-invoices", "accounting", "customers"],
+    branch_manager: ["dashboard", "pos", "inventory", "purchasing", "sales-invoices", "accounting", "customers", "b2b", "settings"],
+    admin: ["dashboard", "pos", "inventory", "purchasing", "sales-invoices", "accounting", "customers", "b2b", "hr", "settings"],
+    b2b_customer: ["b2b"],
+  };
+
+  const allowedKeys = roleAllowedKeys[user.role] ?? roleAllowedKeys.admin;
+  const filteredModules = brandModules.filter((entry) => allowedKeys.includes(entry.key));
+
   return (
     <aside className="flex h-full w-64 flex-col overflow-y-auto border-e border-ink/10 bg-paper">
-      {isHeadOffice && (
+      {isHeadOffice && user.role === "admin" && (
         <div className="border-b border-ink/10 p-2">
           <Link
             href={groupDashboardItem.href}
@@ -145,7 +158,7 @@ export function Sidebar() {
 
               {isBrandOpen && (
                 <div className="mt-1 space-y-0.5 ps-3">
-                  {brandModules.map((entry) => (
+                  {filteredModules.map((entry) => (
                     <NavEntryRow
                       key={entry.key}
                       entry={entry}
