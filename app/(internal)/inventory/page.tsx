@@ -39,10 +39,24 @@ export default function InventoryPage() {
     barcode: "",
     category: "OTHER" as ItemCategory,
     price: "",
+    retailPrice: "",
+    semiWholesalePrice: "",
+    wholesalePrice: "",
     cost: "",
     stockQuantity: "0",
     unit: "pcs",
     isActive: true,
+    trackExpiry: false,
+    blockFreeGift: false,
+    blockDiscount: false,
+    maxDiscountPercent: "100",
+    additionalBarcodes: [] as string[],
+    uoms: [
+      { unitName: "Piece", conversionRatio: 1, isBase: true },
+      { unitName: "Pack", conversionRatio: 5, isBase: false },
+      { unitName: "Box", conversionRatio: 100, isBase: false },
+      { unitName: "Carton", conversionRatio: 1000, isBase: false },
+    ],
   });
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -120,12 +134,31 @@ export default function InventoryPage() {
       name: item.name,
       sku: item.sku,
       barcode: item.barcode ?? "",
-      category: item.category,
+      category: item.category as any,
       price: String(item.price),
+      retailPrice: String(item.retailPrice ?? item.price),
+      semiWholesalePrice: String(item.semiWholesalePrice ?? item.price),
+      wholesalePrice: String(item.wholesalePrice ?? item.price),
       cost: String(item.cost),
       stockQuantity: String((item as any).stockQuantity ?? 0),
       unit: item.unit || "pcs",
       isActive: item.isActive,
+      trackExpiry: item.trackExpiry ?? false,
+      blockFreeGift: item.blockFreeGift ?? false,
+      blockDiscount: item.blockDiscount ?? false,
+      maxDiscountPercent: String(item.maxDiscountPercent ?? 100),
+      additionalBarcodes: item.additionalBarcodes ? item.additionalBarcodes.map((b) => b.barcode) : [],
+      uoms: item.uoms && item.uoms.length > 0 ? item.uoms.map((u) => ({
+        unitName: u.unitName,
+        conversionRatio: Number(u.conversionRatio),
+        isBase: u.isBase ?? false,
+        barcode: u.barcode,
+      })) : [
+        { unitName: "Piece", conversionRatio: 1, isBase: true },
+        { unitName: "Pack", conversionRatio: 5, isBase: false },
+        { unitName: "Box", conversionRatio: 100, isBase: false },
+        { unitName: "Carton", conversionRatio: 1000, isBase: false },
+      ],
     });
   };
 
@@ -145,6 +178,15 @@ export default function InventoryPage() {
         stockQuantity: parseInt(editFormData.stockQuantity, 10) || 0,
         unit: editFormData.unit.trim() || "pcs",
         isActive: editFormData.isActive,
+        retailPrice: parseFloat(editFormData.retailPrice) || parseFloat(editFormData.price) || 0,
+        semiWholesalePrice: parseFloat(editFormData.semiWholesalePrice) || parseFloat(editFormData.price) || 0,
+        wholesalePrice: parseFloat(editFormData.wholesalePrice) || parseFloat(editFormData.price) || 0,
+        trackExpiry: editFormData.trackExpiry,
+        blockFreeGift: editFormData.blockFreeGift,
+        blockDiscount: editFormData.blockDiscount,
+        maxDiscountPercent: parseFloat(editFormData.maxDiscountPercent) || 100,
+        additionalBarcodes: editFormData.additionalBarcodes.filter((b) => b.trim().length > 0),
+        uoms: editFormData.uoms,
       });
       setEditingItem(null);
       await load();
@@ -511,16 +553,168 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-ink/70 mb-1">Selling Price (KD)</label>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Retail Selling Price (KD)</label>
                   <input
                     type="number"
                     step="0.001"
                     min="0"
                     required
                     value={editFormData.price}
-                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value, retailPrice: e.target.value })}
                     className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Semi-Wholesale Price (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={editFormData.semiWholesalePrice}
+                    onChange={(e) => setEditFormData({ ...editFormData, semiWholesalePrice: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-ink/70 mb-1">Wholesale Price (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={editFormData.wholesalePrice}
+                    onChange={(e) => setEditFormData({ ...editFormData, wholesalePrice: e.target.value })}
+                    className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-sm outline-none focus:border-gold"
+                  />
+                </div>
+
+                {/* Multiple Barcodes Manager */}
+                <div className="sm:col-span-2 space-y-2 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Multiple Barcodes Registry</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditFormData({
+                          ...editFormData,
+                          additionalBarcodes: [...editFormData.additionalBarcodes, ""],
+                        })
+                      }
+                      className="text-xs font-bold text-indigo-600 hover:underline"
+                    >
+                      + Add Barcode
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {editFormData.additionalBarcodes.map((b, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={b}
+                          placeholder="Alt EAN / Pack Barcode"
+                          onChange={(e) => {
+                            const updated = [...editFormData.additionalBarcodes];
+                            updated[idx] = e.target.value;
+                            setEditFormData({ ...editFormData, additionalBarcodes: updated });
+                          }}
+                          className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-mono outline-none focus:border-indigo-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editFormData.additionalBarcodes.filter((_, i) => i !== idx);
+                            setEditFormData({ ...editFormData, additionalBarcodes: updated });
+                          }}
+                          className="text-red-500 text-xs font-bold px-2 py-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {editFormData.additionalBarcodes.length === 0 && (
+                      <span className="text-[11px] text-slate-400 italic">No secondary barcodes added.</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Multi-UOM Conversion Ratio Matrix */}
+                <div className="sm:col-span-2 space-y-2 p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-900">Units of Measure (UOM) & Conversion Ratios</span>
+                    <span className="text-[11px] text-indigo-600 font-mono">1 Carton = 10 Box = 200 Pack = 1000 Pcs</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {editFormData.uoms.map((uom, idx) => (
+                      <div key={idx} className="p-2.5 rounded-xl bg-white border border-indigo-200 space-y-1">
+                        <div className="text-[11px] font-bold text-indigo-900">{uom.unitName}</div>
+                        <div className="text-[10px] text-slate-500">Ratio: 1 {uom.unitName} =</div>
+                        <input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={uom.conversionRatio}
+                          onChange={(e) => {
+                            const updated = [...editFormData.uoms];
+                            updated[idx] = { ...uom, conversionRatio: parseFloat(e.target.value) || 1 };
+                            setEditFormData({ ...editFormData, uoms: updated });
+                          }}
+                          className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs font-mono"
+                        />
+                        <span className="text-[10px] text-slate-400 font-mono">Base Units</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* System Admin Operational Governance Controls */}
+                <div className="sm:col-span-2 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
+                  <span className="text-xs font-bold text-amber-900 block">System Administrator Operational Controls</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <label className="flex items-center gap-2 text-amber-900 cursor-pointer font-medium">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.trackExpiry}
+                        onChange={(e) => setEditFormData({ ...editFormData, trackExpiry: e.target.checked })}
+                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      Track Expiry Dates
+                    </label>
+
+                    <label className="flex items-center gap-2 text-amber-900 cursor-pointer font-medium">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.blockFreeGift}
+                        onChange={(e) => setEditFormData({ ...editFormData, blockFreeGift: e.target.checked })}
+                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      Block Free Gift Issue
+                    </label>
+
+                    <label className="flex items-center gap-2 text-amber-900 cursor-pointer font-medium">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.blockDiscount}
+                        onChange={(e) => setEditFormData({ ...editFormData, blockDiscount: e.target.checked })}
+                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                      />
+                      Block All Discounts
+                    </label>
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-2 text-xs">
+                    <span className="text-amber-900 font-medium">Max Allowed Discount %:</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={editFormData.maxDiscountPercent}
+                      onChange={(e) => setEditFormData({ ...editFormData, maxDiscountPercent: e.target.value })}
+                      className="w-20 rounded-lg border border-amber-300 px-2 py-1 text-xs font-mono font-bold text-amber-950"
+                    />
+                    <span className="text-amber-700 text-[11px]">% max cap for cashiers</span>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-2 rounded-xl bg-ink/5 p-3 border border-ink/10 flex items-center justify-between text-xs">

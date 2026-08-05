@@ -1,5 +1,5 @@
-import { ComingSoonPage } from "@/components/domain/ComingSoonPage";
+import PosCashClosingPage from "@/app/(internal)/pos/cash-closing/page";
 
-export default function CashClosingPage() {
-  return <ComingSoonPage titleEn="Daily Cash Closing" titleAr="إقفال الصندوق اليومي" />;
+export default function CashClosingComingSoonPage() {
+  return <PosCashClosingPage />;
 }

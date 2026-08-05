@@ -76,7 +76,7 @@ export default function ItemDetailPage() {
       name: item.name,
       sku: item.sku,
       barcode: item.barcode ?? "",
-      category: item.category,
+      category: item.category as ItemCategory,
       price: String(item.price),
       cost: String(item.cost),
       stockQuantity: String((item as any).stockQuantity ?? 0),

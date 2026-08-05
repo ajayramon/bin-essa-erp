@@ -20,6 +20,34 @@ export class ItemsService {
         unit: dto.unit,
         isActive: dto.isActive,
         stockQuantity: stockQty,
+        retailPrice: dto.retailPrice ?? dto.price,
+        semiWholesalePrice: dto.semiWholesalePrice ?? dto.price,
+        wholesalePrice: dto.wholesalePrice ?? dto.price,
+        trackExpiry: dto.trackExpiry ?? false,
+        blockFreeGift: dto.blockFreeGift ?? false,
+        blockDiscount: dto.blockDiscount ?? false,
+        maxDiscountPercent: dto.maxDiscountPercent ?? 100.0,
+        additionalBarcodes: dto.additionalBarcodes && dto.additionalBarcodes.length > 0
+          ? {
+              create: dto.additionalBarcodes.map((b) => ({ barcode: b })),
+            }
+          : undefined,
+        uoms: dto.uoms && dto.uoms.length > 0
+          ? {
+              create: dto.uoms.map((u) => ({
+                unitName: u.unitName,
+                conversionRatio: u.conversionRatio,
+                barcode: u.barcode,
+                retailPrice: u.retailPrice,
+                wholesalePrice: u.wholesalePrice,
+                isBase: u.isBase ?? false,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        uoms: true,
+        additionalBarcodes: true,
       },
     });
 
@@ -45,12 +73,22 @@ export class ItemsService {
 
   async findAll() {
     return this.prisma.item.findMany({
+      include: {
+        uoms: true,
+        additionalBarcodes: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const item = await this.prisma.item.findUnique({ where: { id } });
+    const item = await this.prisma.item.findUnique({
+      where: { id },
+      include: {
+        uoms: true,
+        additionalBarcodes: true,
+      },
+    });
     if (!item) {
       throw new NotFoundException(`Item with id ${id} not found`);
     }

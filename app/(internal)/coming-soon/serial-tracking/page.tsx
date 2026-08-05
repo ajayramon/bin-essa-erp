@@ -1,5 +1,5 @@
-import { ComingSoonPage } from "@/components/domain/ComingSoonPage";
+import SerialTrackingPage from "@/app/(internal)/inventory/serial-tracking/page";
 
-export default function SerialTrackingPage() {
-  return <ComingSoonPage titleEn="Serial Tracking" titleAr="تتبع الأرقام التسلسلية" />;
+export default function SerialTrackingComingSoonPage() {
+  return <SerialTrackingPage />;
 }

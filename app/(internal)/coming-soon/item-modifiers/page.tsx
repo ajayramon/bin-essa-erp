@@ -1,5 +1,5 @@
-import { ComingSoonPage } from "@/components/domain/ComingSoonPage";
+import ItemModifiersPage from "@/app/(internal)/inventory/item-modifiers/page";
 
-export default function ItemModifiersPage() {
-  return <ComingSoonPage titleEn="Item Modifiers" titleAr="متغيرات الصنف" />;
+export default function ItemModifiersComingSoonPage() {
+  return <ItemModifiersPage />;
 }

@@ -232,7 +232,9 @@ export default function PosPage() {
     return (
       i.name.toLowerCase().includes(q) ||
       i.sku.toLowerCase().includes(q) ||
-      (i.barcode ?? "").toLowerCase().includes(q)
+      (i.barcode ?? "").toLowerCase().includes(q) ||
+      (i.additionalBarcodes ?? []).some((b) => b.barcode.toLowerCase().includes(q)) ||
+      (i.uoms ?? []).some((u) => (u.barcode ?? "").toLowerCase().includes(q))
     );
   });
 
@@ -243,7 +245,9 @@ export default function PosPage() {
     return (
       i.name.toLowerCase().includes(q) ||
       i.sku.toLowerCase().includes(q) ||
-      (i.barcode ?? "").toLowerCase().includes(q)
+      (i.barcode ?? "").toLowerCase().includes(q) ||
+      (i.additionalBarcodes ?? []).some((b) => b.barcode.toLowerCase().includes(q)) ||
+      (i.uoms ?? []).some((u) => (u.barcode ?? "").toLowerCase().includes(q))
     );
   });
 
@@ -305,8 +309,19 @@ export default function PosPage() {
     const line = cart[itemId];
     if (!line) return;
 
+    if (line.item.blockDiscount) {
+      setError(`Discounts are blocked for "${line.item.name}" under System Administrator policy.`);
+      return;
+    }
+
     const gross = line.quantity * line.originalUnitPrice;
-    const percent = (discountVal / gross) * 100;
+    const percent = gross > 0 ? (discountVal / gross) * 100 : 0;
+    const maxCap = Number(line.item.maxDiscountPercent ?? 100);
+
+    if (percent > maxCap) {
+      setError(`Discount (${percent.toFixed(1)}%) exceeds maximum cap (${maxCap}%) allowed for "${line.item.name}".`);
+      return;
+    }
 
     // Check cashier default limit (10%)
     if (percent > 10 && !approvedManager) {
@@ -471,6 +486,18 @@ export default function PosPage() {
           promotionId: l.promotionId,
         })),
       });
+
+      // Optimistically decrement in-memory product stock immediately for instant cashier UI feedback
+      setItems((prevItems) =>
+        prevItems.map((item) => {
+          const line = cart[item.id];
+          if (line) {
+            const currentStock = Number(item.stockQuantity ?? 0);
+            return { ...item, stockQuantity: Math.max(0, currentStock - line.quantity) };
+          }
+          return item;
+        })
+      );
 
       setLastBill({
         invoiceNumber,

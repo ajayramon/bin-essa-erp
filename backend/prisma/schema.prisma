@@ -177,11 +177,22 @@ model Item {
   name       String
   category   ItemCategory
   visibility ItemVisibility @default(ALL_BRANCHES)
-  price      Decimal        @db.Decimal(10, 3) // KWD uses 3 decimal places
+  price      Decimal        @db.Decimal(10, 3) // Base KWD Retail Price
   cost       Decimal        @db.Decimal(10, 3)
   unit       String         @default("pcs")
   isActive   Boolean        @default(true)
   stockQuantity Int          @default(0)
+
+  // Multi-Tier Selling Prices
+  retailPrice        Decimal? @db.Decimal(10, 3)
+  semiWholesalePrice Decimal? @db.Decimal(10, 3)
+  wholesalePrice     Decimal? @db.Decimal(10, 3)
+
+  // Admin Operational Governance Controls
+  trackExpiry        Boolean @default(false)
+  blockFreeGift      Boolean @default(false)
+  blockDiscount      Boolean @default(false)
+  maxDiscountPercent Decimal @default(100.00) @db.Decimal(5, 2)
 
   stocks               ItemStock[]
   salesInvoiceLines    SalesInvoiceLine[]
@@ -193,9 +204,35 @@ model Item {
   variants             ItemVariant[]
   serials              ItemSerial[]
   batches              ItemBatch[]
+  uoms                 ItemUom[]
+  additionalBarcodes   ItemBarcode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ItemBarcode {
+  id        String   @id @default(uuid())
+  itemId    String
+  barcode   String   @unique
+  note      String?
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ItemUom {
+  id              String   @id @default(uuid())
+  itemId          String
+  unitName        String   // "Piece", "Pack", "Box", "Carton"
+  conversionRatio Decimal  @db.Decimal(10, 3)
+  barcode         String?  @unique
+  retailPrice     Decimal? @db.Decimal(10, 3)
+  wholesalePrice  Decimal? @db.Decimal(10, 3)
+  isBase          Boolean  @default(false)
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model ItemStock {

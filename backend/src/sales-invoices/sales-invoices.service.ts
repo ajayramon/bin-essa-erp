@@ -179,7 +179,7 @@ export class SalesInvoicesService {
         dto.lines.flatMap((line) => [
           tx.item.update({
             where: { id: line.itemId },
-            data: { stockQuantity: { decrement: Math.round(line.quantity) } },
+            data: { stockQuantity: { decrement: Math.max(1, Math.round(line.quantity)) } },
           }),
           tx.itemStock.upsert({
             where: {

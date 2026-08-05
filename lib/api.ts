@@ -97,6 +97,15 @@ export interface CreateItemPayload {
   unit?: string;
   isActive?: boolean;
   stockQuantity?: number;
+  retailPrice?: number;
+  semiWholesalePrice?: number;
+  wholesalePrice?: number;
+  trackExpiry?: boolean;
+  blockFreeGift?: boolean;
+  blockDiscount?: boolean;
+  maxDiscountPercent?: number;
+  additionalBarcodes?: string[];
+  uoms?: ItemUomPayload[];
 }
 
 export interface CreateItemResponse {
@@ -457,7 +466,42 @@ export async function getAccountLedgerRequest(
     ],
   };
 }
-export type ItemResponse = CreateItemResponse;
+export interface ItemUomPayload {
+  id?: string;
+  unitName: string;
+  conversionRatio: number;
+  barcode?: string;
+  retailPrice?: number;
+  wholesalePrice?: number;
+  isBase?: boolean;
+}
+
+export interface ItemResponse {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  name: string;
+  category: string;
+  visibility: string;
+  price: string | number;
+  cost: string | number;
+  unit: string;
+  stockQuantity: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  retailPrice?: string | number;
+  semiWholesalePrice?: string | number;
+  wholesalePrice?: string | number;
+  trackExpiry?: boolean;
+  blockFreeGift?: boolean;
+  blockDiscount?: boolean;
+  maxDiscountPercent?: string | number;
+  additionalBarcodes?: Array<{ id: string; barcode: string; note?: string }>;
+  uoms?: ItemUomPayload[];
+}
+
+export type ItemRecord = ItemResponse;
 
 const FALLBACK_ITEMS: ItemResponse[] = [
   {
@@ -508,13 +552,16 @@ const FALLBACK_ITEMS: ItemResponse[] = [
 ];
 
 export async function listItemsRequest(): Promise<ItemResponse[]> {
+  clearApiCache();
   const token = localStorage.getItem("bin-essa-access-token");
   try {
-    const res = await fetch(`${API_BASE}/items`, {
+    const res = await fetch(`${API_BASE}/items?_t=${Date.now()}`, {
       method: "GET",
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
@@ -1220,6 +1267,14 @@ export async function createSalesInvoiceRequest(
       lineTotal: String(l.quantity * l.unitPrice),
     })),
   };
+
+  // Decrement fallback stock quantity for each sold line item
+  payload.lines.forEach((l) => {
+    const item = FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+    if (item) {
+      item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
+    }
+  });
 
   saveLocalSalesInvoice(fallbackInv);
   clearApiCache();
@@ -2088,10 +2143,13 @@ export interface PdcCheckRecord {
   createdAt: string;
 }
 
-export async function getCurrentPosShiftRequest(userId: string, branchId: string): Promise<PosShiftRecord | null> {
+export async function getCurrentPosShiftRequest(userId?: string, branchId?: string): Promise<PosShiftRecord | null> {
   const token = localStorage.getItem("bin-essa-access-token");
+  const query = new URLSearchParams();
+  if (userId) query.set("userId", userId);
+  if (branchId) query.set("branchId", branchId);
   try {
-    const res = await fetch(`${API_BASE}/pos-shifts/current?userId=${userId}&branchId=${branchId}`, {
+    const res = await fetch(`${API_BASE}/pos-shifts/current?${query.toString()}`, {
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -2148,6 +2206,23 @@ export async function closePosShiftRequest(
   }
   clearApiCache();
   return res.json();
+}
+
+export async function listPosShiftsRequest(branchId?: string): Promise<PosShiftRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPosShifts", e);
+  }
+  return [];
 }
 
 export async function listPdcChecksRequest(): Promise<PdcCheckRecord[]> {
@@ -2290,4 +2365,5 @@ export async function getCustomerArAgingReportRequest(): Promise<CustomerArAging
   }
   return [];
 }
+
 

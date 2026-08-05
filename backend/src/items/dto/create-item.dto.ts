@@ -39,4 +39,45 @@ export class CreateItemDto {
   @IsNumber()
   @Min(0)
   stockQuantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  retailPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  semiWholesalePrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  wholesalePrice?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  trackExpiry?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  blockFreeGift?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  blockDiscount?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  maxDiscountPercent?: number;
+
+  @IsOptional()
+  additionalBarcodes?: string[];
+
+  @IsOptional()
+  uoms?: Array<{
+    unitName: string;
+    conversionRatio: number;
+    barcode?: string;
+    retailPrice?: number;
+    wholesalePrice?: number;
+    isBase?: boolean;
+  }>;
 }
