@@ -1,7 +1,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-    ? "http://localhost:3000"
+    ? "http://localhost:4000"
     : "https://bin-essa-erp.onrender.com");
 
 const apiCache = new Map<string, { data: any; expiresAt: number }>();
@@ -10,7 +10,7 @@ export function clearApiCache() {
   apiCache.clear();
 }
 
-async function fetchWithCache<T>(url: string, init?: RequestInit, ttlMs = 10000): Promise<T> {
+async function fetchWithCache<T>(url: string, init?: RequestInit, ttlMs = 60000): Promise<T> {
   const cacheKey = `${init?.method || 'GET'}:${url}`;
   const now = Date.now();
 
