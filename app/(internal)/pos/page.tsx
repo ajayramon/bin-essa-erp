@@ -9,8 +9,12 @@ import {
   createSalesInvoiceRequest,
   evaluatePromotionsRequest,
   verifyManagerPinRequest,
+  getCurrentPosShiftRequest,
+  openPosShiftRequest,
+  closePosShiftRequest,
   type ItemResponse,
   type CustomerResponse,
+  type PosShiftRecord,
 } from "@/lib/api";
 import {
   ShoppingCart,
@@ -110,6 +114,28 @@ export default function PosPage() {
   const [managerError, setManagerError] = useState<string | null>(null);
   const [approvedManager, setApprovedManager] = useState<{ id: string; name: string } | null>(null);
 
+  // POS Shift State (Shift Opening Float & Z-Report Closing)
+  const [activeShift, setActiveShift] = useState<PosShiftRecord | null>(null);
+  const [showOpenShiftModal, setShowOpenShiftModal] = useState(false);
+  const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
+  const [openingFloatInput, setOpeningFloatInput] = useState<number>(50.0);
+  const [closingCashActualInput, setClosingCashActualInput] = useState<number>(0.0);
+  const [closingNotes, setClosingNotes] = useState<string>("");
+
+  async function checkActiveShift() {
+    if (!user) return;
+    try {
+      const branchId = currentBranch?.id || "br-01";
+      const shift = await getCurrentPosShiftRequest(user.id, branchId);
+      setActiveShift(shift);
+      if (!shift) {
+        setShowOpenShiftModal(true);
+      }
+    } catch (e) {
+      console.warn("Failed to check active shift", e);
+    }
+  }
+
   // Load Catalog & Customers
   async function loadData() {
     setIsLoading(true);
@@ -121,10 +147,49 @@ export default function PosPage() {
       ]);
       setItems(itemsData);
       setCustomers(custsData);
+      await checkActiveShift();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load products");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleOpenShift(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const branchId = currentBranch?.id || "br-01";
+      const shift = await openPosShiftRequest({
+        userId: user.id,
+        branchId,
+        openingFloat: Number(openingFloatInput),
+      });
+      setActiveShift(shift);
+      setShowOpenShiftModal(false);
+      setSuccessMessage(`POS Shift ${shift.shiftNumber} Opened with Float KD ${Number(openingFloatInput).toFixed(3)}`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to open POS Shift");
+    }
+  }
+
+  async function handleCloseShift(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeShift) return;
+    try {
+      const closed = await closePosShiftRequest(activeShift.id, {
+        closingCashActual: Number(closingCashActualInput),
+        notes: closingNotes,
+      });
+      setActiveShift(null);
+      setShowCloseShiftModal(false);
+      setSuccessMessage(
+        `Shift ${closed.shiftNumber} Closed! Z-Report: Cash Variance KD ${Number(closed.cashVariance).toFixed(3)}`
+      );
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to close POS Shift");
     }
   }
 
@@ -1164,6 +1229,125 @@ export default function PosPage() {
                 Authorize
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SHIFT OPENING FLOAT MODAL ================= */}
+      {showOpenShiftModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-100 text-slate-800">
+            <div className="text-center space-y-1.5 border-b border-slate-100 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-2">
+                <ShoppingCart className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-black text-slate-900">Open POS Cashier Shift</h2>
+              <p className="text-xs text-slate-500">Enter the starting cash drawer float to begin sales session</p>
+            </div>
+
+            <form onSubmit={handleOpenShift} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Opening Cash Float (KWD)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.001"
+                    required
+                    value={openingFloatInput}
+                    onChange={(e) => setOpeningFloatInput(parseFloat(e.target.value))}
+                    className="w-full text-center font-mono font-bold text-xl rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                  <span className="absolute right-4 top-3.5 font-bold text-xs text-slate-400">KD</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md text-xs transition"
+              >
+                Start POS Register Shift
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SHIFT CLOSING Z-REPORT MODAL ================= */}
+      {showCloseShiftModal && activeShift && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-100 text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">Close Shift — Z-Report Summary</h2>
+                <p className="text-xs text-slate-500">{activeShift.shiftNumber} | Opened at {new Date(activeShift.openedAt).toLocaleTimeString()}</p>
+              </div>
+              <button onClick={() => setShowCloseShiftModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2">
+              <div className="flex justify-between text-slate-600">
+                <span>Opening Cash Float:</span>
+                <span className="font-bold font-mono text-slate-900">{Number(activeShift.openingFloat).toFixed(3)} KD</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Cash Sales Total:</span>
+                <span className="font-bold font-mono text-slate-900">{Number(activeShift.cashSalesTotal).toFixed(3)} KD</span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Card / K-Net Sales Total:</span>
+                <span className="font-bold font-mono text-slate-900">{Number(activeShift.cardSalesTotal).toFixed(3)} KD</span>
+              </div>
+              <div className="border-t border-slate-200 pt-2 flex justify-between font-bold text-slate-900">
+                <span>Expected Cash Drawer Balance:</span>
+                <span className="font-mono text-indigo-700 text-sm">
+                  {(Number(activeShift.openingFloat) + Number(activeShift.cashSalesTotal)).toFixed(3)} KD
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleCloseShift} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Actual Physical Cash Count (KWD)</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  required
+                  placeholder="Counted cash in drawer..."
+                  value={closingCashActualInput}
+                  onChange={(e) => setClosingCashActualInput(parseFloat(e.target.value))}
+                  className="w-full text-center font-mono font-bold text-lg rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-indigo-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Shift Notes & Observations</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cash drawer balanced cleanly..."
+                  value={closingNotes}
+                  onChange={(e) => setClosingNotes(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 outline-none focus:border-indigo-600"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseShiftModal(false)}
+                  className="w-1/2 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md"
+                >
+                  Finalize & Close Shift
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

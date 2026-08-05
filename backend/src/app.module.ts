@@ -19,6 +19,8 @@ import { CustomerPaymentsModule } from './customer-payments/customer-payments.mo
 import { PromotionsModule } from './promotions/promotions.module';
 import { DiscountPermissionsModule } from './discount-permissions/discount-permissions.module';
 import { UsersModule } from './users/users.module';
+import { PosShiftsModule } from './pos-shifts/pos-shifts.module';
+import { PdcChecksModule } from './pdc-checks/pdc-checks.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -41,6 +43,8 @@ import { UsersModule } from './users/users.module';
     TrialBalanceModule,
     PromotionsModule,
     DiscountPermissionsModule,
+    PosShiftsModule,
+    PdcChecksModule,
   ],
 
   controllers: [AppController],

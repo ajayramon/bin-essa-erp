@@ -2050,3 +2050,161 @@ export async function updateRolePermissionRequest(role: string, modules: string[
   return res.json();
 }
 
+// ================= POS SHIFT & PDC CHECK API CLIENT =================
+
+export interface PosShiftRecord {
+  id: string;
+  shiftNumber: string;
+  userId: string;
+  branchId: string;
+  openingFloat: number;
+  cashSalesTotal: number;
+  cardSalesTotal: number;
+  creditSalesTotal: number;
+  closingCashExpected: number;
+  closingCashActual: number;
+  cashVariance: number;
+  status: "OPEN" | "CLOSED";
+  notes?: string;
+  openedAt: string;
+  closedAt?: string;
+  user?: { id: string; fullName: string; username: string };
+  branch?: { id: string; name: string; code: string };
+}
+
+export interface PdcCheckRecord {
+  id: string;
+  checkNumber: string;
+  bankName: string;
+  dueDate: string;
+  amount: number;
+  status: "RECEIVED" | "DEPOSITED" | "CLEARED" | "BOUNCED";
+  customerId: string;
+  customer?: { id: string; name: string; code: string };
+  notes?: string;
+  depositedAt?: string;
+  clearedAt?: string;
+  bouncedAt?: string;
+  createdAt: string;
+}
+
+export async function getCurrentPosShiftRequest(userId: string, branchId: string): Promise<PosShiftRecord | null> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts/current?userId=${userId}&branchId=${branchId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) {
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for getCurrentPosShift", e);
+  }
+  return null;
+}
+
+export async function openPosShiftRequest(payload: {
+  userId: string;
+  branchId: string;
+  openingFloat: number;
+}): Promise<PosShiftRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/pos-shifts/open`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to open POS Shift");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function closePosShiftRequest(
+  id: string,
+  payload: { closingCashActual: number; notes?: string }
+): Promise<PosShiftRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/pos-shifts/${id}/close`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to close POS Shift");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function listPdcChecksRequest(): Promise<PdcCheckRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/pdc-checks`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPdcChecks", e);
+  }
+  return [];
+}
+
+export async function createPdcCheckRequest(payload: {
+  checkNumber: string;
+  bankName: string;
+  dueDate: string;
+  amount: number;
+  customerId: string;
+  notes?: string;
+}): Promise<PdcCheckRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/pdc-checks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create PDC check");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function clearPdcCheckRequest(id: string): Promise<PdcCheckRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/pdc-checks/${id}/clear`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to clear PDC check");
+  }
+  clearApiCache();
+  return res.json();
+}
+
