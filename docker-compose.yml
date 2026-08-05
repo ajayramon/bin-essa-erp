@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # 1. Primary PostgreSQL 16 Enterprise Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: bin_essa_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: bin_essa_admin
+      POSTGRES_PASSWORD: BinEssaSecurePass2026!
+      POSTGRES_DB: bin_essa_erp_db
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=300"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "work_mem=32MB"
+      - "-c"
+      - "effective_cache_size=2GB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bin_essa_admin -d bin_essa_erp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. PgBouncer High-Concurrency Connection Pooler
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: bin_essa_pgbouncer
+    restart: always
+    environment:
+      DB_USER: bin_essa_admin
+      DB_PASSWORD: BinEssaSecurePass2026!
+      DB_HOST: postgres
+      DB_NAME: bin_essa_erp_db
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 50
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 10
+    ports:
+      - "6432:6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. Redis 7 High-Speed Caching Layer
+  redis:
+    image: redis:7-alpine
+    container_name: bin_essa_redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel notice
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 4. NestJS Backend Microservice API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bin_essa_backend
+    restart: always
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bin_essa_admin:BinEssaSecurePass2026!@postgres:5432/bin_essa_erp_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: BinEssaSuperSecureJwtSecretKey2026GCC
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
