@@ -362,7 +362,30 @@ export default function InventoryPage() {
                 const stock = item.stockQuantity ?? 0;
                 return (
                   <tr key={item.id} className="hover:bg-ink/5">
-                    <td className="px-4 py-3 font-medium text-ink">{item.name}</td>
+                    <td className="px-4 py-3 font-medium text-ink">
+                      <div>{item.name}</div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {item.trackExpiry && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                            📅 Expiry Tracked
+                          </span>
+                        )}
+                        {item.blockFreeGift && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                            🎁 No Free Gift
+                          </span>
+                        )}
+                        {item.blockDiscount ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                            🏷️ No Discounts
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            🏷️ Max {item.maxDiscountPercent ?? 10}% Disc
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.barcode || "—"}</td>
@@ -399,8 +422,15 @@ export default function InventoryPage() {
                         {formatKD(Number(item.cost))} KD
                       </td>
                     )}
-                    <td className="numeric-ltr px-4 py-3 font-semibold text-ink">
-                      {formatKD(Number(item.price))} KD
+                    <td className="numeric-ltr px-4 py-3 text-xs font-semibold text-ink">
+                      <div>
+                        <span className="font-bold text-ink">{formatKD(Number(item.retailPrice ?? item.price))} KD</span>
+                        <span className="text-[10px] text-ink/50 block font-mono">Retail</span>
+                      </div>
+                      <div className="flex gap-2 text-[10px] text-ink/60 font-mono mt-0.5">
+                        <span>Semi: {formatKD(Number(item.semiWholesalePrice ?? item.price))}</span>
+                        <span>WS: {formatKD(Number(item.wholesalePrice ?? item.price))}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <span

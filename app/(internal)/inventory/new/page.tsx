@@ -30,6 +30,10 @@ export default function NewItemPage() {
     cost: "",
     unit: "pcs",
     stockQuantity: "0",
+    trackExpiry: false,
+    blockFreeGift: false,
+    blockDiscount: false,
+    maxDiscountPercent: "10",
     additionalBarcodes: [] as string[],
     uoms: [
       { unitName: "Piece", conversionRatio: 1, isBase: true },
@@ -83,6 +87,10 @@ export default function NewItemPage() {
       retailPrice: Number(form.retailPrice) || price,
       semiWholesalePrice: Number(form.semiWholesalePrice) || price,
       wholesalePrice: Number(form.wholesalePrice) || price,
+      trackExpiry: form.trackExpiry,
+      blockFreeGift: form.blockFreeGift,
+      blockDiscount: form.blockDiscount,
+      maxDiscountPercent: Number(form.maxDiscountPercent) || 10,
       additionalBarcodes: form.additionalBarcodes.filter((b) => b.trim().length > 0),
       uoms: form.uoms,
     };
@@ -274,6 +282,63 @@ export default function NewItemPage() {
               onChange={(e) => update("unit", e.target.value)}
               className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm outline-none focus:border-amber-500"
             />
+          </div>
+        </div>
+
+        {/* System Administrator Operational Governance Controls */}
+        <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-amber-950">System Administrator Operational Controls</span>
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded">Admin Only</span>
+          </div>
+          <p className="text-[11px] text-amber-900/80">
+            Configure expiry tracking, free gift permissions, and cashier discount policy overrides for this product master record.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <label className="flex items-center gap-2 text-amber-950 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={form.trackExpiry}
+                onChange={(e) => update("trackExpiry", e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              📅 Track Expiry Dates
+            </label>
+
+            <label className="flex items-center gap-2 text-amber-950 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={form.blockFreeGift}
+                onChange={(e) => update("blockFreeGift", e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              🎁 Block Free Gift Issue
+            </label>
+
+            <label className="flex items-center gap-2 text-amber-950 cursor-pointer font-medium">
+              <input
+                type="checkbox"
+                checked={form.blockDiscount}
+                onChange={(e) => update("blockDiscount", e.target.checked)}
+                className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+              />
+              🏷️ Block All Discounts
+            </label>
+          </div>
+
+          <div className="pt-2 flex items-center gap-2 text-xs">
+            <span className="text-amber-950 font-medium">Max Allowed Discount %:</span>
+            <input
+              type="number"
+              step="1"
+              min="0"
+              max="100"
+              value={form.maxDiscountPercent}
+              onChange={(e) => update("maxDiscountPercent", e.target.value)}
+              className="w-20 rounded-lg border border-amber-300 px-2 py-1 text-xs font-mono font-bold text-amber-950 bg-white"
+            />
+            <span className="text-amber-800 text-[11px]">% maximum discount cap for cashiers</span>
           </div>
         </div>
 

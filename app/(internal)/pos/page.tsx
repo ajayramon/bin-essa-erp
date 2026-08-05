@@ -13,6 +13,8 @@ function formatKD(amount: number) {
   return amount.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 }
 
+type PriceTier = "RETAIL" | "SEMI_WHOLESALE" | "WHOLESALE";
+
 export default function PosPage() {
   const { locale, t } = useLocale();
   const { user, currentBranch } = useSession();
@@ -24,6 +26,8 @@ export default function PosPage() {
 
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartUom, setCartUom] = useState<Record<string, string>>({});
+  const [priceTier, setPriceTier] = useState<PriceTier>("RETAIL");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "CREDIT" | "BANK_TRANSFER">("CASH");
   const [saleMessage, setSaleMessage] = useState<string | null>(null);
 
@@ -75,43 +79,83 @@ export default function PosPage() {
     );
   });
 
+  function getItemBasePrice(item: ItemResponse, tier: PriceTier): number {
+    if (tier === "WHOLESALE" && item.wholesalePrice) return Number(item.wholesalePrice);
+    if (tier === "SEMI_WHOLESALE" && item.semiWholesalePrice) return Number(item.semiWholesalePrice);
+    if (item.retailPrice) return Number(item.retailPrice);
+    return Number(item.price);
+  }
+
+  function getUomRatio(item: ItemResponse, unitName?: string): number {
+    if (!unitName || !item.uoms || item.uoms.length === 0) return 1;
+    const match = item.uoms.find((u) => u.unitName.toLowerCase() === unitName.toLowerCase());
+    return match ? Number(match.conversionRatio || 1) : 1;
+  }
+
+  function getItemUnitPrice(item: ItemResponse, tier: PriceTier, unitName?: string): number {
+    const basePrice = getItemBasePrice(item, tier);
+    const ratio = getUomRatio(item, unitName);
+    return basePrice * ratio;
+  }
+
   function addToCart(item: ItemResponse) {
     const stock = Number(item.stockQuantity ?? 0);
     const current = cart[item.id] ?? 0;
-    if (current >= stock && stock > 0) {
-      setError(`Cannot add more than available stock (${stock} units)`);
+    const selectedUnit = cartUom[item.id] || item.unit || "Piece";
+    const ratio = getUomRatio(item, selectedUnit);
+    const totalRequiredBaseStock = (current + 1) * ratio;
+
+    if (totalRequiredBaseStock > stock && stock > 0) {
+      setError(`Cannot add more than available stock (${stock} base pieces)`);
       return;
     }
     setCart({ ...cart, [item.id]: current + 1 });
+    if (!cartUom[item.id]) {
+      setCartUom({ ...cartUom, [item.id]: item.unit || "Piece" });
+    }
     setSaleMessage(null);
     setError(null);
   }
 
   function updateQty(itemId: string, qty: number) {
     if (qty <= 0) {
-      const next = { ...cart };
-      delete next[itemId];
-      setCart(next);
+      const nextCart = { ...cart };
+      const nextUom = { ...cartUom };
+      delete nextCart[itemId];
+      delete nextUom[itemId];
+      setCart(nextCart);
+      setCartUom(nextUom);
       return;
     }
     const item = items.find((i) => i.id === itemId);
     const stock = item ? Number(item.stockQuantity ?? 0) : 9999;
-    if (qty > stock && stock > 0) {
-      setError(`Cannot exceed available stock (${stock} units)`);
+    const selectedUnit = cartUom[itemId] || item?.unit || "Piece";
+    const ratio = item ? getUomRatio(item, selectedUnit) : 1;
+
+    if (qty * ratio > stock && stock > 0) {
+      setError(`Cannot exceed available stock (${stock} base pieces)`);
       return;
     }
     setError(null);
     setCart({ ...cart, [itemId]: qty });
   }
 
+  function updateItemUom(itemId: string, unitName: string) {
+    setCartUom({ ...cartUom, [itemId]: unitName });
+  }
+
   function removeFromCart(itemId: string) {
-    const next = { ...cart };
-    delete next[itemId];
-    setCart(next);
+    const nextCart = { ...cart };
+    const nextUom = { ...cartUom };
+    delete nextCart[itemId];
+    delete nextUom[itemId];
+    setCart(nextCart);
+    setCartUom(nextUom);
   }
 
   function clearCart() {
     setCart({});
+    setCartUom({});
     setSaleMessage(null);
     setError(null);
   }
@@ -119,11 +163,15 @@ export default function PosPage() {
   const cartLines = Object.entries(cart)
     .map(([itemId, qty]) => {
       const item = items.find((i) => i.id === itemId);
-      return item ? { item, qty } : null;
+      const unitName = cartUom[itemId] || item?.unit || "Piece";
+      const unitPrice = item ? getItemUnitPrice(item, priceTier, unitName) : 0;
+      const ratio = item ? getUomRatio(item, unitName) : 1;
+      const basePieces = qty * ratio;
+      return item ? { item, qty, unitName, unitPrice, ratio, basePieces } : null;
     })
-    .filter((line): line is { item: ItemResponse; qty: number } => line !== null);
+    .filter((line): line is { item: ItemResponse; qty: number; unitName: string; unitPrice: number; ratio: number; basePieces: number } => line !== null);
 
-  const subtotal = cartLines.reduce((sum, line) => sum + Number(line.item.price) * line.qty, 0);
+  const subtotal = cartLines.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
 
   async function handleCharge() {
     if (cartLines.length === 0) return;
@@ -132,8 +180,11 @@ export default function PosPage() {
     const userId = user?.id || "0f4c78ce-14cc-4d67-86f8-a12ddfea3ef7";
     const invoiceNumber = `POS-${Date.now().toString().slice(-6)}`;
 
-    // Snapshot sold quantities before clearing cart
-    const soldSnapshot = { ...cart };
+    // Snapshot base stock deductions for sold items
+    const baseStockDeductions: Record<string, number> = {};
+    cartLines.forEach((l) => {
+      baseStockDeductions[l.item.id] = l.basePieces;
+    });
 
     setIsSubmitting(true);
     setError(null);
@@ -145,18 +196,18 @@ export default function PosPage() {
         paymentMethod,
         lines: cartLines.map((l) => ({
           itemId: l.item.id,
-          quantity: l.qty,
-          unitPrice: Number(l.item.price),
+          quantity: l.basePieces,
+          unitPrice: l.unitPrice,
         })),
       });
 
       // Instantly decrement in-memory product stock for sold items
       setItems((prevItems) =>
         prevItems.map((item) => {
-          const qtySold = soldSnapshot[item.id] ?? 0;
-          if (qtySold > 0) {
+          const baseDeduction = baseStockDeductions[item.id] ?? 0;
+          if (baseDeduction > 0) {
             const currentStock = Number(item.stockQuantity ?? 0);
-            return { ...item, stockQuantity: Math.max(0, currentStock - qtySold) };
+            return { ...item, stockQuantity: Math.max(0, currentStock - baseDeduction) };
           }
           return item;
         })
@@ -164,6 +215,7 @@ export default function PosPage() {
 
       setSaleMessage(`Sale Complete! Invoice ${invoiceNumber} posted.`);
       setCart({});
+      setCartUom({});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
     } finally {
@@ -176,14 +228,17 @@ export default function PosPage() {
       {/* Left: search + product grid */}
       <div className="space-y-4 lg:col-span-2">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-2xl font-bold text-ink">Point of Sale (POS)</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-ink">Point of Sale (POS)</h1>
+            <p className="text-xs text-ink/50 mt-0.5">Bin Essa Retail & Wholesale Sales Counter</p>
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, SKU, barcode..."
-              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-gold sm:w-72"
+              className="w-full rounded-xl border border-ink/10 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-gold sm:w-64 font-mono"
             />
             <button
               type="button"
@@ -196,21 +251,44 @@ export default function PosPage() {
           </div>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`rounded-xl px-3 py-1.5 font-semibold transition whitespace-nowrap ${
-                selectedCategory === cat
-                  ? "bg-ink text-white shadow-sm"
-                  : "bg-white border border-ink/10 text-ink/70 hover:bg-ink/5"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        {/* Multi-Price Tier & Category Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-2.5 rounded-2xl border border-ink/10 shadow-xs">
+          {/* Price Tier Selector */}
+          <div className="flex items-center gap-1.5 bg-ink/5 p-1 rounded-xl">
+            <span className="text-[11px] font-bold text-ink/60 px-2">Price Tier:</span>
+            {(["RETAIL", "SEMI_WHOLESALE", "WHOLESALE"] as const).map((tier) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => setPriceTier(tier)}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition whitespace-nowrap ${
+                  priceTier === tier
+                    ? "bg-ink text-white shadow-xs"
+                    : "text-ink/70 hover:text-ink"
+                }`}
+              >
+                {tier === "RETAIL" ? "🏷️ Retail" : tier === "SEMI_WHOLESALE" ? "🏢 Semi-WS" : "📦 Wholesale"}
+              </button>
+            ))}
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto text-xs py-0.5">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`rounded-lg px-2.5 py-1 font-semibold transition whitespace-nowrap ${
+                  selectedCategory === cat
+                    ? "bg-gold text-ink font-bold shadow-xs"
+                    : "bg-ink/5 text-ink/70 hover:bg-ink/10"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (
@@ -234,13 +312,14 @@ export default function PosPage() {
               const outOfStock = stock <= 0;
               const isLowStock = stock > 0 && stock <= 10;
               const unitStr = item.unit || "pcs";
+              const activePrice = getItemUnitPrice(item, priceTier);
 
               return (
                 <button
                   key={item.id}
                   onClick={() => addToCart(item)}
                   disabled={outOfStock}
-                  className={`flex flex-col justify-between rounded-2xl border p-4 text-start transition shadow-sm ${
+                  className={`flex flex-col justify-between rounded-2xl border p-4 text-start transition shadow-sm relative ${
                     outOfStock
                       ? "border-red-200 bg-red-50/30 opacity-60 cursor-not-allowed"
                       : isLowStock
@@ -249,15 +328,44 @@ export default function PosPage() {
                   }`}
                 >
                   <div>
-                    <span className="text-xs font-semibold text-gold uppercase tracking-wider">{item.category}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-gold uppercase tracking-wider">{item.category}</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-ink/5 text-ink/70">
+                        {priceTier === "RETAIL" ? "Retail" : priceTier === "SEMI_WHOLESALE" ? "Semi-WS" : "Wholesale"}
+                      </span>
+                    </div>
+
                     <h3 className="line-clamp-2 text-sm font-bold text-ink mt-0.5">{item.name}</h3>
                     <p className="numeric-ltr text-xs text-ink/50 font-mono">SKU: {item.sku}</p>
+
+                    {/* Admin Governance Controls Badges */}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {item.trackExpiry && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                          📅 Expiry
+                        </span>
+                      )}
+                      {item.blockFreeGift && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-100 text-red-700 border border-red-200">
+                          🚫 No Gift
+                        </span>
+                      )}
+                      {item.blockDiscount ? (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-100 text-red-700 border border-red-200">
+                          🔒 No Disc
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                          🏷️ Max {item.maxDiscountPercent ?? 10}%
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-4 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="numeric-ltr text-sm font-bold text-ink">
-                        {formatKD(Number(item.price))} KD
+                        {formatKD(activePrice)} KD
                       </span>
                     </div>
                     <div>
@@ -289,7 +397,12 @@ export default function PosPage() {
       <div className="flex flex-col justify-between rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
         <div>
           <div className="mb-4 flex items-center justify-between border-b border-ink/10 pb-3">
-            <h2 className="text-base font-bold text-ink">Current Order</h2>
+            <div>
+              <h2 className="text-base font-bold text-ink">Current Cart</h2>
+              <span className="text-xs font-semibold text-ink/50">
+                Tier: {priceTier === "RETAIL" ? "Retail Selling" : priceTier === "SEMI_WHOLESALE" ? "Semi-Wholesale" : "Wholesale"}
+              </span>
+            </div>
             {cartLines.length > 0 && (
               <button
                 onClick={clearCart}
@@ -311,39 +424,67 @@ export default function PosPage() {
               Order cart is empty. Click items on the left to add.
             </div>
           ) : (
-            <div className="max-h-[350px] overflow-y-auto divide-y divide-ink/5">
-              {cartLines.map(({ item, qty }) => (
-                <div key={item.id} className="flex items-center justify-between py-3">
-                  <div className="flex-1 pr-2">
-                    <h4 className="line-clamp-1 text-sm font-bold text-ink">{item.name}</h4>
-                    <span className="numeric-ltr text-xs text-ink/60">
-                      {formatKD(Number(item.price))} KD × {qty}
-                    </span>
-                  </div>
+            <div className="max-h-[360px] overflow-y-auto divide-y divide-ink/5">
+              {cartLines.map(({ item, qty, unitName, unitPrice }) => {
+                const availableUoms = item.uoms && item.uoms.length > 0
+                  ? item.uoms
+                  : [
+                      { unitName: "Piece", conversionRatio: 1 },
+                      { unitName: "Pack", conversionRatio: 5 },
+                      { unitName: "Box", conversionRatio: 100 },
+                      { unitName: "Carton", conversionRatio: 1000 },
+                    ];
 
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => updateQty(item.id, qty - 1)}
-                      className="h-7 w-7 rounded-lg border border-ink/20 text-xs font-bold text-ink hover:bg-ink/5"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center text-xs font-bold text-ink">{qty}</span>
-                    <button
-                      onClick={() => updateQty(item.id, qty + 1)}
-                      className="h-7 w-7 rounded-lg border border-ink/20 text-xs font-bold text-ink hover:bg-ink/5"
-                    >
-                      +
-                    </button>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="ml-1 text-xs text-red-600 hover:underline"
-                    >
-                      ✕
-                    </button>
+                return (
+                  <div key={item.id} className="py-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="line-clamp-1 text-sm font-bold text-ink">{item.name}</h4>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-xs text-red-600 hover:underline px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      {/* Multi-UOM Unit Selector */}
+                      <select
+                        value={unitName}
+                        onChange={(e) => updateItemUom(item.id, e.target.value)}
+                        className="rounded-lg border border-ink/20 px-2 py-0.5 text-[11px] font-bold text-ink bg-slate-50 outline-none focus:border-gold"
+                      >
+                        {availableUoms.map((u) => (
+                          <option key={u.unitName} value={u.unitName}>
+                            {u.unitName} (1:{u.conversionRatio})
+                          </option>
+                        ))}
+                      </select>
+
+                      <span className="numeric-ltr text-xs font-mono font-bold text-ink">
+                        {formatKD(unitPrice)} KD × {qty} = {formatKD(unitPrice * qty)} KD
+                      </span>
+
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => updateQty(item.id, qty - 1)}
+                          className="h-6 w-6 rounded-lg border border-ink/20 text-xs font-bold text-ink hover:bg-ink/5"
+                        >
+                          -
+                        </button>
+                        <span className="w-5 text-center text-xs font-bold text-ink">{qty}</span>
+                        <button
+                          onClick={() => updateQty(item.id, qty + 1)}
+                          className="h-6 w-6 rounded-lg border border-ink/20 text-xs font-bold text-ink hover:bg-ink/5"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -352,7 +493,7 @@ export default function PosPage() {
         <div className="mt-6 border-t border-ink/10 pt-4 space-y-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between font-bold text-ink text-base">
-              <span>Total:</span>
+              <span>Total Payable:</span>
               <span className="numeric-ltr text-gold">{formatKD(subtotal)} KD</span>
             </div>
           </div>
@@ -364,17 +505,17 @@ export default function PosPage() {
               onChange={(e) => setPaymentMethod(e.target.value as any)}
               className="w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs font-semibold text-ink outline-none focus:border-gold"
             >
-              <option value="CASH">Cash</option>
-              <option value="CARD">Card / K-Net</option>
-              <option value="CREDIT">Credit</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
+              <option value="CASH">Cash Drawer</option>
+              <option value="CARD">Card / K-Net Terminal</option>
+              <option value="CREDIT">Wholesale Credit</option>
+              <option value="BANK_TRANSFER">Bank Wire Transfer</option>
             </select>
           </div>
 
           <button
             onClick={handleCharge}
             disabled={cartLines.length === 0 || isSubmitting}
-            className="w-full rounded-xl bg-ink py-3 text-sm font-bold text-white shadow hover:bg-gold hover:text-ink disabled:opacity-40"
+            className="w-full rounded-xl bg-ink py-3 text-sm font-bold text-white shadow hover:bg-gold hover:text-ink disabled:opacity-40 transition-colors"
           >
             {isSubmitting ? "Processing Sale..." : "Complete Sale & Post GL"}
           </button>
