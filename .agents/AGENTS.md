@@ -35,12 +35,15 @@
   - 2 JM Art Zone branches (customized gifts, acrylic products, mugs, signage, decorative items).
 - **Wholesale Key Client Accounts**: Trolley, Bodega, Lulu Hypermarket, Hi & Buy, Al Naser, Oncost, Dukan, City Centre, 50%+ of Kuwait vape shops, and A-Class grocery/mini-market network.
 - **Product Categories**: Disposable Vape Devices, Pod Systems & Vape Products, Nicotine Pouches, Dokha & Medwakh, Cigarette Lighters, Rolling Papers, Rolling Paper Tobacco (HBT), Pipe Accessories, Smoking Accessories, General Accessories.
-- **Exclusive & Distributed Brand Portfolio**:
-  - *Lighters*: Cricket, Fuego
-  - *Rolling Papers & Cones*: RAW, Cones, Laze
-  - *Tobacco & Pipes*: HBT (Handmade Brazilian Tobacco), Vauen Dr Perl, Al Basha
-  - *Charcoal*: Crown Charcoal (40mm)
-  - *Vape & Pod Devices*: Beco, Wafer, BLVK, Click, Al Basha, Reero, Smart Zone
-  - *Nicotine Pouches*: Fox, Siberia, Bagz (Power Mint)
+## 7. 14-Branch Enterprise ERP Specifications & Discovery Memory
+- **14 Physical Stores + Head Office Architecture**: Single centralized PostgreSQL database carrying `branchId` on every record. Real-time head office consolidation across 14 retail counters and 1 central warehouse (Shuwaikh Main Branch).
+- **Catalog Scale**: 20,000+ active SKUs today; unlimited/scalable, no cap going forward.
+- **Phenix ERP Data Migration**: Full data migration protocol (products, customers, suppliers, stock opening balances, chart of accounts, AP/AR open ledgers, 12+ months historical sales/purchases).
+- **USD Landed-Cost Purchasing Engine**: Multi-currency purchase entry in USD capturing exchange rate at order time. Freight, customs duties, and handling fees are automatically allocated across received item unit costs via moving-average or FIFO costing.
+- **Offline-First Sales Rep Mobile App (Android/Flutter)**: Reps take wholesale orders and record payment collections offline. Auto-syncs with backend when internet reconnects. Head-office price and credit limit rules take precedence on sync.
+- **B2B Wholesale Customer Portal**: Wholesale customer self-service ordering, tier-based pricing/discounts, live credit limit visibility, and order approval workflows.
+- **Per-Item Commercial Controls**: Per-item toggles for `blockDiscount`, `blockFreeGift`, and `blockSale`.
+- **Receipt & Label Printers**: ESC/POS thermal receipt printing and ZPL barcode/shelf label printer integration.
+
 
 
