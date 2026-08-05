@@ -551,6 +551,33 @@ const FALLBACK_ITEMS: ItemResponse[] = [
   },
 ];
 
+const ITEMS_STORAGE_KEY = "bin-essa-items-stock-v2";
+
+export function getStoredItems(): ItemResponse[] {
+  if (typeof window === "undefined") return FALLBACK_ITEMS;
+  try {
+    const raw = localStorage.getItem(ITEMS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return FALLBACK_ITEMS;
+}
+
+export function saveStoredItems(items: ItemResponse[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ITEMS_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Ignore storage error
+  }
+}
+
 export async function listItemsRequest(): Promise<ItemResponse[]> {
   clearApiCache();
   const token = localStorage.getItem("bin-essa-access-token");
@@ -566,12 +593,14 @@ export async function listItemsRequest(): Promise<ItemResponse[]> {
       },
     });
     if (res.ok) {
-      return res.json();
+      const data = await res.json();
+      saveStoredItems(data);
+      return data;
     }
   } catch (e) {
-    console.warn("Backend unavailable, using fallback items", e);
+    console.warn("Backend unavailable, using persistent stored items", e);
   }
-  return FALLBACK_ITEMS;
+  return getStoredItems();
 }
 
 export async function updateItemRequest(
@@ -579,20 +608,42 @@ export async function updateItemRequest(
   payload: Partial<CreateItemPayload>
 ): Promise<ItemResponse> {
   const token = localStorage.getItem("bin-essa-access-token");
-  const res = await fetch(`${API_BASE}/items/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.message ?? "Failed to update item");
+  try {
+    const res = await fetch(`${API_BASE}/items/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const updatedItem = await res.json();
+      const currentItems = getStoredItems();
+      const idx = currentItems.findIndex((i) => i.id === id);
+      if (idx >= 0) {
+        currentItems[idx] = { ...currentItems[idx], ...updatedItem };
+        saveStoredItems(currentItems);
+      }
+      clearApiCache();
+      return updatedItem;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable, updating item in local persistent store", e);
   }
-  clearApiCache();
-  return res.json();
+
+  const currentItems = getStoredItems();
+  const item = currentItems.find((i) => i.id === id) || FALLBACK_ITEMS.find((i) => i.id === id);
+  if (item) {
+    if (payload.name) item.name = payload.name;
+    if (payload.price !== undefined) item.price = String(payload.price);
+    if (payload.cost !== undefined) item.cost = String(payload.cost);
+    if (payload.stockQuantity !== undefined) item.stockQuantity = payload.stockQuantity;
+    saveStoredItems(currentItems);
+    clearApiCache();
+    return item;
+  }
+  throw new Error("Item not found");
 }
 
 export async function deleteItemRequest(id: string): Promise<void> {
@@ -1235,12 +1286,14 @@ export async function createSalesInvoiceRequest(
       body: JSON.stringify(payload),
     });
     if (res.ok) {
+      const items = getStoredItems();
       payload.lines.forEach((l) => {
-        const item = FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+        const item = items.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
         if (item) {
           item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
         }
       });
+      saveStoredItems(items);
       clearApiCache();
       return res.json();
     }
@@ -1274,13 +1327,15 @@ export async function createSalesInvoiceRequest(
     })),
   };
 
-  // Decrement fallback stock quantity for each sold line item
+  // Decrement persistent stock quantity for each sold line item
+  const storedItems = getStoredItems();
   payload.lines.forEach((l) => {
-    const item = FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+    const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
     if (item) {
       item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
     }
   });
+  saveStoredItems(storedItems);
 
   saveLocalSalesInvoice(fallbackInv);
   clearApiCache();
