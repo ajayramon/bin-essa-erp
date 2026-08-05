@@ -190,7 +190,9 @@ model Item {
   stockTransferLines   StockTransferLine[]
   salesOrderLines      SalesOrderLine[]
   promotionItems       PromotionItem[]
-
+  variants             ItemVariant[]
+  serials              ItemSerial[]
+  batches              ItemBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -669,6 +671,54 @@ model RolePermission {
   modules   String[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ================= PRODUCT VARIANTS & SERIAL/BATCH TRACKING =================
+
+enum SerialStatus {
+  IN_STOCK
+  SOLD
+  RETURNED
+}
+
+model ItemVariant {
+  id          String   @id @default(uuid())
+  itemId      String
+  sku         String   @unique
+  barcode     String   @unique
+  variantName String
+  price       Decimal  @db.Decimal(10, 3)
+  cost        Decimal  @default(0) @db.Decimal(10, 3)
+  stock       Decimal  @default(0) @db.Decimal(10, 3)
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ItemSerial {
+  id           String       @id @default(uuid())
+  itemId       String
+  serialNumber String       @unique
+  status       SerialStatus @default(IN_STOCK)
+  item         Item         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model ItemBatch {
+  id          String   @id @default(uuid())
+  itemId      String
+  batchNumber String
+  expiryDate  DateTime
+  quantity    Decimal  @db.Decimal(10, 3)
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([itemId, batchNumber])
 }
 
 

@@ -21,6 +21,8 @@ import { DiscountPermissionsModule } from './discount-permissions/discount-permi
 import { UsersModule } from './users/users.module';
 import { PosShiftsModule } from './pos-shifts/pos-shifts.module';
 import { PdcChecksModule } from './pdc-checks/pdc-checks.module';
+import { ItemVariantsModule } from './item-variants/item-variants.module';
+import { AgingReportsModule } from './aging-reports/aging-reports.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -45,6 +47,8 @@ import { PdcChecksModule } from './pdc-checks/pdc-checks.module';
     DiscountPermissionsModule,
     PosShiftsModule,
     PdcChecksModule,
+    ItemVariantsModule,
+    AgingReportsModule,
   ],
 
   controllers: [AppController],

@@ -2208,3 +2208,86 @@ export async function clearPdcCheckRequest(id: string): Promise<PdcCheckRecord> 
   return res.json();
 }
 
+// ================= ITEM VARIANTS & AGING REPORTS API CLIENT =================
+
+export interface ItemVariantRecord {
+  id: string;
+  itemId: string;
+  sku: string;
+  barcode: string;
+  variantName: string;
+  price: number;
+  cost: number;
+  stock: number;
+}
+
+export interface CustomerArAgingRecord {
+  customerId: string;
+  customerCode: string;
+  customerName: string;
+  creditLimit: number;
+  current: number;
+  days31to60: number;
+  days61to90: number;
+  days90Plus: number;
+  totalOutstanding: number;
+}
+
+export async function listItemVariantsRequest(itemId: string): Promise<ItemVariantRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/item-variants/item/${itemId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listItemVariants", e);
+  }
+  return [];
+}
+
+export async function createItemVariantRequest(payload: {
+  itemId: string;
+  sku: string;
+  barcode: string;
+  variantName: string;
+  price: number;
+  cost?: number;
+  stock?: number;
+}): Promise<ItemVariantRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/item-variants`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create variant");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function getCustomerArAgingReportRequest(): Promise<CustomerArAgingRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/aging-reports/customer-ar`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for AR aging report", e);
+  }
+  return [];
+}
+
