@@ -9,22 +9,13 @@ import {
   type ItemRecord,
   type ItemVariantRecord,
 } from "@/lib/api";
-import {
-  Tag,
-  Plus,
-  Search,
-  Package,
-  Layers,
-  Barcode,
-  DollarSign,
-  AlertCircle,
-  CheckCircle2,
-  RefreshCw,
-  Filter,
-} from "lucide-react";
+
+function formatKD(amount: number) {
+  return amount.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+}
 
 export default function ItemModifiersPage() {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   const [items, setItems] = useState<ItemRecord[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
@@ -114,77 +105,81 @@ export default function ItemModifiersPage() {
   );
 
   return (
-    <div className="p-8 space-y-8 bg-slate-900/40 min-h-screen text-slate-100 font-sans">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl">
-            <Tag className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-wide">
-              {locale === "ar" ? "متغيرات الصنف والمواصفات" : "Item Modifiers & Product Variants"}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              {locale === "ar"
-                ? "إدارة خصائص الصنف الفرعية (النكهة، اللون، النيكوتين، الحجم) وأرقام الباركود والأسعار KWD"
-                : "Manage SKU sub-attributes (flavors, colors, nic levels), barcodes, and variant prices."}
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">
+            {locale === "ar" ? "متغيرات الصنف والمواصفات" : "Item Modifiers & Product Variants"}
+          </h1>
+          <p className="text-xs text-ink/50 mt-0.5">
+            {locale === "ar"
+              ? "إدارة خصائص الصنف الفرعية (النكهة، اللون، النيكوتين، الحجم) وأرقام الباركود والأسعار KWD"
+              : "Configure sub-SKU variants, nic levels, flavors, barcodes, and custom unit prices."}
+          </p>
         </div>
 
         <button
           onClick={() => setShowModal(true)}
           disabled={!selectedItemId}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-gold hover:text-ink transition-colors disabled:opacity-40"
         >
-          <Plus className="w-4 h-4" />
-          Add New Variant
+          <span>➕</span> Add New Variant
         </button>
+      </div>
+
+      {/* Executive Smart Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Total Catalog Items</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{items.length}</p>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Active Variants (Selected SKU)</p>
+          <p className="mt-1 text-2xl font-bold text-indigo-700">{variants.length}</p>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Selected Master Item</p>
+          <p className="mt-1 text-base font-bold text-ink line-clamp-1">{selectedItem ? selectedItem.name : "None"}</p>
+        </div>
       </div>
 
       {/* Alerts */}
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center gap-3 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
+        <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+          ⚠️ {error}
         </div>
       )}
-
       {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-3 text-sm">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span>{successMsg}</span>
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+          ✅ {successMsg}
         </div>
       )}
 
       {/* Main Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Item Selector List */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Package className="w-4 h-4 text-indigo-400" />
-              Select Base Master Product
-            </h2>
+        <div className="lg:col-span-4 space-y-3">
+          <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm space-y-3">
+            <h2 className="text-sm font-bold text-ink">Select Base Master Product</h2>
 
-            <div className="divide-y divide-slate-800/60 max-h-[600px] overflow-y-auto pr-1">
+            <div className="divide-y divide-ink/5 max-h-[550px] overflow-y-auto pr-1">
               {items.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setSelectedItemId(item.id)}
                   className={`w-full text-start p-3 rounded-xl transition flex items-center justify-between my-1 ${
                     selectedItemId === item.id
-                      ? "bg-indigo-500/15 border border-indigo-500/30 text-white"
-                      : "hover:bg-slate-800/40 text-slate-300"
+                      ? "bg-gold/20 border border-gold text-ink font-bold"
+                      : "hover:bg-ink/5 text-ink/80"
                   }`}
                 >
                   <div className="space-y-0.5">
-                    <div className="font-bold text-sm">{item.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">SKU: {item.sku}</div>
+                    <div className="font-bold text-xs text-ink">{item.name}</div>
+                    <div className="text-[11px] text-ink/50 font-mono">SKU: {item.sku}</div>
                   </div>
-                  <span className="text-xs font-mono font-semibold text-emerald-400">
-                    {Number(item.price).toFixed(3)} KD
+                  <span className="numeric-ltr text-xs font-mono font-bold text-ink">
+                    {formatKD(Number(item.price))} KD
                   </span>
                 </button>
               ))}
@@ -193,64 +188,60 @@ export default function ItemModifiersPage() {
         </div>
 
         {/* Selected Item Variants Grid */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="lg:col-span-8 space-y-4">
           {selectedItem ? (
-            <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-6">
+            <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm space-y-4">
               {/* Product Info Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink/10 pb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-indigo-400" />
-                    {selectedItem.name}
-                  </h2>
-                  <p className="text-xs text-slate-400 font-mono mt-1">
-                    Master SKU: {selectedItem.sku} | Base Price: {Number(selectedItem.price).toFixed(3)} KD
+                  <h2 className="text-base font-bold text-ink">{selectedItem.name}</h2>
+                  <p className="numeric-ltr text-xs text-ink/50 font-mono mt-0.5">
+                    Master SKU: {selectedItem.sku} | Base Price: {formatKD(Number(selectedItem.price))} KD
                   </p>
                 </div>
 
                 <div className="relative w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search variants..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none focus:border-indigo-500"
+                    placeholder="Search variants by name, SKU..."
+                    className="w-full bg-white border border-ink/10 rounded-xl px-3 py-2 text-xs text-ink outline-none focus:border-gold font-mono"
                   />
                 </div>
               </div>
 
               {/* Variants Table */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+              <div className="rounded-xl border border-ink/10 bg-white overflow-hidden">
                 <table className="w-full text-start text-xs">
-                  <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
+                  <thead className="bg-ink/5 text-ink/70 font-semibold border-b border-ink/10">
                     <tr>
-                      <th className="p-3.5">Variant Name</th>
-                      <th className="p-3.5">Variant SKU</th>
-                      <th className="p-3.5">Barcode</th>
-                      <th className="p-3.5">Selling Price</th>
-                      <th className="p-3.5">Cost</th>
-                      <th className="p-3.5">Stock</th>
+                      <th className="p-3 text-start">Variant Name</th>
+                      <th className="p-3 text-start">Variant SKU</th>
+                      <th className="p-3 text-start">Barcode</th>
+                      <th className="p-3 text-start">Selling Price</th>
+                      <th className="p-3 text-start">Cost</th>
+                      <th className="p-3 text-start">Stock</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+                  <tbody className="divide-y divide-ink/5 font-mono">
                     {filteredVariants.map((v) => (
-                      <tr key={v.id} className="hover:bg-slate-800/30 transition">
-                        <td className="p-3.5 font-bold font-sans text-white">{v.variantName}</td>
-                        <td className="p-3.5 text-indigo-400">{v.sku}</td>
-                        <td className="p-3.5 text-slate-400">{v.barcode || "—"}</td>
-                        <td className="p-3.5 font-bold text-emerald-400">
-                          {Number(v.price).toFixed(3)} KD
+                      <tr key={v.id} className="hover:bg-ink/5 transition">
+                        <td className="p-3 font-bold font-sans text-ink">{v.variantName}</td>
+                        <td className="p-3 text-ink/70">{v.sku}</td>
+                        <td className="p-3 text-ink/50">{v.barcode || "—"}</td>
+                        <td className="p-3 font-bold text-ink">
+                          {formatKD(Number(v.price))} KD
                         </td>
-                        <td className="p-3.5 text-slate-400">{Number(v.cost).toFixed(3)} KD</td>
-                        <td className="p-3.5">
+                        <td className="p-3 text-ink/50">{formatKD(Number(v.cost))} KD</td>
+                        <td className="p-3">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                               v.stock > 10
-                                ? "bg-emerald-500/10 text-emerald-400"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                 : v.stock > 0
-                                ? "bg-amber-500/10 text-amber-400"
-                                : "bg-rose-500/10 text-rose-400"
+                                ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                : "bg-red-100 text-red-700 border border-red-200"
                             }`}
                           >
                             {v.stock} pcs
@@ -260,7 +251,7 @@ export default function ItemModifiersPage() {
                     ))}
                     {filteredVariants.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
+                        <td colSpan={6} className="p-8 text-center text-ink/40 font-sans">
                           No variants created for this item yet. Click "Add New Variant" to define attributes.
                         </td>
                       </tr>
@@ -270,7 +261,7 @@ export default function ItemModifiersPage() {
               </div>
             </div>
           ) : (
-            <div className="p-12 rounded-3xl bg-slate-900/40 border border-slate-800 text-center text-slate-400">
+            <div className="p-12 rounded-2xl border border-ink/10 bg-white text-center text-ink/40 shadow-sm">
               Select an item from the left catalog list to manage its variants.
             </div>
           )}
@@ -279,16 +270,13 @@ export default function ItemModifiersPage() {
 
       {/* Create Variant Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-indigo-400" />
-                Add New Item Variant
-              </h3>
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Add New Item Variant</h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-white font-bold"
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
               >
                 ✕
               </button>
@@ -296,88 +284,88 @@ export default function ItemModifiersPage() {
 
             <form onSubmit={handleCreateVariant} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Variant Name</label>
+                <label className="block font-bold text-slate-700 mb-1">Variant Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Nic 50mg - Blue Razz"
                   value={form.variantName}
                   onChange={(e) => setForm({ ...form, variantName: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-indigo-600 bg-slate-50"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Variant SKU</label>
+                  <label className="block font-bold text-slate-700 mb-1">Variant SKU</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. VAPE-01-BLUERAZZ"
                     value={form.sku}
                     onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Barcode</label>
+                  <label className="block font-bold text-slate-700 mb-1">Barcode</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. 62911002233"
                     value={form.barcode}
                     onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Selling Price (KD)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Price (KD)</label>
                   <input
                     type="number"
-                    step="0.005"
+                    step="0.001"
                     required
                     value={form.price}
                     onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Unit Cost (KD)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Cost (KD)</label>
                   <input
                     type="number"
-                    step="0.005"
+                    step="0.001"
                     value={form.cost}
                     onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Opening Stock</label>
+                  <label className="block font-bold text-slate-700 mb-1">Opening Stock</label>
                   <input
                     type="number"
                     value={form.stock}
                     onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-semibold"
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Save Variant
                 </button>

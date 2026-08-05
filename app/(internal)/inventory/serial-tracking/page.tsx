@@ -3,20 +3,6 @@
 import { useEffect, useState } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { listItemsRequest, type ItemRecord } from "@/lib/api";
-import {
-  Clock,
-  QrCode,
-  ShieldCheck,
-  AlertTriangle,
-  Search,
-  Plus,
-  Package,
-  Calendar,
-  CheckCircle2,
-  Layers,
-  Filter,
-  FileSpreadsheet,
-} from "lucide-react";
 
 export interface ItemSerialRecord {
   id: string;
@@ -39,7 +25,7 @@ export interface ItemBatchRecord {
   daysRemaining: number;
 }
 
-// Initial Mock Datasets for High-Value Hardware & Perishable Batches
+// Initial Datasets for High-Value Hardware & Perishable Batches
 const MOCK_SERIALS: ItemSerialRecord[] = [
   {
     id: "ser-001",
@@ -104,7 +90,7 @@ const MOCK_BATCHES: ItemBatchRecord[] = [
 ];
 
 export default function SerialTrackingPage() {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   const [activeTab, setActiveTab] = useState<"SERIALS" | "BATCHES">("SERIALS");
   const [serials, setSerials] = useState<ItemSerialRecord[]>(MOCK_SERIALS);
@@ -209,129 +195,133 @@ export default function SerialTrackingPage() {
   );
 
   return (
-    <div className="p-8 space-y-8 bg-slate-900/40 min-h-screen text-slate-100 font-sans">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl">
-            <QrCode className="w-7 h-7" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-wide">
-              {locale === "ar"
-                ? "تتبع الأرقام التسلسلية والشحنات"
-                : "Serial Number & Batch Expiry Tracking"}
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              {locale === "ar"
-                ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
-                : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink">
+            {locale === "ar"
+              ? "تتبع الأرقام التسلسلية والشحنات"
+              : "Serial Number & Batch Expiry Tracking"}
+          </h1>
+          <p className="text-xs text-ink/50 mt-0.5">
+            {locale === "ar"
+              ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
+              : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {activeTab === "SERIALS" ? (
             <button
               onClick={() => setShowSerialModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/20 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-gold hover:text-ink transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              Register Serial #
+              <span>➕</span> Register Serial #
             </button>
           ) : (
             <button
               onClick={() => setShowBatchModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-600/20 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-gold hover:text-ink transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              Register New Batch
+              <span>➕</span> Register New Batch
             </button>
           )}
         </div>
       </div>
 
+      {/* Executive Smart Analytics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Registered Hardware Serials</p>
+          <p className="mt-1 text-2xl font-bold text-ink">{serials.length}</p>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Tracked Batches</p>
+          <p className="mt-1 text-2xl font-bold text-indigo-700">{batches.length}</p>
+        </div>
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Expiring Batches (≤30 Days)</p>
+          <p className="mt-1 text-2xl font-bold text-red-600">
+            {batches.filter((b) => b.daysRemaining <= 30).length}
+          </p>
+        </div>
+      </div>
+
       {/* Success Notification */}
       {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center gap-3 text-sm">
-          <CheckCircle2 className="w-5 h-5 shrink-0" />
-          <span>{successMsg}</span>
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+          ✅ {successMsg}
         </div>
       )}
 
       {/* Navigation Tabs & Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 p-1 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div className="flex items-center gap-1.5 bg-ink/5 p-1 rounded-2xl border border-ink/10">
           <button
             onClick={() => setActiveTab("SERIALS")}
-            className={`px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === "SERIALS"
-                ? "bg-indigo-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white text-ink shadow-xs"
+                : "text-ink/60 hover:text-ink"
             }`}
           >
-            <QrCode className="w-4 h-4" />
-            Device Serial Registry ({serials.length})
+            🏷️ Device Serial Registry ({serials.length})
           </button>
           <button
             onClick={() => setActiveTab("BATCHES")}
-            className={`px-5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               activeTab === "BATCHES"
-                ? "bg-indigo-600 text-white shadow-md"
-                : "text-slate-400 hover:text-white"
+                ? "bg-white text-ink shadow-xs"
+                : "text-ink/60 hover:text-ink"
             }`}
           >
-            <Clock className="w-4 h-4" />
-            Batch Expiration Health ({batches.length})
+            📅 Batch Expiration Health ({batches.length})
           </button>
         </div>
 
         <div className="relative w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={`Search ${activeTab === "SERIALS" ? "serial # or SKU..." : "batch # or item..."}`}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white outline-none focus:border-indigo-500"
+            className="w-full bg-white border border-ink/10 rounded-2xl px-4 py-2.5 text-xs text-ink outline-none focus:border-gold font-mono shadow-xs"
           />
         </div>
       </div>
 
       {/* Main Content Tables */}
       {activeTab === "SERIALS" ? (
-        <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-400" />
-            Hardware Device Serial Number Inventory
-          </h2>
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm space-y-4">
+          <h2 className="text-base font-bold text-ink">Hardware Device Serial Number Inventory</h2>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+          <div className="rounded-xl border border-ink/10 bg-white overflow-hidden">
             <table className="w-full text-start text-xs">
-              <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
+              <thead className="bg-ink/5 text-ink/70 font-semibold border-b border-ink/10">
                 <tr>
-                  <th className="p-4">Serial Number</th>
-                  <th className="p-4">Product Name</th>
-                  <th className="p-4">SKU</th>
-                  <th className="p-4">Registered Date</th>
-                  <th className="p-4">Status</th>
+                  <th className="p-3.5 text-start">Serial Number</th>
+                  <th className="p-3.5 text-start">Product Name</th>
+                  <th className="p-3.5 text-start">SKU</th>
+                  <th className="p-3.5 text-start">Registered Date</th>
+                  <th className="p-3.5 text-start">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+              <tbody className="divide-y divide-ink/5 font-mono">
                 {filteredSerials.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-800/30 transition">
-                    <td className="p-4 font-bold text-indigo-400">{s.serialNumber}</td>
-                    <td className="p-4 font-sans text-white font-semibold">{s.itemName}</td>
-                    <td className="p-4 text-slate-400">{s.itemSku}</td>
-                    <td className="p-4">{new Date(s.createdAt).toLocaleDateString()}</td>
-                    <td className="p-4">
+                  <tr key={s.id} className="hover:bg-ink/5 transition">
+                    <td className="p-3.5 font-bold text-ink">{s.serialNumber}</td>
+                    <td className="p-3.5 font-sans text-ink font-semibold">{s.itemName}</td>
+                    <td className="p-3.5 text-ink/60">{s.itemSku}</td>
+                    <td className="p-3.5 text-ink/60">{new Date(s.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3.5">
                       <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide ${
                           s.status === "IN_STOCK"
-                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                             : s.status === "SOLD"
-                            ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
-                            : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                            ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
+                            : "bg-red-100 text-red-700 border border-red-200"
                         }`}
                       >
                         {s.status}
@@ -345,49 +335,46 @@ export default function SerialTrackingPage() {
         </div>
       ) : (
         /* Batches Expiration Dashboard */
-        <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-800 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Clock className="w-5 h-5 text-indigo-400" />
-            Batch Expiry & Shelf-Life Health Panel
-          </h2>
+        <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm space-y-4">
+          <h2 className="text-base font-bold text-ink">Batch Expiry & Shelf-Life Health Panel</h2>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 overflow-hidden">
+          <div className="rounded-xl border border-ink/10 bg-white overflow-hidden">
             <table className="w-full text-start text-xs">
-              <thead className="bg-slate-900 text-slate-400 font-semibold border-b border-slate-800">
+              <thead className="bg-ink/5 text-ink/70 font-semibold border-b border-ink/10">
                 <tr>
-                  <th className="p-4">Batch #</th>
-                  <th className="p-4">Product Name</th>
-                  <th className="p-4">Expiry Date</th>
-                  <th className="p-4">Shelf-Life Health Meter</th>
-                  <th className="p-4">Stock Quantity</th>
+                  <th className="p-3.5 text-start">Batch #</th>
+                  <th className="p-3.5 text-start">Product Name</th>
+                  <th className="p-3.5 text-start">Expiry Date</th>
+                  <th className="p-3.5 text-start">Shelf-Life Health Meter</th>
+                  <th className="p-3.5 text-start">Stock Quantity</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
+              <tbody className="divide-y divide-ink/5 font-mono">
                 {filteredBatches.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-800/30 transition">
-                    <td className="p-4 font-bold text-indigo-400">{b.batchNumber}</td>
-                    <td className="p-4 font-sans text-white font-semibold">{b.itemName}</td>
-                    <td className="p-4">{new Date(b.expiryDate).toLocaleDateString()}</td>
-                    <td className="p-4">
+                  <tr key={b.id} className="hover:bg-ink/5 transition">
+                    <td className="p-3.5 font-bold text-ink">{b.batchNumber}</td>
+                    <td className="p-3.5 font-sans text-ink font-semibold">{b.itemName}</td>
+                    <td className="p-3.5 text-ink/70">{new Date(b.expiryDate).toLocaleDateString()}</td>
+                    <td className="p-3.5">
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
                           <span
                             className={`font-bold ${
                               b.daysRemaining < 30
-                                ? "text-rose-400 animate-pulse"
+                                ? "text-red-700"
                                 : b.daysRemaining < 90
-                                ? "text-amber-400"
-                                : "text-emerald-400"
+                                ? "text-amber-800"
+                                : "text-emerald-800"
                             }`}
                           >
                             {b.daysRemaining} days remaining
                           </span>
                         </div>
-                        <div className="w-48 h-2 rounded-full bg-slate-800 overflow-hidden">
+                        <div className="w-48 h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
                           <div
                             className={`h-full rounded-full transition-all ${
                               b.daysRemaining < 30
-                                ? "bg-rose-500"
+                                ? "bg-red-500"
                                 : b.daysRemaining < 90
                                 ? "bg-amber-500"
                                 : "bg-emerald-500"
@@ -397,7 +384,7 @@ export default function SerialTrackingPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 font-bold text-white">{b.quantity} units</td>
+                    <td className="p-3.5 font-bold text-ink">{b.quantity} units</td>
                   </tr>
                 ))}
               </tbody>
@@ -408,25 +395,22 @@ export default function SerialTrackingPage() {
 
       {/* Register Serial Modal */}
       {showSerialModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <QrCode className="w-5 h-5 text-indigo-400" />
-                Register Hardware Serial #
-              </h3>
-              <button onClick={() => setShowSerialModal(false)} className="text-slate-400 hover:text-white font-bold">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Register Hardware Serial #</h3>
+              <button onClick={() => setShowSerialModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleRegisterSerial} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Select Product</label>
+                <label className="block font-bold text-slate-700 mb-1">Select Product</label>
                 <select
                   value={serialForm.itemId}
                   onChange={(e) => setSerialForm({ ...serialForm, itemId: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-medium outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 font-medium outline-none focus:border-indigo-600 bg-slate-50"
                 >
                   {items.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -437,28 +421,28 @@ export default function SerialTrackingPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Serial Number</label>
+                <label className="block font-bold text-slate-700 mb-1">Serial Number</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. SN-IQOS-2026-0099"
                   value={serialForm.serialNumber}
                   onChange={(e) => setSerialForm({ ...serialForm, serialNumber: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
                 />
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowSerialModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-semibold"
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Register Serial
                 </button>
@@ -470,25 +454,22 @@ export default function SerialTrackingPage() {
 
       {/* Register Batch Modal */}
       {showBatchModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Clock className="w-5 h-5 text-indigo-400" />
-                Register New Inventory Batch
-              </h3>
-              <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-white font-bold">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Register New Inventory Batch</h3>
+              <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleRegisterBatch} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Select Product</label>
+                <label className="block font-bold text-slate-700 mb-1">Select Product</label>
                 <select
                   value={batchForm.itemId}
                   onChange={(e) => setBatchForm({ ...batchForm, itemId: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-medium outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 font-medium outline-none focus:border-indigo-600 bg-slate-50"
                 >
                   {items.map((i) => (
                     <option key={i.id} value={i.id}>
@@ -499,52 +480,52 @@ export default function SerialTrackingPage() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Batch Number</label>
+                <label className="block font-bold text-slate-700 mb-1">Batch Number</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. BATCH-2026-10X"
                   value={batchForm.batchNumber}
                   onChange={(e) => setBatchForm({ ...batchForm, batchNumber: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Expiry Date</label>
+                  <label className="block font-bold text-slate-700 mb-1">Expiry Date</label>
                   <input
                     type="date"
                     required
                     value={batchForm.expiryDate}
                     onChange={(e) => setBatchForm({ ...batchForm, expiryDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Batch Quantity</label>
+                  <label className="block font-bold text-slate-700 mb-1">Batch Quantity</label>
                   <input
                     type="number"
                     required
                     value={batchForm.quantity}
                     onChange={(e) => setBatchForm({ ...batchForm, quantity: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono outline-none focus:border-indigo-500"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowBatchModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-semibold"
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Save Batch
                 </button>
