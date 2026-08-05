@@ -581,6 +581,7 @@ export function saveStoredItems(items: ItemResponse[]) {
 export async function listItemsRequest(): Promise<ItemResponse[]> {
   clearApiCache();
   const token = localStorage.getItem("bin-essa-access-token");
+  const storedItems = getStoredItems();
   try {
     const res = await fetch(`${API_BASE}/items?_t=${Date.now()}`, {
       method: "GET",
@@ -593,14 +594,24 @@ export async function listItemsRequest(): Promise<ItemResponse[]> {
       },
     });
     if (res.ok) {
-      const data = await res.json();
-      saveStoredItems(data);
-      return data;
+      const data: ItemResponse[] = await res.json();
+      const merged = data.map((serverItem) => {
+        const local = storedItems.find((s) => s.id === serverItem.id || s.sku === serverItem.sku);
+        if (local && local.stockQuantity !== undefined) {
+          const localQty = Number(local.stockQuantity);
+          const serverQty = Number(serverItem.stockQuantity);
+          const effectiveStock = Math.min(localQty, serverQty);
+          return { ...serverItem, stockQuantity: effectiveStock };
+        }
+        return serverItem;
+      });
+      saveStoredItems(merged);
+      return merged;
     }
   } catch (e) {
     console.warn("Backend unavailable, using persistent stored items", e);
   }
-  return getStoredItems();
+  return storedItems;
 }
 
 export async function updateItemRequest(
@@ -1276,6 +1287,17 @@ export async function createSalesInvoiceRequest(
   payload: CreateSalesInvoicePayload
 ): Promise<SalesInvoiceResponse> {
   const token = localStorage.getItem("bin-essa-access-token");
+  
+  // Decrement persistent stock quantity for each sold line item immediately
+  const storedItems = getStoredItems();
+  payload.lines.forEach((l) => {
+    const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+    if (item) {
+      item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
+    }
+  });
+  saveStoredItems(storedItems);
+
   try {
     const res = await fetch(`${API_BASE}/sales-invoices`, {
       method: "POST",
@@ -1286,14 +1308,6 @@ export async function createSalesInvoiceRequest(
       body: JSON.stringify(payload),
     });
     if (res.ok) {
-      const items = getStoredItems();
-      payload.lines.forEach((l) => {
-        const item = items.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
-        if (item) {
-          item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
-        }
-      });
-      saveStoredItems(items);
       clearApiCache();
       return res.json();
     }
@@ -1326,16 +1340,6 @@ export async function createSalesInvoiceRequest(
       lineTotal: String(l.quantity * l.unitPrice),
     })),
   };
-
-  // Decrement persistent stock quantity for each sold line item
-  const storedItems = getStoredItems();
-  payload.lines.forEach((l) => {
-    const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
-    if (item) {
-      item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
-    }
-  });
-  saveStoredItems(storedItems);
 
   saveLocalSalesInvoice(fallbackInv);
   clearApiCache();
