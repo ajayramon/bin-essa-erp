@@ -52,23 +52,8 @@ export const brandModules: NavEntry[] = [
     key: "pos",
     labelEn: "Point of Sale",
     labelAr: "نقطة البيع",
+    href: "/pos",
     icon: ShoppingCart,
-    children: [
-      {
-        key: "pos-counter",
-        labelEn: "POS Terminal Counter",
-        labelAr: "كاشير نقطة البيع",
-        href: "/pos",
-        icon: ShoppingCart,
-      },
-      {
-        key: "cash-closing",
-        labelEn: "Daily Cash Closing & Reconciliation",
-        labelAr: "إقفال الصندوق وتصفية الدرج",
-        href: "/pos/cash-closing",
-        icon: Clock,
-      },
-    ],
   },
   {
     key: "promotions",
@@ -81,30 +66,8 @@ export const brandModules: NavEntry[] = [
     key: "inventory",
     labelEn: "Inventory",
     labelAr: "المخزون",
+    href: "/inventory",
     icon: Package,
-    children: [
-      {
-        key: "stock-list",
-        labelEn: "Stock & Products Catalog",
-        labelAr: "كتالوج المنتجات والمخزون",
-        href: "/inventory",
-        icon: Package,
-      },
-      {
-        key: "item-modifiers",
-        labelEn: "Item Modifiers & Variants",
-        labelAr: "متغيرات الصنف والمواصفات",
-        href: "/inventory/item-modifiers",
-        icon: Tag,
-      },
-      {
-        key: "serial-tracking",
-        labelEn: "Serial & Batch Expiry Tracking",
-        labelAr: "تتبع الأرقام التسلسلية والشحنات",
-        href: "/inventory/serial-tracking",
-        icon: Clock,
-      },
-    ],
   },
   {
     key: "purchasing",

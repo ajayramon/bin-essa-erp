@@ -560,6 +560,13 @@ export default function PosPage() {
             >
               Sales Order
             </button>
+            <Link
+              href="/pos/cash-closing"
+              className="px-3 py-1.5 rounded-lg font-bold transition text-amber-300 hover:text-amber-200 hover:bg-indigo-800/60 flex items-center gap-1"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Cash Closing
+            </Link>
           </div>
         </div>
 

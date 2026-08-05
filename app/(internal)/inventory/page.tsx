@@ -209,7 +209,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-ink">{t.inventory.title}</h1>
           <p className="mt-1 text-ink/60">{t.inventory.subtitle}</p>
@@ -219,6 +219,25 @@ export default function InventoryPage() {
           className="whitespace-nowrap rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-gold hover:text-ink transition-colors"
         >
           + Add Item
+        </Link>
+      </div>
+
+      {/* Sub-Feature Module Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-ink/10 pb-3 text-xs font-semibold overflow-x-auto">
+        <span className="px-3.5 py-1.5 rounded-xl bg-ink text-white shadow-sm font-bold whitespace-nowrap">
+          Stock & Products Catalog
+        </span>
+        <Link
+          href="/inventory/item-modifiers"
+          className="px-3.5 py-1.5 rounded-xl text-ink/70 hover:bg-ink/5 hover:text-ink transition whitespace-nowrap"
+        >
+          Item Modifiers & Variants
+        </Link>
+        <Link
+          href="/inventory/serial-tracking"
+          className="px-3.5 py-1.5 rounded-xl text-ink/70 hover:bg-ink/5 hover:text-ink transition whitespace-nowrap"
+        >
+          Serial & Batch Expiry Tracking
         </Link>
       </div>
 
