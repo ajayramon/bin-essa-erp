@@ -1920,6 +1920,34 @@ export interface RolePermissionRecord {
   modules: string[];
 }
 
+export interface BranchResponse {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export async function listBranchesRequest(): Promise<BranchResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/settings/branches`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listBranches", e);
+  }
+  return [
+    { id: "br-01", name: "Salmiya Main", code: "BR-01" },
+    { id: "br-02", name: "Hawally Branch", code: "BR-02" },
+    { id: "br-03", name: "Farwaniya Branch", code: "BR-03" },
+    { id: "br-15", name: "Khiran Marine", code: "BR-15" },
+    { id: "br-16", name: "JM Art Zone", code: "BR-16" },
+  ];
+}
+
 export async function listUsersRequest(): Promise<UserRecord[]> {
   const token = localStorage.getItem("bin-essa-access-token");
   try {
