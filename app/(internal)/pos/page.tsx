@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { useSession } from "@/lib/context/SessionContext";
