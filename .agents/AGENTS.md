@@ -27,3 +27,20 @@
 - **Data & ORM**: PostgreSQL, Prisma ORM 7.x (`@prisma/adapter-pg` native driver).
 - **Localization**: Full bilingual English/Arabic (`en`/`ar`) translation layer with dynamic RTL/LTR support.
 
+## 6. Bin Essa Group Corporate Memory & Commercial Portfolio
+- **Corporate Entity**: Bin Essa Smoking Center (Est. 2010) — Kuwait's leading retail & wholesale smoking accessories, marine/outdoor, and art supply group.
+- **Retail Network**:
+  - 12 Bin Essa Smoking Center retail branches across Kuwait.
+  - Bin Essa Khiran (marine supplies, fishing gear, gym boards, outdoor equipment).
+  - 2 JM Art Zone branches (customized gifts, acrylic products, mugs, signage, decorative items).
+- **Wholesale Key Client Accounts**: Trolley, Bodega, Lulu Hypermarket, Hi & Buy, Al Naser, Oncost, Dukan, City Centre, 50%+ of Kuwait vape shops, and A-Class grocery/mini-market network.
+- **Product Categories**: Disposable Vape Devices, Pod Systems & Vape Products, Nicotine Pouches, Dokha & Medwakh, Cigarette Lighters, Rolling Papers, Rolling Paper Tobacco (HBT), Pipe Accessories, Smoking Accessories, General Accessories.
+- **Exclusive & Distributed Brand Portfolio**:
+  - *Lighters*: Cricket, Fuego
+  - *Rolling Papers & Cones*: RAW, Cones, Laze
+  - *Tobacco & Pipes*: HBT (Handmade Brazilian Tobacco), Vauen Dr Perl, Al Basha
+  - *Charcoal*: Crown Charcoal (40mm)
+  - *Vape & Pod Devices*: Beco, Wafer, BLVK, Click, Al Basha, Reero, Smart Zone
+  - *Nicotine Pouches*: Fox, Siberia, Bagz (Power Mint)
+
+
