@@ -1,4 +1,8 @@
-const API_BASE = "https://bin-essa-erp.onrender.com";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:3000"
+    : "https://bin-essa-erp.onrender.com");
 
 const apiCache = new Map<string, { data: any; expiresAt: number }>();
 
@@ -17,7 +21,13 @@ async function fetchWithCache<T>(url: string, init?: RequestInit, ttlMs = 10000)
     }
   }
 
-  const res = await fetch(url, init);
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    throw new Error("Unable to connect to ERP server. Please ensure the backend server is running.");
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Request failed");
@@ -46,19 +56,26 @@ export async function loginRequest(
   username: string,
   password: string
 ): Promise<LoginResponse> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch {
+    throw new Error("Unable to connect to authentication server. Please check your network or server connection.");
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.message ?? "Login failed");
   }
   return res.json();
 }
+
 
 export type ItemCategory =
   | "TOBACCO"
@@ -137,6 +154,37 @@ export interface CreateCustomerResponse {
   branchId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CustomerResponse {
+  id: string;
+  code: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  branchId: string | null;
+  creditLimit: number;
+  paymentTerms: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listCustomersRequest(): Promise<CustomerResponse[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/customers`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listCustomers", e);
+  }
+  return [];
 }
 
 export async function createCustomerRequest(
@@ -978,6 +1026,9 @@ export interface SalesInvoiceLinePayload {
   itemId: string;
   quantity: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  discountAmount?: number;
+  promotionId?: string;
 }
 
 export interface CreateSalesInvoicePayload {
@@ -987,6 +1038,11 @@ export interface CreateSalesInvoicePayload {
   userId: string;
   paymentMethod: "CASH" | "CARD" | "CREDIT" | "BANK_TRANSFER";
   taxAmount?: number;
+  discountAmount?: number;
+  manualDiscountReason?: string;
+  promotionId?: string;
+  approvedByUserId?: string;
+  approvedByName?: string;
   lines: SalesInvoiceLinePayload[];
 }
 
@@ -1619,5 +1675,229 @@ export async function getPurchaseInvoiceRequest(id: string): Promise<PurchaseInv
   const found = list.find((i) => i.id === id || i.invoiceNumber === id);
   if (found) return found;
   return list[0];
+}
+
+// ================= PROMOTION & DISCOUNT API CLIENT =================
+
+export interface PromotionRecord {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr?: string;
+  description?: string;
+  discountType: "PERCENTAGE" | "FIXED_AMOUNT";
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  startTime?: string;
+  endTime?: string;
+  maxQuantity?: number;
+  isCombinable: boolean;
+  isActive: boolean;
+  targetType: "PRODUCT" | "PRODUCT_GROUP" | "CATEGORY" | "ALL_PRODUCTS";
+  branchScope: "ALL_BRANCHES" | "SPECIFIC_BRANCHES";
+  customerScope: "ALL_CUSTOMERS" | "SPECIFIC_CUSTOMER" | "CUSTOMER_GROUP";
+  customerGroup?: string;
+  itemIds?: string[];
+  branchIds?: string[];
+  customerIds?: string[];
+  items?: Array<{ itemId: string; item?: ItemResponse }>;
+  branches?: Array<{ branchId: string }>;
+  customers?: Array<{ customerId: string }>;
+}
+
+export interface UserDiscountPermissionRecord {
+  userId: string;
+  username: string;
+  fullName: string;
+  role: string;
+  maxDiscountPercent: number;
+  canEditPrices: boolean;
+  requiresManagerApproval: boolean;
+  allowedBranchIds: string[];
+}
+
+export interface DiscountAuditLogRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  branchId: string;
+  invoiceNumber: string;
+  discountType: "MANUAL_LINE" | "MANUAL_HEADER" | "PROMOTION";
+  promotionId?: string;
+  originalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  reason?: string;
+  approvedByUserId?: string;
+  approvedByName?: string;
+  createdAt: string;
+}
+
+export async function listPromotionsRequest(): Promise<PromotionRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/promotions`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPromotions", e);
+  }
+  return [];
+}
+
+export async function createPromotionRequest(payload: Partial<PromotionRecord> & { code: string; nameEn: string }): Promise<PromotionRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/promotions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create promotion");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function updatePromotionRequest(id: string, payload: Partial<PromotionRecord>): Promise<PromotionRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/promotions/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update promotion");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function deletePromotionRequest(id: string): Promise<void> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  await fetch(`${API_BASE}/promotions/${id}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  clearApiCache();
+}
+
+export async function evaluatePromotionsRequest(payload: {
+  branchId: string;
+  customerId?: string;
+  lines: Array<{ itemId: string; quantity: number; unitPrice: number }>;
+}): Promise<{
+  totalDiscount: number;
+  lineDiscounts: Record<string, { discountAmount: number; promotionId: string; promotionName: string }>;
+  appliedPromotionsCount: number;
+}> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/promotions/evaluate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for evaluatePromotions", e);
+  }
+  return { totalDiscount: 0, lineDiscounts: {}, appliedPromotionsCount: 0 };
+}
+
+export async function listDiscountPermissionsRequest(): Promise<UserDiscountPermissionRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/discount-permissions`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for discount permissions", e);
+  }
+  return [];
+}
+
+export async function updateDiscountPermissionRequest(
+  userId: string,
+  payload: {
+    maxDiscountPercent: number;
+    canEditPrices: boolean;
+    requiresManagerApproval: boolean;
+    allowedBranchIds: string[];
+  }
+): Promise<UserDiscountPermissionRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/discount-permissions/user/${userId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update user discount permissions");
+  }
+  return res.json();
+}
+
+export async function verifyManagerPinRequest(passcode: string): Promise<{
+  authorized: boolean;
+  approvedByUserId: string;
+  approvedByName: string;
+}> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/discount-permissions/verify-manager-pin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ passcode }),
+  });
+  if (!res.ok) {
+    throw new Error("Invalid Manager PIN or Passcode");
+  }
+  return res.json();
+}
+
+export async function listDiscountAuditLogsRequest(): Promise<DiscountAuditLogRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/promotions/audit-logs`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for audit logs", e);
+  }
+  return [];
 }
 

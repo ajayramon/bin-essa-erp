@@ -35,12 +35,22 @@
   },
   "roles": {
     "admin": "Admin",
+    "ADMIN": "Admin",
     "branch_manager": "Branch Manager",
+    "manager": "Branch Manager",
+    "MANAGER": "Branch Manager",
     "accountant": "Accountant",
+    "ACCOUNTANT": "Accountant",
     "cashier": "Cashier",
+    "CASHIER": "Cashier",
     "storekeeper": "Storekeeper",
-    "sales_rep": "Sales Representative"
+    "STOREKEEPER": "Storekeeper",
+    "sales_rep": "Sales Representative",
+    "SALES_REP": "Sales Representative",
+    "b2b_customer": "B2B Customer",
+    "B2B_CUSTOMER": "B2B Customer"
   },
+
   "groupDashboard": {
     "title": "Group Dashboard",
     "subtitle": "Consolidated view across all three companies",

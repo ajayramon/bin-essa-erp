@@ -13,6 +13,11 @@ import { JournalEntriesModule } from './journal-entries/journal-entries.module';
 import { TrialBalanceModule } from './trial-balance/trial-balance.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { PurchaseInvoicesModule } from './purchase-invoices/purchase-invoices.module';
+import { StockTransfersModule } from './stock-transfers/stock-transfers.module';
+import { SalesOrdersModule } from './sales-orders/sales-orders.module';
+import { CustomerPaymentsModule } from './customer-payments/customer-payments.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { DiscountPermissionsModule } from './discount-permissions/discount-permissions.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,13 +29,19 @@ import { PurchaseInvoicesModule } from './purchase-invoices/purchase-invoices.mo
     CustomersModule,
     SuppliersModule,
     SalesInvoicesModule,
+    SalesOrdersModule,
+    CustomerPaymentsModule,
     PurchaseOrdersModule,
     PurchaseInvoicesModule,
+    StockTransfersModule,
     AccountsModule,
     JournalEntriesModule,
     TrialBalanceModule,
+    PromotionsModule,
+    DiscountPermissionsModule,
   ],
+
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {}

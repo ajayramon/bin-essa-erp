@@ -11,6 +11,7 @@ import {
   Building2,
   Store,
   BookOpen,
+  Tag,
 } from "lucide-react";
 
 export interface NavLeaf {
@@ -53,6 +54,13 @@ export const brandModules: NavEntry[] = [
     labelAr: "نقطة البيع",
     href: "/pos",
     icon: ShoppingCart,
+  },
+  {
+    key: "promotions",
+    labelEn: "Promotions & Discounts",
+    labelAr: "العروض والتخفيضات",
+    href: "/promotions",
+    icon: Tag,
   },
   {
     key: "inventory",

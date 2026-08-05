@@ -93,6 +93,35 @@ enum StockMovementType {
   ADJUSTMENT
 }
 
+enum PromotionDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum PromotionTargetType {
+  PRODUCT
+  PRODUCT_GROUP
+  CATEGORY
+  ALL_PRODUCTS
+}
+
+enum PromotionBranchScope {
+  ALL_BRANCHES
+  SPECIFIC_BRANCHES
+}
+
+enum PromotionCustomerScope {
+  ALL_CUSTOMERS
+  SPECIFIC_CUSTOMER
+  CUSTOMER_GROUP
+}
+
+enum DiscountType {
+  MANUAL_LINE
+  MANUAL_HEADER
+  PROMOTION
+}
+
 // ================= MODELS (11) =================
 
 model Branch {
@@ -114,7 +143,10 @@ model Branch {
   journalEntries   JournalEntry[]
   purchaseOrders   PurchaseOrder[]
   purchaseInvoices PurchaseInvoice[]
+  salesOrders      SalesOrder[]
   posShifts        PosShift[]
+  promotionBranches PromotionBranch[]
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -132,6 +164,7 @@ model User {
 
   salesInvoices SalesInvoice[]
   posShifts     PosShift[]
+  discountPermission UserDiscountPermission?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -155,6 +188,9 @@ model Item {
   purchaseOrderLines   PurchaseOrderLine[]
   purchaseInvoiceLines PurchaseInvoiceLine[]
   stockTransferLines   StockTransferLine[]
+  salesOrderLines      SalesOrderLine[]
+  promotionItems       PromotionItem[]
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -175,20 +211,27 @@ model ItemStock {
 }
 
 model Customer {
-  id       String  @id @default(uuid())
-  code     String  @unique // e.g. "cust-0001" — FLAG: confirm code format with client
-  name     String
-  phone    String?
-  email    String?
-  address  String?
-  branchId String?
-  branch   Branch? @relation(fields: [branchId], references: [id])
+  id           String   @id @default(uuid())
+  code         String   @unique // e.g. "cust-0001"
+  name         String
+  phone        String?
+  email        String?
+  address      String?
+  branchId     String?
+  creditLimit  Decimal  @default(0) @db.Decimal(10, 3)
+  paymentTerms String?  @default("NET_30")
+  branch       Branch?  @relation(fields: [branchId], references: [id])
 
   salesInvoices SalesInvoice[]
+  salesOrders   SalesOrder[]
+  payments      CustomerPayment[]
+  pdcChecks     PdcCheck[]
+  promotionCustomers PromotionCustomer[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 
 model Supplier {
   id       String  @id @default(uuid())
@@ -238,6 +281,10 @@ model JournalEntry {
   purchaseInvoiceId String?          @unique
   purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
 
+  customerPaymentId String?          @unique
+  customerPayment   CustomerPayment? @relation(fields: [customerPaymentId], references: [id])
+
+
   lines JournalEntryLine[]
 
   createdAt DateTime @default(now())
@@ -255,20 +302,23 @@ model JournalEntryLine {
 }
 
 model SalesInvoice {
-  id            String        @id @default(uuid())
-  invoiceNumber String        @unique // e.g. "INV-0001"
-  date          DateTime      @default(now())
-  customerId    String?
-  customer      Customer?     @relation(fields: [customerId], references: [id])
-  branchId      String
-  branch        Branch        @relation(fields: [branchId], references: [id])
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  paymentMethod PaymentMethod
-  status        InvoiceStatus @default(POSTED)
-  subtotal      Decimal       @db.Decimal(10, 3)
-  taxAmount     Decimal       @default(0) @db.Decimal(10, 3)
-  totalAmount   Decimal       @db.Decimal(10, 3)
+  id                   String        @id @default(uuid())
+  invoiceNumber        String        @unique // e.g. "INV-0001"
+  date                 DateTime      @default(now())
+  customerId           String?
+  customer             Customer?     @relation(fields: [customerId], references: [id])
+  branchId             String
+  branch               Branch        @relation(fields: [branchId], references: [id])
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id])
+  paymentMethod        PaymentMethod
+  status               InvoiceStatus @default(POSTED)
+  subtotal             Decimal       @db.Decimal(10, 3)
+  taxAmount            Decimal       @default(0) @db.Decimal(10, 3)
+  discountAmount       Decimal       @default(0) @db.Decimal(10, 3)
+  totalAmount          Decimal       @db.Decimal(10, 3)
+  manualDiscountReason String?
+  promotionId          String?
 
   lines        SalesInvoiceLine[]
   journalEntry JournalEntry?
@@ -277,12 +327,15 @@ model SalesInvoice {
 }
 
 model SalesInvoiceLine {
-  id             String  @id @default(uuid())
-  salesInvoiceId String
-  itemId         String
-  quantity       Decimal @db.Decimal(10, 3)
-  unitPrice      Decimal @db.Decimal(10, 3)
-  lineTotal      Decimal @db.Decimal(10, 3)
+  id                String  @id @default(uuid())
+  salesInvoiceId    String
+  itemId            String
+  quantity          Decimal @db.Decimal(10, 3)
+  unitPrice         Decimal @db.Decimal(10, 3)
+  originalUnitPrice Decimal? @db.Decimal(10, 3)
+  discountAmount    Decimal @default(0) @db.Decimal(10, 3)
+  lineTotal         Decimal @db.Decimal(10, 3)
+  promotionId       String?
 
   salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id])
   item         Item         @relation(fields: [itemId], references: [id])
@@ -426,4 +479,181 @@ model AuditLog {
   ipAddress   String?
   createdAt   DateTime @default(now())
 }
+
+// ================= MILESTONE 2: B2B COMMERCIAL & ACCOUNTS RECEIVABLE =================
+
+enum OrderStatus {
+  DRAFT
+  QUOTATION
+  CONFIRMED
+  CREDIT_HOLD
+  INVOICED
+  CANCELLED
+}
+
+enum PdcStatus {
+  RECEIVED
+  DEPOSITED
+  CLEARED
+  BOUNCED
+}
+
+model SalesOrder {
+  id          String      @id @default(uuid())
+  orderNumber String      @unique // e.g. "SO-0001"
+  date        DateTime    @default(now())
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  branchId    String
+  branch      Branch      @relation(fields: [branchId], references: [id])
+  status      OrderStatus @default(DRAFT)
+  subtotal    Decimal     @db.Decimal(10, 3)
+  taxAmount   Decimal     @default(0) @db.Decimal(10, 3)
+  totalAmount Decimal     @db.Decimal(10, 3)
+  notes       String?
+
+  lines SalesOrderLine[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SalesOrderLine {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  itemId       String
+  quantity     Decimal    @db.Decimal(10, 3)
+  unitPrice    Decimal    @db.Decimal(10, 3)
+  lineTotal    Decimal    @db.Decimal(10, 3)
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  item       Item       @relation(fields: [itemId], references: [id])
+}
+
+model CustomerPayment {
+  id            String        @id @default(uuid())
+  receiptNumber String        @unique // e.g. "RCT-0001"
+  date          DateTime      @default(now())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  amount        Decimal       @db.Decimal(10, 3)
+  paymentMethod PaymentMethod
+  reference     String?       // Check # or Transfer Ref
+  notes         String?
+
+  journalEntry JournalEntry?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model PdcCheck {
+  id          String    @id @default(uuid())
+  checkNumber String    @unique
+  bankName    String
+  dueDate     DateTime
+  amount      Decimal   @db.Decimal(10, 3)
+  status      PdcStatus @default(RECEIVED)
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id])
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ================= PROMOTION & DISCOUNT ENGINE =================
+
+model UserDiscountPermission {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  maxDiscountPercent      Decimal  @default(10.000) @db.Decimal(10, 3)
+  canEditPrices           Boolean  @default(false)
+  requiresManagerApproval Boolean  @default(true)
+  allowedBranchIds        String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Promotion {
+  id            String                 @id @default(uuid())
+  code          String                 @unique
+  nameEn        String
+  nameAr        String?
+  description   String?
+  discountType  PromotionDiscountType
+  discountValue Decimal                @db.Decimal(10, 3)
+  startDate     DateTime
+  endDate       DateTime
+  startTime     String?                // e.g. "09:00"
+  endTime       String?                // e.g. "21:00"
+  maxQuantity   Int?                   // max eligible qty per transaction
+  isCombinable  Boolean                @default(false)
+  isActive      Boolean                @default(true)
+  targetType    PromotionTargetType    @default(ALL_PRODUCTS)
+  branchScope   PromotionBranchScope   @default(ALL_BRANCHES)
+  customerScope PromotionCustomerScope @default(ALL_CUSTOMERS)
+  customerGroup String?                // e.g. "VIP", "WHOLESALE"
+
+  items     PromotionItem[]
+  branches  PromotionBranch[]
+  customers PromotionCustomer[]
+  auditLogs DiscountAuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PromotionItem {
+  id          String    @id @default(uuid())
+  promotionId String
+  itemId      String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, itemId])
+}
+
+model PromotionBranch {
+  id          String    @id @default(uuid())
+  promotionId String
+  branchId    String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  branch      Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, branchId])
+}
+
+model PromotionCustomer {
+  id          String    @id @default(uuid())
+  promotionId String
+  customerId  String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, customerId])
+}
+
+model DiscountAuditLog {
+  id               String       @id @default(uuid())
+  userId           String
+  userName         String
+  userRole         String
+  branchId         String
+  invoiceNumber    String
+  discountType     DiscountType
+  promotionId      String?
+  promotion        Promotion?   @relation(fields: [promotionId], references: [id])
+  originalAmount   Decimal      @db.Decimal(10, 3)
+  discountAmount   Decimal      @db.Decimal(10, 3)
+  finalAmount      Decimal      @db.Decimal(10, 3)
+  reason           String?
+  approvedByUserId String?
+  approvedByName   String?
+  createdAt        DateTime     @default(now())
+}
+
 

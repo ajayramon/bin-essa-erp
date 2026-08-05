@@ -1,8 +1,12 @@
 import { PrismaClient } from '../generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
@@ -17,17 +21,30 @@ async function main() {
   });
 
   const passwordHash = await bcrypt.hash('demo1234', 10);
-  const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: {
-      username: 'admin',
-      passwordHash,
-      fullName: 'Demo Admin',
-      role: 'ADMIN',
-      branchId: branch.id,
-    },
-  });
+
+  const seedUsers = [
+    { username: 'admin', fullName: 'System Admin', role: 'ADMIN' as const, branchId: branch.id },
+    { username: 'manager', fullName: 'Branch Manager', role: 'MANAGER' as const, branchId: branch.id },
+    { username: 'cashier', fullName: 'Retail Cashier', role: 'CASHIER' as const, branchId: branch.id },
+    { username: 'accountant', fullName: 'Head Accountant', role: 'ACCOUNTANT' as const, branchId: branch.id },
+    { username: 'storekeeper', fullName: 'Warehouse Storekeeper', role: 'STOREKEEPER' as const, branchId: branch.id },
+    { username: 'sales_rep', fullName: 'B2B Sales Representative', role: 'SALES_REP' as const, branchId: branch.id },
+  ];
+
+  for (const u of seedUsers) {
+    await prisma.user.upsert({
+      where: { username: u.username },
+      update: { passwordHash },
+      create: {
+        username: u.username,
+        passwordHash,
+        fullName: u.fullName,
+        role: u.role,
+        branchId: u.branchId,
+      },
+    });
+  }
+
 
   const cashAccount = await prisma.account.upsert({
     where: { code: '1000' },
@@ -70,7 +87,8 @@ async function main() {
   });
 
   console.log('Seeded branch:', branch.code);
-  console.log('Seeded user:', admin.username, '(password: demo1234)');
+  console.log('Seeded users:', seedUsers.map((u) => u.username).join(', '), '(password for all: demo1234)');
+
   console.log('Seeded account:', cashAccount.code, cashAccount.name, '- id:', cashAccount.id);
   console.log('Seeded account:', inventoryAccount.code, inventoryAccount.name, '- id:', inventoryAccount.id);
   console.log('Seeded account:', accountsPayableAccount.code, accountsPayableAccount.name, '- id:', accountsPayableAccount.id);

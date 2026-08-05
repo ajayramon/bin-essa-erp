@@ -22,6 +22,20 @@ export class SalesInvoiceLineDto {
   @IsNumber()
   @Min(0)
   unitPrice: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  originalUnitPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  promotionId?: string;
 }
 
 export class CreateSalesInvoiceDto {
@@ -45,6 +59,27 @@ export class CreateSalesInvoiceDto {
   @IsNumber()
   @Min(0)
   taxAmount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  manualDiscountReason?: string;
+
+  @IsOptional()
+  @IsString()
+  promotionId?: string;
+
+  @IsOptional()
+  @IsString()
+  approvedByUserId?: string;
+
+  @IsOptional()
+  @IsString()
+  approvedByName?: string;
 
   @IsArray()
   @ArrayMinSize(1)

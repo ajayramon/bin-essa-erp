@@ -13,6 +13,11 @@ export class SalesInvoicesController {
     return this.salesInvoicesService.create(dto);
   }
 
+  @Post('returns')
+  createReturn(@Body() dto: CreateSalesInvoiceDto) {
+    return this.salesInvoicesService.createReturn(dto);
+  }
+
   @Get()
   findAll() {
     return this.salesInvoicesService.findAll();
@@ -23,3 +28,4 @@ export class SalesInvoicesController {
     return this.salesInvoicesService.findOne(id);
   }
 }
+

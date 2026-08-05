@@ -35,12 +35,22 @@
   },
   "roles": {
     "admin": "مدير النظام",
+    "ADMIN": "مدير النظام",
     "branch_manager": "مدير الفرع",
+    "manager": "مدير الفرع",
+    "MANAGER": "مدير الفرع",
     "accountant": "محاسب",
+    "ACCOUNTANT": "محاسب",
     "cashier": "أمين الصندوق",
+    "CASHIER": "أمين الصندوق",
     "storekeeper": "أمين المخزن",
-    "sales_rep": "مندوب مبيعات"
+    "STOREKEEPER": "أمين المخزن",
+    "sales_rep": "مندوب مبيعات",
+    "SALES_REP": "مندوب مبيعات",
+    "b2b_customer": "عميل بالجملة",
+    "B2B_CUSTOMER": "عميل بالجملة"
   },
+
   "groupDashboard": {
     "title": "لوحة التحكم الرئيسية",
     "subtitle": "نظرة موحدة على الشركات الثلاث",
