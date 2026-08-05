@@ -132,6 +132,9 @@ export default function PosPage() {
     const userId = user?.id || "0f4c78ce-14cc-4d67-86f8-a12ddfea3ef7";
     const invoiceNumber = `POS-${Date.now().toString().slice(-6)}`;
 
+    // Snapshot sold quantities before clearing cart
+    const soldSnapshot = { ...cart };
+
     setIsSubmitting(true);
     setError(null);
     try {
@@ -147,13 +150,13 @@ export default function PosPage() {
         })),
       });
 
-      // Optimistically decrement in-memory product stock immediately for zero-latency UI response
+      // Instantly decrement in-memory product stock for sold items
       setItems((prevItems) =>
         prevItems.map((item) => {
-          const cartLine = cart[item.id];
-          if (cartLine) {
+          const qtySold = soldSnapshot[item.id] ?? 0;
+          if (qtySold > 0) {
             const currentStock = Number(item.stockQuantity ?? 0);
-            return { ...item, stockQuantity: Math.max(0, currentStock - cartLine) };
+            return { ...item, stockQuantity: Math.max(0, currentStock - qtySold) };
           }
           return item;
         })
@@ -161,7 +164,6 @@ export default function PosPage() {
 
       setSaleMessage(`Sale Complete! Invoice ${invoiceNumber} posted.`);
       setCart({});
-      await loadItems(); // Refresh live stock numbers from DB
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
     } finally {

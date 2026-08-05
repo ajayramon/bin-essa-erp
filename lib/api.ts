@@ -1235,6 +1235,12 @@ export async function createSalesInvoiceRequest(
       body: JSON.stringify(payload),
     });
     if (res.ok) {
+      payload.lines.forEach((l) => {
+        const item = FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+        if (item) {
+          item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
+        }
+      });
       clearApiCache();
       return res.json();
     }
