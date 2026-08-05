@@ -656,4 +656,12 @@ model DiscountAuditLog {
   createdAt        DateTime     @default(now())
 }
 
+model RolePermission {
+  id        String   @id @default(uuid())
+  role      Role     @unique
+  modules   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 

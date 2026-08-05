@@ -1901,3 +1901,124 @@ export async function listDiscountAuditLogsRequest(): Promise<DiscountAuditLogRe
   return [];
 }
 
+// ================= USER & ROLE PERMISSIONS API CLIENT =================
+
+export interface UserRecord {
+  id: string;
+  username: string;
+  fullName: string;
+  role: string;
+  branchId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  branch?: { id: string; name: string; code: string } | null;
+  discountPermission?: UserDiscountPermissionRecord | null;
+}
+
+export interface RolePermissionRecord {
+  role: string;
+  modules: string[];
+}
+
+export async function listUsersRequest(): Promise<UserRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/users`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listUsers", e);
+  }
+  return [];
+}
+
+export async function createUserRequest(payload: {
+  username: string;
+  password: string;
+  fullName: string;
+  role: string;
+  branchId?: string;
+  isActive?: boolean;
+}): Promise<UserRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create user");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function updateUserRequest(
+  id: string,
+  payload: {
+    fullName?: string;
+    role?: string;
+    branchId?: string;
+    isActive?: boolean;
+    password?: string;
+  }
+): Promise<UserRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/users/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update user");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function listRolePermissionsRequest(): Promise<RolePermissionRecord[]> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/users/role-permissions`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listRolePermissions", e);
+  }
+  return [];
+}
+
+export async function updateRolePermissionRequest(role: string, modules: string[]): Promise<RolePermissionRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  const res = await fetch(`${API_BASE}/users/role-permissions`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ role, modules }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update role permissions");
+  }
+  clearApiCache();
+  return res.json();
+}
+

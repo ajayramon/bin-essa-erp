@@ -18,6 +18,7 @@ import { SalesOrdersModule } from './sales-orders/sales-orders.module';
 import { CustomerPaymentsModule } from './customer-payments/customer-payments.module';
 import { PromotionsModule } from './promotions/promotions.module';
 import { DiscountPermissionsModule } from './discount-permissions/discount-permissions.module';
+import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -25,6 +26,7 @@ import { DiscountPermissionsModule } from './discount-permissions/discount-permi
     }),
     PrismaModule,
     AuthModule,
+    UsersModule,
     ItemsModule,
     CustomersModule,
     SuppliersModule,
