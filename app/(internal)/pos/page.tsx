@@ -1272,17 +1272,28 @@ export default function PosPage() {
       {showOpenShiftModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-100 text-slate-800">
-            <div className="text-center space-y-1.5 border-b border-slate-100 pb-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-2">
-                <ShoppingCart className="w-6 h-6" />
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm shrink-0">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-slate-900">Open POS Register Shift</h2>
+                  <p className="text-xs text-slate-500">Enter starting cash float or skip to plain POS</p>
+                </div>
               </div>
-              <h2 className="text-lg font-black text-slate-900">Open POS Cashier Shift</h2>
-              <p className="text-xs text-slate-500">Enter the starting cash drawer float to begin sales session</p>
+              <button
+                type="button"
+                onClick={() => setShowOpenShiftModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold px-2 py-1 text-sm rounded-lg hover:bg-slate-100"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleOpenShift} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Opening Cash Float (KWD)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Starting Cash Float (KWD)</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -1296,12 +1307,21 @@ export default function PosPage() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md text-xs transition"
-              >
-                Start POS Register Shift
-              </button>
+              <div className="space-y-2 pt-1">
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md text-xs transition"
+                >
+                  Start Shift with Cash Float
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowOpenShiftModal(false)}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition border border-slate-200"
+                >
+                  Skip & Open Plain POS Counter Direct
+                </button>
+              </div>
             </form>
           </div>
         </div>
