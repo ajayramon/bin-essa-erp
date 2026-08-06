@@ -231,7 +231,7 @@ export default function InventoryPage() {
             href="/inventory/new"
             className="whitespace-nowrap rounded-xl bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-gold hover:text-ink transition-colors shadow-xs"
           >
-            + {t.inventory.addNewItem}
+            + Add Product
           </Link>
         </div>
       </div>
