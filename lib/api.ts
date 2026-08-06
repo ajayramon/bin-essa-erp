@@ -91,6 +91,8 @@ export interface CreateItemPayload {
   barcode?: string;
   name: string;
   category: ItemCategory;
+  mainCategory?: string;
+  brand?: string;
   visibility?: ItemVisibility;
   price: number;
   cost: number;
@@ -508,6 +510,8 @@ export interface ItemUomPayload {
   barcode?: string;
   retailPrice?: number;
   wholesalePrice?: number;
+  customCost?: number;
+  customPrice?: number;
   isBase?: boolean;
 }
 
@@ -517,6 +521,8 @@ export interface ItemResponse {
   barcode: string | null;
   name: string;
   category: string;
+  mainCategory?: string;
+  brand?: string;
   visibility: string;
   price: string | number;
   cost: string | number;

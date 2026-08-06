@@ -142,6 +142,12 @@ export default function PosPage() {
   }
 
   function getItemUnitPrice(item: ItemResponse, tier: PriceTier, unitName?: string): number {
+    if (unitName && item.uoms && item.uoms.length > 0) {
+      const match = item.uoms.find((u) => u.unitName.toLowerCase() === unitName.toLowerCase());
+      if (match && match.customPrice && Number(match.customPrice) > 0) {
+        return Number(match.customPrice);
+      }
+    }
     const basePrice = getItemBasePrice(item, tier);
     const ratio = getUomRatio(item, unitName);
     return basePrice * ratio;

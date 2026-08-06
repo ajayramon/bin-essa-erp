@@ -20,7 +20,7 @@ function formatKD(amount: number) {
 }
 
 export default function InventoryPage() {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const { user } = useSession();
   const canViewCosts = user?.role !== "storekeeper";
 
@@ -98,27 +98,18 @@ export default function InventoryPage() {
   }, [load]);
 
   const [stockFilter, setStockFilter] = useState<"all" | "inStock" | "lowStock" | "outOfStock">("all");
+  const [mainCategoryFilter, setMainCategoryFilter] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<string>("all");
 
   const categories = Array.from(new Set(allItems.map((i) => i.category)));
-
-  // Smart Inventory Metrics
-  const totalValuation = allItems.reduce(
-    (sum, i) => sum + (Number(i.cost) || 0) * (i.stockQuantity ?? 0),
-    0
-  );
-  const totalRetailValuation = allItems.reduce(
-    (sum, i) => sum + (Number(i.retailPrice || i.price) || 0) * (i.stockQuantity ?? 0),
-    0
-  );
-  const potentialMargin = Math.max(0, totalRetailValuation - totalValuation);
-
-  const lowStockCount = allItems.filter(
-    (i) => (i.stockQuantity ?? 0) > 0 && (i.stockQuantity ?? 0) <= 10
-  ).length;
-  const outOfStockCount = allItems.filter((i) => (i.stockQuantity ?? 0) <= 0).length;
+  const mainCategories = Array.from(new Set(allItems.map((i) => i.mainCategory).filter(Boolean))) as string[];
+  const brands = Array.from(new Set(allItems.map((i) => i.brand).filter(Boolean))) as string[];
 
   const filteredItems = allItems.filter((item) => {
     if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+    if (mainCategoryFilter !== "all" && item.mainCategory !== mainCategoryFilter) return false;
+    if (brandFilter !== "all" && item.brand !== brandFilter) return false;
+
     const stock = item.stockQuantity ?? 0;
     if (stockFilter === "inStock" && stock <= 0) return false;
     if (stockFilter === "lowStock" && (stock <= 0 || stock > 10)) return false;
@@ -129,9 +120,28 @@ export default function InventoryPage() {
     return (
       item.name.toLowerCase().includes(q) ||
       item.sku.toLowerCase().includes(q) ||
-      (item.barcode ?? "").toLowerCase().includes(q)
+      (item.barcode ?? "").toLowerCase().includes(q) ||
+      (item.brand ?? "").toLowerCase().includes(q) ||
+      (item.mainCategory ?? "").toLowerCase().includes(q)
     );
   });
+
+  // Smart Inventory Metrics (Dynamically calculated based on selected Main Category & Brand filter)
+  const displayItems = filteredItems;
+  const totalValuation = displayItems.reduce(
+    (sum, i) => sum + (Number(i.cost) || 0) * (i.stockQuantity ?? 0),
+    0
+  );
+  const totalRetailValuation = displayItems.reduce(
+    (sum, i) => sum + (Number(i.retailPrice || i.price) || 0) * (i.stockQuantity ?? 0),
+    0
+  );
+  const potentialMargin = Math.max(0, totalRetailValuation - totalValuation);
+
+  const lowStockCount = displayItems.filter(
+    (i) => (i.stockQuantity ?? 0) > 0 && (i.stockQuantity ?? 0) <= 10
+  ).length;
+  const outOfStockCount = displayItems.filter((i) => (i.stockQuantity ?? 0) <= 0).length;
 
   const openEditModal = (item: ItemResponse) => {
     setEditingItem(item);
@@ -314,18 +324,48 @@ export default function InventoryPage() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t.inventory.searchPlaceholder}
-          className="w-full flex-1 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-gold"
+          className="w-full flex-1 rounded-2xl border border-ink/10 bg-white px-4 py-2.5 text-sm shadow-sm outline-none focus:border-gold"
         />
+
+        {/* Main Category Filter Dropdown */}
+        <select
+          value={mainCategoryFilter}
+          onChange={(e) => setMainCategoryFilter(e.target.value)}
+          className="rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-xs font-bold text-ink shadow-sm outline-none focus:border-gold sm:w-44"
+        >
+          <option value="all">{locale === "ar" ? "كل الفئات الرئيسية" : "All Main Categories"}</option>
+          {mainCategories.map((mc) => (
+            <option key={mc} value={mc}>
+              {mc}
+            </option>
+          ))}
+        </select>
+
+        {/* Brand / Company Filter Dropdown */}
+        <select
+          value={brandFilter}
+          onChange={(e) => setBrandFilter(e.target.value)}
+          className="rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-xs font-bold text-ink shadow-sm outline-none focus:border-gold sm:w-44"
+        >
+          <option value="all">{locale === "ar" ? "كل الماركات والشركات" : "All Brands & Companies"}</option>
+          {brands.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+
+        {/* General Category Filter Dropdown */}
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-gold sm:w-56"
+          className="rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-xs font-bold text-ink shadow-sm outline-none focus:border-gold sm:w-40"
         >
           <option value="all">{t.inventory.allCategories}</option>
           {categories.map((c) => (
@@ -378,6 +418,7 @@ export default function InventoryPage() {
             <thead>
               <tr className="border-b border-ink/10 text-xs font-semibold uppercase tracking-wider text-ink/50">
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.itemName}</th>
+                <th className="px-4 py-3 text-start font-medium">{locale === "ar" ? "الشركة / الماركة" : "Brand / Company"}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.category}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.sku}</th>
                 <th className="px-4 py-3 text-start font-medium">{t.inventory.barcode}</th>
@@ -418,6 +459,18 @@ export default function InventoryPage() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 font-bold text-ink">
+                      {item.brand ? (
+                        <span className="inline-block px-2 py-0.5 rounded bg-ink/5 text-xs text-ink">
+                          🏢 {item.brand}
+                        </span>
+                      ) : (
+                        <span className="text-ink/40 text-xs">—</span>
+                      )}
+                      {item.mainCategory && (
+                        <span className="block text-[10px] text-ink/50 mt-0.5">{item.mainCategory}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-ink/70">{item.category}</td>
                     <td className="numeric-ltr px-4 py-3 text-ink/60 font-mono">{item.sku}</td>
