@@ -244,7 +244,7 @@ export default function PosPage() {
     }
 
     // Check max discount caps
-    const exceededItem = cartLines.find((l) => percent > (l.item.maxDiscountPercent ?? 10));
+    const exceededItem = cartLines.find((l) => percent > (Number(l.item.maxDiscountPercent) || 10));
     if (exceededItem || percent > 10) {
       setPendingDiscount(percent);
       setPinError(null);
@@ -282,8 +282,8 @@ export default function PosPage() {
     const branchId = user?.branchId || currentBranch?.id || "cfbb7132-6c84-442b-86a5-3a4d03b5e089";
     const userId = user?.id || "0f4c78ce-14cc-4d67-86f8-a12ddfea3ef7";
     const invoiceNumber = `POS-${Date.now().toString().slice(-6)}`;
-    const branchName = currentBranch?.name || "Bin Essa Head Office - Shuwaikh";
-    const cashierName = user?.fullName || user?.username || "Authorized Cashier";
+    const branchName = (currentBranch as any)?.name || "Bin Essa Head Office - Shuwaikh";
+    const cashierName = (user as any)?.fullName || (user as any)?.username || user?.name || "Authorized Cashier";
 
     // Snapshot base stock deductions for sold items
     const baseStockDeductions: Record<string, number> = {};
