@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import {
   listItemsRequest,
@@ -157,15 +158,23 @@ export default function ItemModifiersPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {locale === "ar" ? "متغيرات الصنف والمواصفات" : "Item Modifiers & Product Variants"}
-          </h1>
-          <p className="text-xs text-ink/50 mt-0.5">
-            {locale === "ar"
-              ? "إدارة خصائص الصنف الفرعية (النكهة، اللون، النيكوتين، الحجم) وأرقام الباركود والأسعار KWD"
-              : "Configure sub-SKU variants, nic levels, flavors, barcodes, and custom unit prices."}
-          </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inventory"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs font-bold text-ink shadow-xs hover:bg-gold hover:border-gold transition-colors"
+          >
+            ← Back to Inventory
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-ink">
+              {locale === "ar" ? "متغيرات الصنف والمواصفات" : "Item Modifiers & Product Variants"}
+            </h1>
+            <p className="text-xs text-ink/50 mt-0.5">
+              {locale === "ar"
+                ? "إدارة خصائص الصنف الفرعية (النكهة، اللون، النيكوتين، الحجم) وأرقام الباركود والأسعار KWD"
+                : "Configure sub-SKU variants, nic levels, flavors, barcodes, and custom unit prices."}
+            </p>
+          </div>
         </div>
 
         <button

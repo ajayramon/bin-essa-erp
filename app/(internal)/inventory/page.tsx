@@ -214,12 +214,26 @@ export default function InventoryPage() {
           <h1 className="text-2xl font-semibold text-ink">{t.inventory.title}</h1>
           <p className="mt-1 text-ink/60">{t.inventory.subtitle}</p>
         </div>
-        <Link
-          href="/inventory/new"
-          className="whitespace-nowrap rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white hover:bg-gold hover:text-ink transition-colors"
-        >
-          + Add Item
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/inventory/item-modifiers"
+            className="whitespace-nowrap rounded-xl border border-ink/15 bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-xs hover:bg-gold hover:border-gold transition-colors"
+          >
+            🎨 Modifiers & Variants
+          </Link>
+          <Link
+            href="/inventory/serial-tracking"
+            className="whitespace-nowrap rounded-xl border border-ink/15 bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-xs hover:bg-gold hover:border-gold transition-colors"
+          >
+            🏷️ Serial & Batch Expiry
+          </Link>
+          <Link
+            href="/inventory/new"
+            className="whitespace-nowrap rounded-xl bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-gold hover:text-ink transition-colors shadow-xs"
+          >
+            + {t.inventory.addNewItem}
+          </Link>
+        </div>
       </div>
 
       {/* Sub-Feature Module Navigation Tabs */}

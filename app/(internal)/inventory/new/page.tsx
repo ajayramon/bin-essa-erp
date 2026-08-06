@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createItemRequest,
@@ -111,11 +112,20 @@ export default function NewItemPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Add New Item Master Record</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Configure product SKU, Units of Measure (UOM) ratios, multi-tier pricing, and inventory balances.
-        </p>
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Add New Item Master Record</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Configure product SKU, Units of Measure (UOM) ratios, multi-tier pricing, and inventory balances.
+          </p>
+        </div>
+
+        <Link
+          href="/inventory"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors whitespace-nowrap shadow-xs"
+        >
+          ← Back to Inventory
+        </Link>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">

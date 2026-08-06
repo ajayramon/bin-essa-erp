@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { listItemsRequest, type ItemRecord } from "@/lib/api";
 
@@ -270,17 +271,25 @@ export default function SerialTrackingPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {locale === "ar"
-              ? "تتبع الأرقام التسلسلية والشحنات"
-              : "Serial Number & Batch Expiry Tracking"}
-          </h1>
-          <p className="text-xs text-ink/50 mt-0.5">
-            {locale === "ar"
-              ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
-              : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
-          </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inventory"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs font-bold text-ink shadow-xs hover:bg-gold hover:border-gold transition-colors"
+          >
+            ← Back to Inventory
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-ink">
+              {locale === "ar"
+                ? "تتبع الأرقام التسلسلية والشحنات"
+                : "Serial Number & Batch Expiry Tracking"}
+            </h1>
+            <p className="text-xs text-ink/50 mt-0.5">
+              {locale === "ar"
+                ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
+                : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
