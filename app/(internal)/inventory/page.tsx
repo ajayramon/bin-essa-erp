@@ -106,6 +106,12 @@ export default function InventoryPage() {
     (sum, i) => sum + (Number(i.cost) || 0) * (i.stockQuantity ?? 0),
     0
   );
+  const totalRetailValuation = allItems.reduce(
+    (sum, i) => sum + (Number(i.retailPrice || i.price) || 0) * (i.stockQuantity ?? 0),
+    0
+  );
+  const potentialMargin = Math.max(0, totalRetailValuation - totalValuation);
+
   const lowStockCount = allItems.filter(
     (i) => (i.stockQuantity ?? 0) > 0 && (i.stockQuantity ?? 0) <= 10
   ).length;
@@ -256,19 +262,31 @@ export default function InventoryPage() {
       </div>
 
       {/* Executive Smart Analytics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Total Active SKUs</p>
           <p className="mt-1 text-2xl font-bold text-ink">{allItems.length}</p>
         </div>
+
         {canViewCosts && (
           <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
-            <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Inventory Valuation</p>
+            <p className="text-xs font-medium text-ink/50 uppercase tracking-wider">Cost Valuation</p>
             <p className="numeric-ltr mt-1 text-2xl font-bold text-ink">
               {formatKD(totalValuation)} <span className="text-xs font-normal text-ink/40">KD</span>
             </p>
           </div>
         )}
+
+        <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Retail Sales Potential</p>
+          <p className="numeric-ltr mt-1 text-2xl font-bold text-emerald-900">
+            {formatKD(totalRetailValuation)} <span className="text-xs font-normal text-emerald-700">KD</span>
+          </p>
+          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">
+            Margin: +{formatKD(potentialMargin)} KD
+          </p>
+        </div>
+
         <button
           type="button"
           onClick={() => setStockFilter(stockFilter === "lowStock" ? "all" : "lowStock")}
@@ -278,9 +296,10 @@ export default function InventoryPage() {
               : "border-ink/10 bg-white hover:border-amber-300"
           }`}
         >
-          <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Low Stock Alerts (≤10)</p>
+          <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Low Stock (≤10)</p>
           <p className="mt-1 text-2xl font-bold text-amber-900">{lowStockCount}</p>
         </button>
+
         <button
           type="button"
           onClick={() => setStockFilter(stockFilter === "outOfStock" ? "all" : "outOfStock")}
