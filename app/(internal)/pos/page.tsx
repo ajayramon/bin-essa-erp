@@ -6,7 +6,9 @@ import { useSession } from "@/lib/context/SessionContext";
 import {
   listItemsRequest,
   createSalesInvoiceRequest,
+  listCustomersRequest,
   type ItemResponse,
+  type CustomerResponse,
 } from "@/lib/api";
 
 function formatKD(amount: number) {
@@ -29,6 +31,9 @@ const MOCK_CUSTOMERS: CustomerRecord[] = [
   { id: "cust-2", name: "Bodega Mini-Market", code: "CUST-BODEGA", tier: "SEMI_WHOLESALE", creditLimit: 1500 },
   { id: "cust-3", name: "Hi & Buy Grocery", code: "CUST-HIBUY", tier: "SEMI_WHOLESALE", creditLimit: 2000 },
   { id: "cust-4", name: "Al Naser Trading Group", code: "CUST-ALNASER", tier: "WHOLESALE", creditLimit: 10000 },
+  { id: "cust-5", name: "Lulu Hypermarket Kuwait", code: "CUST-LULU", tier: "WHOLESALE", creditLimit: 25000 },
+  { id: "cust-6", name: "Dukan Grocery Network", code: "CUST-DUKAN", tier: "SEMI_WHOLESALE", creditLimit: 3000 },
+  { id: "cust-7", name: "Oncost Cash & Carry", code: "CUST-ONCOST", tier: "WHOLESALE", creditLimit: 15000 },
 ];
 
 export default function PosPage() {
@@ -36,6 +41,7 @@ export default function PosPage() {
   const { user, currentBranch } = useSession();
 
   const [items, setItems] = useState<ItemResponse[]>([]);
+  const [customers, setCustomers] = useState<CustomerRecord[]>(MOCK_CUSTOMERS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +89,26 @@ export default function PosPage() {
     try {
       const data = await listItemsRequest();
       setItems(data);
+
+      // Load dynamic database customers
+      const apiCusts = await listCustomersRequest();
+      if (apiCusts && apiCusts.length > 0) {
+        const mapped: CustomerRecord[] = apiCusts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          tier: (c.paymentTerms?.includes("WHOLESALE") ? "WHOLESALE" : "RETAIL") as PriceTier,
+          creditLimit: Number(c.creditLimit || 0),
+        }));
+        // Merge without duplicating
+        const combined = [...MOCK_CUSTOMERS];
+        mapped.forEach((mc) => {
+          if (!combined.some((x) => x.id === mc.id || x.code === mc.code)) {
+            combined.push(mc);
+          }
+        });
+        setCustomers(combined);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load products");
     } finally {
@@ -395,12 +421,12 @@ export default function PosPage() {
             <select
               value={selectedCustomer.id}
               onChange={(e) => {
-                const found = MOCK_CUSTOMERS.find((c) => c.id === e.target.value);
+                const found = customers.find((c) => c.id === e.target.value);
                 if (found) handleSelectCustomer(found);
               }}
               className="rounded-xl border border-ink/15 bg-slate-50 px-3 py-1.5 text-xs font-bold text-ink outline-none focus:border-gold"
             >
-              {MOCK_CUSTOMERS.map((c) => (
+              {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.tier})
                 </option>
