@@ -361,6 +361,26 @@ export interface CreateJournalEntryResponse {
   lines: JournalEntryLineResponse[];
 }
 
+export function getLocalJournalEntries(): CreateJournalEntryResponse[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-local-journal-entries");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalJournalEntry(entry: CreateJournalEntryResponse) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalJournalEntries();
+    localStorage.setItem("bin-essa-local-journal-entries", JSON.stringify([entry, ...existing]));
+  } catch {
+    // Ignore
+  }
+}
+
 export async function createJournalEntryRequest(
   payload: CreateJournalEntryPayload
 ): Promise<CreateJournalEntryResponse> {
@@ -382,7 +402,7 @@ export async function createJournalEntryRequest(
     console.warn("Backend unavailable, creating journal entry locally", e);
   }
 
-  return {
+  const localJe: CreateJournalEntryResponse = {
     id: `je-local-${Date.now()}`,
     reference: `JE-MANUAL-${Date.now()}`,
     date: payload.date || new Date().toISOString(),
@@ -398,6 +418,10 @@ export async function createJournalEntryRequest(
       credit: String(l.credit),
     })),
   };
+
+  saveLocalJournalEntry(localJe);
+  clearApiCache();
+  return localJe;
 }
 
 export interface TrialBalanceRow {
@@ -433,17 +457,36 @@ export async function getTrialBalanceRequest(): Promise<TrialBalanceResponse> {
     console.warn("Backend unavailable, returning fallback trial balance", e);
   }
 
+  const baseRows: TrialBalanceRow[] = [
+    { accountId: "acc-1000", code: "1000", name: "Cash on Hand", type: "ASSET", debit: 4250.5, credit: 0 },
+    { accountId: "acc-1200", code: "1200", name: "Inventory Asset", type: "ASSET", debit: 52300, credit: 0 },
+    { accountId: "acc-2000", code: "2000", name: "Accounts Payable", type: "LIABILITY", debit: 0, credit: 9840.25 },
+    { accountId: "acc-4000", code: "4000", name: "Sales Revenue", type: "REVENUE", debit: 0, credit: 115700 },
+    { accountId: "acc-5000", code: "5000", name: "Cost of Goods Sold", type: "EXPENSE", debit: 68989.75, credit: 0 },
+  ];
+
+  // Dynamically accumulate amounts from all locally posted Double-Entry journal entries
+  const localJes = getLocalJournalEntries();
+  localJes.forEach((je) => {
+    je.lines.forEach((line) => {
+      const d = Number(line.debit) || 0;
+      const c = Number(line.credit) || 0;
+      const target = baseRows.find((r) => r.accountId === line.accountId || r.code === line.accountId);
+      if (target) {
+        target.debit += d;
+        target.credit += c;
+      }
+    });
+  });
+
+  const totalDebit = baseRows.reduce((s, r) => s + r.debit, 0);
+  const totalCredit = baseRows.reduce((s, r) => s + r.credit, 0);
+
   return {
-    rows: [
-      { accountId: "acc-1000", code: "1000", name: "Cash on Hand", type: "ASSET", debit: 4250.5, credit: 0 },
-      { accountId: "acc-1200", code: "1200", name: "Inventory Asset", type: "ASSET", debit: 52300, credit: 0 },
-      { accountId: "acc-2000", code: "2000", name: "Accounts Payable", type: "LIABILITY", debit: 0, credit: 9840.25 },
-      { accountId: "acc-4000", code: "4000", name: "Sales Revenue", type: "REVENUE", debit: 0, credit: 115700 },
-      { accountId: "acc-5000", code: "5000", name: "Cost of Goods Sold", type: "EXPENSE", debit: 68989.75, credit: 0 },
-    ],
-    totalDebit: 125540.25,
-    totalCredit: 125540.25,
-    isBalanced: true,
+    rows: baseRows,
+    totalDebit,
+    totalCredit,
+    isBalanced: Math.abs(totalDebit - totalCredit) < 0.001,
   };
 }
 
@@ -486,21 +529,48 @@ export async function getAccountLedgerRequest(
     console.warn("Backend unavailable, returning fallback account ledger", e);
   }
 
-  const acc = FALLBACK_ACCOUNTS.find((a) => a.id === accountId) || FALLBACK_ACCOUNTS[0];
+  const acc = FALLBACK_ACCOUNTS.find((a) => a.id === accountId || a.code === accountId) || FALLBACK_ACCOUNTS[0];
+
+  const localJes = getLocalJournalEntries();
+  const dynamicEntries: LedgerEntry[] = [
+    {
+      journalEntryId: "je-led-1",
+      reference: "JE-OPENING-2026",
+      date: new Date(Date.now() - 86400000 * 5).toISOString(),
+      description: "Opening Balance",
+      debit: acc.type === "ASSET" || acc.type === "EXPENSE" ? 1500 : 0,
+      credit: acc.type === "LIABILITY" || acc.type === "REVENUE" || acc.type === "EQUITY" ? 1500 : 0,
+      runningBalance: 1500,
+    },
+  ];
+
+  let currentBalance = 1500;
+  localJes.forEach((je) => {
+    je.lines.forEach((line) => {
+      if (line.accountId === acc.id || line.accountId === acc.code) {
+        const d = Number(line.debit) || 0;
+        const c = Number(line.credit) || 0;
+        if (acc.type === "ASSET" || acc.type === "EXPENSE") {
+          currentBalance += d - c;
+        } else {
+          currentBalance += c - d;
+        }
+        dynamicEntries.push({
+          journalEntryId: je.id,
+          reference: je.reference,
+          date: je.date,
+          description: je.description,
+          debit: d,
+          credit: c,
+          runningBalance: currentBalance,
+        });
+      }
+    });
+  });
 
   return {
     account: acc,
-    entries: [
-      {
-        journalEntryId: "je-led-1",
-        reference: "JE-2026-001",
-        date: new Date(Date.now() - 86400000 * 5).toISOString(),
-        description: "Opening Balance",
-        debit: acc.type === "ASSET" || acc.type === "EXPENSE" ? 1500 : 0,
-        credit: acc.type === "LIABILITY" || acc.type === "REVENUE" || acc.type === "EQUITY" ? 1500 : 0,
-        runningBalance: 1500,
-      },
-    ],
+    entries: dynamicEntries,
   };
 }
 export interface ItemUomPayload {
@@ -1329,32 +1399,18 @@ export async function createSalesInvoiceRequest(
 ): Promise<SalesInvoiceResponse> {
   const token = localStorage.getItem("bin-essa-access-token");
   
-  // Decrement persistent stock quantity for each sold line item immediately
+  // 1. Decrement persistent stock quantity for each sold line item immediately
   const storedItems = getStoredItems();
+  let totalCost = 0;
   payload.lines.forEach((l) => {
     const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
     if (item) {
+      const itemCost = Number(item.cost || 0);
+      totalCost += l.quantity * itemCost;
       item.stockQuantity = Math.max(0, Number(item.stockQuantity || 0) - l.quantity);
     }
   });
   saveStoredItems(storedItems);
-
-  try {
-    const res = await fetch(`${API_BASE}/sales-invoices`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      clearApiCache();
-      return res.json();
-    }
-  } catch (e) {
-    console.warn("Backend unavailable, creating sales invoice locally", e);
-  }
 
   const subtotal = payload.lines.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
   const taxAmount = payload.taxAmount || 0;
@@ -1382,7 +1438,70 @@ export async function createSalesInvoiceRequest(
     })),
   };
 
+  // 2. Save sales invoice locally
   saveLocalSalesInvoice(fallbackInv);
+
+  // 3. Auto-post balanced Double-Entry Journal Entry (Revenue & COGS)
+  const isCash = payload.paymentMethod === "CASH" || payload.paymentMethod === "CARD";
+  const journalEntry: CreateJournalEntryResponse = {
+    id: `je-sale-${Date.now()}`,
+    reference: `JE-${payload.invoiceNumber}`,
+    date: new Date().toISOString(),
+    description: `Auto GL Entry for Sales Invoice ${payload.invoiceNumber}`,
+    status: "POSTED",
+    branchId: payload.branchId,
+    salesInvoiceId: fallbackInv.id,
+    lines: [
+      {
+        id: `jel-s1-${Date.now()}`,
+        journalEntryId: `je-sale-${Date.now()}`,
+        accountId: isCash ? "acc-1000" : "acc-1100", // Cash (1000) or AR (1100)
+        debit: totalAmount.toFixed(3),
+        credit: "0.000",
+      },
+      {
+        id: `jel-s2-${Date.now()}`,
+        journalEntryId: `je-sale-${Date.now()}`,
+        accountId: "acc-4000", // Sales Revenue (4000)
+        debit: "0.000",
+        credit: totalAmount.toFixed(3),
+      },
+      {
+        id: `jel-s3-${Date.now()}`,
+        journalEntryId: `je-sale-${Date.now()}`,
+        accountId: "acc-5000", // Cost of Goods Sold (5000)
+        debit: (totalCost || totalAmount * 0.6).toFixed(3),
+        credit: "0.000",
+      },
+      {
+        id: `jel-s4-${Date.now()}`,
+        journalEntryId: `je-sale-${Date.now()}`,
+        accountId: "acc-1200", // Inventory Asset (1200)
+        debit: "0.000",
+        credit: (totalCost || totalAmount * 0.6).toFixed(3),
+      },
+    ],
+  };
+
+  saveLocalJournalEntry(journalEntry);
+
+  try {
+    const res = await fetch(`${API_BASE}/sales-invoices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable, using local sales invoice fallback", e);
+  }
+
   clearApiCache();
   return fallbackInv;
 }
@@ -1707,24 +1826,20 @@ export async function createPurchaseInvoiceRequest(
   payload: CreatePurchaseInvoicePayload
 ): Promise<PurchaseInvoiceResponse> {
   const token = localStorage.getItem("bin-essa-access-token");
-  try {
-    const res = await fetch(`${API_BASE}/purchase-invoices`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      clearApiCache();
-      return res.json();
+  
+  // 1. Increment persistent stock quantity for each purchased line item immediately
+  const storedItems = getStoredItems();
+  payload.lines.forEach((l) => {
+    const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
+    if (item) {
+      item.stockQuantity = Number(item.stockQuantity || 0) + l.quantity;
+      if (l.unitCost && Number(l.unitCost) > 0) {
+        item.cost = Number(l.unitCost);
+      }
     }
-  } catch (e) {
-    console.warn("Backend unavailable, using local invoice store", e);
-  }
+  });
+  saveStoredItems(storedItems);
 
-  // Resilient Fallback Creation
   const subtotal = payload.lines.reduce((s, l) => s + l.quantity * l.unitCost, 0);
   const taxAmount = payload.taxAmount || 0;
   const totalAmount = subtotal + taxAmount;
@@ -1791,7 +1906,55 @@ export async function createPurchaseInvoiceRequest(
     },
   };
 
+  // 2. Save purchase invoice locally
   saveLocalPurchaseInvoice(fallbackInv);
+
+  // 3. Auto-post balanced Double-Entry Journal Entry to GL
+  const journalEntry: CreateJournalEntryResponse = {
+    id: `je-purch-${Date.now()}`,
+    reference: `JE-${payload.invoiceNumber}`,
+    date: new Date().toISOString(),
+    description: `Auto GL Entry for Purchase Invoice ${payload.invoiceNumber}`,
+    status: "POSTED",
+    branchId: payload.branchId,
+    salesInvoiceId: null,
+    lines: [
+      {
+        id: `jel-p1-${Date.now()}`,
+        journalEntryId: `je-purch-${Date.now()}`,
+        accountId: "acc-1200", // Inventory Asset (1200)
+        debit: totalAmount.toFixed(3),
+        credit: "0.000",
+      },
+      {
+        id: `jel-p2-${Date.now()}`,
+        journalEntryId: `je-purch-${Date.now()}`,
+        accountId: "acc-2000", // Accounts Payable (2000)
+        debit: "0.000",
+        credit: totalAmount.toFixed(3),
+      },
+    ],
+  };
+
+  saveLocalJournalEntry(journalEntry);
+
+  try {
+    const res = await fetch(`${API_BASE}/purchase-invoices`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable, using local invoice fallback", e);
+  }
+
   clearApiCache();
   return fallbackInv;
 }
