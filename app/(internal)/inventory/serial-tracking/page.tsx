@@ -108,12 +108,27 @@ export default function SerialTrackingPage() {
     serialNumber: "",
   });
 
+  // Edit Serial Modal State
+  const [editingSerial, setEditingSerial] = useState<ItemSerialRecord | null>(null);
+  const [editSerialForm, setEditSerialForm] = useState({
+    serialNumber: "",
+    status: "IN_STOCK" as "IN_STOCK" | "SOLD" | "RETURNED",
+  });
+
   // New Batch Modal State
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [batchForm, setBatchForm] = useState({
     itemId: "",
     batchNumber: "",
     expiryDate: new Date(Date.now() + 86400000 * 180).toISOString().split("T")[0],
+    quantity: 100,
+  });
+
+  // Edit Batch Modal State
+  const [editingBatch, setEditingBatch] = useState<ItemBatchRecord | null>(null);
+  const [editBatchForm, setEditBatchForm] = useState({
+    batchNumber: "",
+    expiryDate: "",
     quantity: 100,
   });
 
@@ -150,6 +165,29 @@ export default function SerialTrackingPage() {
     setSerialForm({ itemId: items[0]?.id || "", serialNumber: "" });
   }
 
+  function openEditSerialModal(serial: ItemSerialRecord) {
+    setEditingSerial(serial);
+    setEditSerialForm({
+      serialNumber: serial.serialNumber,
+      status: serial.status,
+    });
+    setSuccessMsg(null);
+  }
+
+  function handleUpdateSerial(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSerial) return;
+    setSerials((prev) =>
+      prev.map((s) =>
+        s.id === editingSerial.id
+          ? { ...s, serialNumber: editSerialForm.serialNumber, status: editSerialForm.status }
+          : s
+      )
+    );
+    setSuccessMsg(`Serial "${editSerialForm.serialNumber}" updated successfully!`);
+    setEditingSerial(null);
+  }
+
   function handleRegisterBatch(e: React.FormEvent) {
     e.preventDefault();
     const item = items.find((i) => i.id === batchForm.itemId);
@@ -178,6 +216,40 @@ export default function SerialTrackingPage() {
       expiryDate: new Date(Date.now() + 86400000 * 180).toISOString().split("T")[0],
       quantity: 100,
     });
+  }
+
+  function openEditBatchModal(batch: ItemBatchRecord) {
+    setEditingBatch(batch);
+    const dateStr = new Date(batch.expiryDate).toISOString().split("T")[0];
+    setEditBatchForm({
+      batchNumber: batch.batchNumber,
+      expiryDate: dateStr,
+      quantity: batch.quantity,
+    });
+    setSuccessMsg(null);
+  }
+
+  function handleUpdateBatch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingBatch) return;
+    const expiryTime = new Date(editBatchForm.expiryDate).getTime();
+    const diffDays = Math.ceil((expiryTime - Date.now()) / (1000 * 3600 * 24));
+
+    setBatches((prev) =>
+      prev.map((b) =>
+        b.id === editingBatch.id
+          ? {
+              ...b,
+              batchNumber: editBatchForm.batchNumber,
+              expiryDate: new Date(editBatchForm.expiryDate).toISOString(),
+              quantity: editBatchForm.quantity,
+              daysRemaining: diffDays,
+            }
+          : b
+      )
+    );
+    setSuccessMsg(`Batch "${editBatchForm.batchNumber}" updated successfully!`);
+    setEditingBatch(null);
   }
 
   const filteredSerials = serials.filter(
@@ -305,6 +377,7 @@ export default function SerialTrackingPage() {
                   <th className="p-3.5 text-start">SKU</th>
                   <th className="p-3.5 text-start">Registered Date</th>
                   <th className="p-3.5 text-start">Status</th>
+                  <th className="p-3.5 text-start">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/5 font-mono">
@@ -327,6 +400,15 @@ export default function SerialTrackingPage() {
                         {s.status}
                       </span>
                     </td>
+                    <td className="p-3.5 font-sans">
+                      <button
+                        type="button"
+                        onClick={() => openEditSerialModal(s)}
+                        className="rounded bg-ink/10 px-2 py-1 text-xs font-bold text-ink hover:bg-gold transition-colors"
+                      >
+                        ✏️ Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -347,6 +429,7 @@ export default function SerialTrackingPage() {
                   <th className="p-3.5 text-start">Expiry Date</th>
                   <th className="p-3.5 text-start">Shelf-Life Health Meter</th>
                   <th className="p-3.5 text-start">Stock Quantity</th>
+                  <th className="p-3.5 text-start">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-ink/5 font-mono">
@@ -385,6 +468,15 @@ export default function SerialTrackingPage() {
                       </div>
                     </td>
                     <td className="p-3.5 font-bold text-ink">{b.quantity} units</td>
+                    <td className="p-3.5 font-sans">
+                      <button
+                        type="button"
+                        onClick={() => openEditBatchModal(b)}
+                        className="rounded bg-ink/10 px-2 py-1 text-xs font-bold text-ink hover:bg-gold transition-colors"
+                      >
+                        ✏️ Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -445,6 +537,72 @@ export default function SerialTrackingPage() {
                   className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Register Serial
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Serial Modal */}
+      {editingSerial && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">✏️ Edit Serial Record</h3>
+              <button onClick={() => setEditingSerial(null)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSerial} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingSerial.itemName}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 font-medium bg-slate-100 text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Serial Number</label>
+                <input
+                  type="text"
+                  required
+                  value={editSerialForm.serialNumber}
+                  onChange={(e) => setEditSerialForm({ ...editSerialForm, serialNumber: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Status</label>
+                <select
+                  value={editSerialForm.status}
+                  onChange={(e) => setEditSerialForm({ ...editSerialForm, status: e.target.value as any })}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 font-bold outline-none focus:border-indigo-600 bg-slate-50"
+                >
+                  <option value="IN_STOCK">IN_STOCK (Available in Store)</option>
+                  <option value="SOLD">SOLD (Issued on Receipt)</option>
+                  <option value="RETURNED">RETURNED (Customer Warranty Return)</option>
+                </select>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingSerial(null)}
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
+                >
+                  Update Serial
                 </button>
               </div>
             </form>
@@ -528,6 +686,83 @@ export default function SerialTrackingPage() {
                   className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Save Batch
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Batch Modal */}
+      {editingBatch && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">✏️ Edit Batch Record</h3>
+              <button onClick={() => setEditingBatch(null)} className="text-slate-400 hover:text-slate-600 font-bold text-sm">
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateBatch} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingBatch.itemName}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 font-medium bg-slate-100 text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Batch Number</label>
+                <input
+                  type="text"
+                  required
+                  value={editBatchForm.batchNumber}
+                  onChange={(e) => setEditBatchForm({ ...editBatchForm, batchNumber: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Expiry Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={editBatchForm.expiryDate}
+                    onChange={(e) => setEditBatchForm({ ...editBatchForm, expiryDate: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Batch Quantity</label>
+                  <input
+                    type="number"
+                    required
+                    value={editBatchForm.quantity}
+                    onChange={(e) => setEditBatchForm({ ...editBatchForm, quantity: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50 text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingBatch(null)}
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
+                >
+                  Update Batch
                 </button>
               </div>
             </form>

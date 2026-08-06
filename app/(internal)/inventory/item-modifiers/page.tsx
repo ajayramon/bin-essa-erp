@@ -6,6 +6,7 @@ import {
   listItemsRequest,
   listItemVariantsRequest,
   createItemVariantRequest,
+  updateItemVariantRequest,
   type ItemRecord,
   type ItemVariantRecord,
 } from "@/lib/api";
@@ -28,6 +29,17 @@ export default function ItemModifiersPage() {
   // Create Modal State
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
+    sku: "",
+    barcode: "",
+    variantName: "",
+    price: 0.0,
+    cost: 0.0,
+    stock: 0,
+  });
+
+  // Edit Modal State
+  const [editingVariant, setEditingVariant] = useState<ItemVariantRecord | null>(null);
+  const [editForm, setEditForm] = useState({
     sku: "",
     barcode: "",
     variantName: "",
@@ -92,6 +104,43 @@ export default function ItemModifiersPage() {
       loadVariants(selectedItemId);
     } catch (e: any) {
       setError(e.message || "Failed to create variant");
+    }
+  }
+
+  function openEditModal(variant: ItemVariantRecord) {
+    setEditingVariant(variant);
+    setEditForm({
+      sku: variant.sku,
+      barcode: variant.barcode || "",
+      variantName: variant.variantName,
+      price: Number(variant.price),
+      cost: Number(variant.cost),
+      stock: Number(variant.stock),
+    });
+    setError(null);
+    setSuccessMsg(null);
+  }
+
+  async function handleUpdateVariant(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingVariant) return;
+    setError(null);
+    try {
+      const updated = await updateItemVariantRequest(editingVariant.id, {
+        sku: editForm.sku,
+        barcode: editForm.barcode,
+        variantName: editForm.variantName,
+        price: editForm.price,
+        cost: editForm.cost,
+        stock: editForm.stock,
+      });
+      setVariants((prev) =>
+        prev.map((v) => (v.id === editingVariant.id ? { ...v, ...updated, ...editForm } : v))
+      );
+      setSuccessMsg(`Variant "${editForm.variantName}" updated successfully!`);
+      setEditingVariant(null);
+    } catch (e: any) {
+      setError(e.message || "Failed to update variant");
     }
   }
 
@@ -222,6 +271,7 @@ export default function ItemModifiersPage() {
                       <th className="p-3 text-start">Selling Price</th>
                       <th className="p-3 text-start">Cost</th>
                       <th className="p-3 text-start">Stock</th>
+                      <th className="p-3 text-start">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ink/5 font-mono">
@@ -247,11 +297,20 @@ export default function ItemModifiersPage() {
                             {v.stock} pcs
                           </span>
                         </td>
+                        <td className="p-3 font-sans">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(v)}
+                            className="rounded bg-ink/10 px-2 py-1 text-xs font-bold text-ink hover:bg-gold transition-colors"
+                          >
+                            ✏️ Edit
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {filteredVariants.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-ink/40 font-sans">
+                        <td colSpan={7} className="p-8 text-center text-ink/40 font-sans">
                           No variants created for this item yet. Click "Add New Variant" to define attributes.
                         </td>
                       </tr>
@@ -368,6 +427,111 @@ export default function ItemModifiersPage() {
                   className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
                 >
                   Save Variant
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Variant Modal */}
+      {editingVariant && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">✏️ Edit Item Variant</h3>
+              <button
+                onClick={() => setEditingVariant(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateVariant} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Variant Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Nic 50mg - Blue Razz"
+                  value={editForm.variantName}
+                  onChange={(e) => setEditForm({ ...editForm, variantName: e.target.value })}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-slate-900 outline-none focus:border-indigo-600 bg-slate-50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Variant SKU</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.sku}
+                    onChange={(e) => setEditForm({ ...editForm, sku: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Barcode</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.barcode}
+                    onChange={(e) => setEditForm({ ...editForm, barcode: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Price (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    required
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Cost (KD)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={editForm.cost}
+                    onChange={(e) => setEditForm({ ...editForm, cost: parseFloat(e.target.value) || 0 })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Stock</label>
+                  <input
+                    type="number"
+                    value={editForm.stock}
+                    onChange={(e) => setEditForm({ ...editForm, stock: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 font-mono outline-none focus:border-indigo-600 bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingVariant(null)}
+                  className="px-4 py-2 rounded-xl text-slate-500 font-bold hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-ink text-white font-bold hover:bg-gold hover:text-ink shadow-md transition"
+                >
+                  Update Variant
                 </button>
               </div>
             </form>

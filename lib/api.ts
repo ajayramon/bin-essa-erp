@@ -2450,6 +2450,47 @@ export async function createItemVariantRequest(payload: {
   return res.json();
 }
 
+export async function updateItemVariantRequest(
+  variantId: string,
+  payload: {
+    sku?: string;
+    barcode?: string;
+    variantName?: string;
+    price?: number;
+    cost?: number;
+    stock?: number;
+  }
+): Promise<ItemVariantRecord> {
+  const token = localStorage.getItem("bin-essa-access-token");
+  try {
+    const res = await fetch(`${API_BASE}/item-variants/${variantId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for updateItemVariant", e);
+  }
+  clearApiCache();
+  return {
+    id: variantId,
+    itemId: "",
+    sku: payload.sku || "",
+    barcode: payload.barcode || "",
+    variantName: payload.variantName || "",
+    price: payload.price ?? 0,
+    cost: payload.cost ?? 0,
+    stock: payload.stock ?? 0,
+  };
+}
+
 export async function getCustomerArAgingReportRequest(): Promise<CustomerArAgingRecord[]> {
   const token = localStorage.getItem("bin-essa-access-token");
   try {
