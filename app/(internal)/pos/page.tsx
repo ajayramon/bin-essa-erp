@@ -283,7 +283,7 @@ export default function PosPage() {
     const userId = user?.id || "0f4c78ce-14cc-4d67-86f8-a12ddfea3ef7";
     const invoiceNumber = `POS-${Date.now().toString().slice(-6)}`;
     const branchName = (currentBranch as any)?.name || "Bin Essa Head Office - Shuwaikh";
-    const cashierName = (user as any)?.fullName || (user as any)?.username || user?.name || "Authorized Cashier";
+    const cashierName = (user as any)?.fullName || (user as any)?.username || (user as any)?.name || "Authorized Cashier";
 
     // Snapshot base stock deductions for sold items
     const baseStockDeductions: Record<string, number> = {};
