@@ -62,10 +62,15 @@
 
 ### Master Development Workflow Sequence
 - **Workflow 1 (ACTIVE & CURRENT FOCUS)**: Product Purchasing & Sales Cycle
-  - Item Creation ➔ Purchase Order ➔ Goods Receipt ➔ Inventory Updated ➔ Weighted Average Cost (WAC) Updated ➔ General Ledger Posted ➔ POS Sale ➔ Inventory Reduced ➔ Sales Invoice Generated ➔ Accounting Entries Posted ➔ Reports Updated ➔ Dashboard Updated.
+  - Create Product ➔ Create Supplier ➔ Create Purchase Order ➔ Approve Purchase Order ➔ Goods Receipt ➔ Inventory Automatically Increased ➔ Weighted Average Cost (WAC) Recalculated ➔ Landed Cost Allocated ➔ Auto Journal Entry Created (Debit Inventory Asset 1200 / Credit Accounts Payable 2000) ➔ Available in POS ➔ Cashier Sells Product ➔ Inventory Decreases Automatically ➔ Sales Invoice Generated ➔ Customer Balance Updated ➔ Cash/Bank Updated ➔ Auto Accounting Entries Created (Revenue & COGS) ➔ Dashboard Updates ➔ Inventory Reports Update ➔ Financial Reports Update ➔ Audit Log Created.
 - **Workflow 2**: Inventory Operations (Transfers, Adjustments, Counts, Barcodes, Warehouse Operations).
 - **Workflow 3**: Financial Accounting (AR, AP, Cash, Bank, Financial Statements).
 - **Workflow 4**: B2B Portal.
 - **Workflow 5**: Sales Representative Mobile App.
 - **Workflow 6**: HR & Payroll.
 - **Workflow 7**: Advanced Reporting & Commercial Intelligence.
+
+### Workflow Lockdown Question
+When suggesting or evaluating the next task, ALWAYS ask:
+*"Does this complete the current workflow, or does it introduce a new feature?"*
+If it introduces a new feature before the current workflow is complete, postpone it until the workflow is finished!

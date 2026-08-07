@@ -1487,6 +1487,18 @@ export async function createSalesInvoiceRequest(
 
   saveLocalJournalEntry(journalEntry);
 
+  // 4. Record System Audit Log
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "POS_SALE",
+    entityId: fallbackInv.id,
+    referenceNumber: payload.invoiceNumber,
+    branchId: payload.branchId,
+    userId: payload.userId,
+    description: `POS Checkout Completed: Invoice ${payload.invoiceNumber} posted for Total ${totalAmount.toFixed(3)} KWD`,
+    createdAt: new Date().toISOString(),
+  });
+
   try {
     const res = await fetch(`${API_BASE}/sales-invoices`, {
       method: "POST",
@@ -1948,6 +1960,18 @@ export async function createPurchaseInvoiceRequest(
 
   saveLocalJournalEntry(journalEntry);
 
+  // 4. Record System Audit Log
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "PURCHASE_RECEIVED",
+    entityId: fallbackInv.id,
+    referenceNumber: payload.invoiceNumber,
+    branchId: payload.branchId,
+    userId: null,
+    description: `Goods Receipt / Purchase Invoice ${payload.invoiceNumber} posted: Stock increased & AP GL entry for ${totalAmount.toFixed(3)} KWD created`,
+    createdAt: new Date().toISOString(),
+  });
+
   try {
     const res = await fetch(`${API_BASE}/purchase-invoices`, {
       method: "POST",
@@ -2067,6 +2091,37 @@ export interface DiscountAuditLogRecord {
   approvedByUserId?: string;
   approvedByName?: string;
   createdAt: string;
+}
+
+export interface SystemAuditLogRecord {
+  id: string;
+  action: "PRODUCT_CREATED" | "PURCHASE_RECEIVED" | "POS_SALE" | "STOCK_ADJUSTMENT";
+  entityId: string;
+  referenceNumber: string;
+  branchId: string | null;
+  userId: string | null;
+  description: string;
+  createdAt: string;
+}
+
+export function getLocalAuditLogs(): SystemAuditLogRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-audit-logs");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveSystemAuditLog(log: SystemAuditLogRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalAuditLogs();
+    localStorage.setItem("bin-essa-audit-logs", JSON.stringify([log, ...existing]));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export async function listPromotionsRequest(): Promise<PromotionRecord[]> {
