@@ -74,3 +74,6 @@
 When suggesting or evaluating the next task, ALWAYS ask:
 *"Does this complete the current workflow, or does it introduce a new feature?"*
 If it introduces a new feature before the current workflow is complete, postpone it until the workflow is finished!
+
+## 9. Official ERP Development Standards & Governance
+- **15 Enterprise Pillars**: Every implementation must strictly follow [ERP_DEVELOPMENT_STANDARDS.md](file:///c:/Users/Abdul/bin-essa-erp/ERP_DEVELOPMENT_STANDARDS.md) covering Database Transactions (`$transaction`), Backend Service Logic, Movement-Based Inventory Ledger (`InventoryMovement`), Immutable Double-Entry GL Journal Entries (`sum(debit) === sum(credit)`), Reversing Entries for Corrections, Branch Isolation (`branchId`), Backend Permission Guards, Immutable Audit Logs, Soft Delete (`isActive`/`status`), Modular REST APIs, Indexing & Pagination, and Clean Error Validation payloads.
