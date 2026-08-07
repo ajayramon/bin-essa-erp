@@ -304,6 +304,7 @@ export interface AccountResponse {
 const FALLBACK_ACCOUNTS: AccountResponse[] = [
   { id: "acc-1000", code: "1000", name: "Cash on Hand", type: "ASSET" },
   { id: "acc-1010", code: "1010", name: "Bank Account - NBK", type: "ASSET" },
+  { id: "acc-1100", code: "1100", name: "Accounts Receivable", type: "ASSET" },
   { id: "acc-1200", code: "1200", name: "Inventory Asset", type: "ASSET" },
   { id: "acc-2000", code: "2000", name: "Accounts Payable", type: "LIABILITY" },
   { id: "acc-3000", code: "3000", name: "Owner's Equity", type: "EQUITY" },
@@ -459,6 +460,7 @@ export async function getTrialBalanceRequest(): Promise<TrialBalanceResponse> {
 
   const baseRows: TrialBalanceRow[] = [
     { accountId: "acc-1000", code: "1000", name: "Cash on Hand", type: "ASSET", debit: 4250.5, credit: 0 },
+    { accountId: "acc-1100", code: "1100", name: "Accounts Receivable", type: "ASSET", debit: 0, credit: 0 },
     { accountId: "acc-1200", code: "1200", name: "Inventory Asset", type: "ASSET", debit: 52300, credit: 0 },
     { accountId: "acc-2000", code: "2000", name: "Accounts Payable", type: "LIABILITY", debit: 0, credit: 9840.25 },
     { accountId: "acc-4000", code: "4000", name: "Sales Revenue", type: "REVENUE", debit: 0, credit: 115700 },
