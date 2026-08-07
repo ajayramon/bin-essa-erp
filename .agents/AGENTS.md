@@ -45,5 +45,27 @@
 - **Per-Item Commercial Controls**: Per-item toggles for `blockDiscount`, `blockFreeGift`, and `blockSale`.
 - **Receipt & Label Printers**: ESC/POS thermal receipt printing and ZPL barcode/shelf label printer integration.
 
+## 8. Master Project Context & Workflow Development Philosophy
 
+### Core Architectural Philosophy
+- **Workflows Over Screens**: Never build isolated screens or incomplete modules. Always build complete, connected business workflows from start to finish.
+- **Sequential Lockdown**: Each workflow must be fully functional, connected across all related modules, tested, and approved before beginning the next workflow. Once approved, a workflow is locked down.
+- **Zero UI-Only Features**: Every action must update the database, inventory balances, GL journal entries, reports, audit logs, and dashboard metrics automatically.
 
+### System Architecture & Application Boundaries
+- **Central NestJS Backend + PostgreSQL Database + Single JWT Auth**: All applications communicate with one backend API and database. No duplicated business logic.
+- **Application Separation**:
+  1. **Admin ERP (`admin.domain.com` / `/`)**: Master Head Office control for Products, Inventory, Purchasing, Accounting, Pricing, Reports, Permissions, Companies, Branches, Settings.
+  2. **Branch POS (`pos.domain.com` / `/pos`)**: Independent sales counter terminal strictly scoped to `branchId` (Sales, Cash Drawer, Local Stock, Cashier Login, Daily Closing).
+  3. **B2B Customer Portal (`b2b.domain.com` / `/b2b`)**: Wholesale customer self-service ordering, contract price tiers, and credit limit visibility.
+  4. **Sales Rep Mobile App**: Offline-first wholesale ordering and payment collection.
+
+### Master Development Workflow Sequence
+- **Workflow 1 (ACTIVE & CURRENT FOCUS)**: Product Purchasing & Sales Cycle
+  - Item Creation ➔ Purchase Order ➔ Goods Receipt ➔ Inventory Updated ➔ Weighted Average Cost (WAC) Updated ➔ General Ledger Posted ➔ POS Sale ➔ Inventory Reduced ➔ Sales Invoice Generated ➔ Accounting Entries Posted ➔ Reports Updated ➔ Dashboard Updated.
+- **Workflow 2**: Inventory Operations (Transfers, Adjustments, Counts, Barcodes, Warehouse Operations).
+- **Workflow 3**: Financial Accounting (AR, AP, Cash, Bank, Financial Statements).
+- **Workflow 4**: B2B Portal.
+- **Workflow 5**: Sales Representative Mobile App.
+- **Workflow 6**: HR & Payroll.
+- **Workflow 7**: Advanced Reporting & Commercial Intelligence.

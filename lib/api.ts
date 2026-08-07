@@ -1829,15 +1829,23 @@ export async function createPurchaseInvoiceRequest(
 ): Promise<PurchaseInvoiceResponse> {
   const token = localStorage.getItem("bin-essa-access-token");
   
-  // 1. Increment persistent stock quantity for each purchased line item immediately
+  // 1. Increment persistent stock quantity & calculate Weighted Average Cost (WAC) for each purchased line item
   const storedItems = getStoredItems();
   payload.lines.forEach((l) => {
     const item = storedItems.find((i) => i.id === l.itemId) || FALLBACK_ITEMS.find((i) => i.id === l.itemId);
     if (item) {
-      item.stockQuantity = Number(item.stockQuantity || 0) + l.quantity;
-      if (l.unitCost && Number(l.unitCost) > 0) {
-        item.cost = Number(l.unitCost);
+      const currentStock = Math.max(0, Number(item.stockQuantity || 0));
+      const currentCost = Number(item.cost || 0);
+      const newQty = l.quantity;
+      const newUnitCost = Number(l.unitCost || 0);
+
+      const totalQty = currentStock + newQty;
+      if (totalQty > 0 && newUnitCost > 0) {
+        // Weighted Average Cost Formula: (Existing Stock * Existing Cost + New Qty * New Cost) / Total Qty
+        const wacCost = (currentStock * currentCost + newQty * newUnitCost) / totalQty;
+        item.cost = Number(wacCost.toFixed(3));
       }
+      item.stockQuantity = totalQty;
     }
   });
   saveStoredItems(storedItems);
