@@ -9,6 +9,7 @@ import {
   cashPosition,
   pendingPurchaseOrders,
 } from "@/lib/mock-data/dashboard";
+import { getLocalSalesInvoices } from "@/lib/api";
 
 // TEMP: lowStockAlerts intentionally omitted from this per-brand Dashboard.
 // That data shape has no brandId (only branchNameEn/branchNameAr strings),
@@ -33,8 +34,15 @@ export default function DashboardPage() {
     );
   }
 
+  // Calculate live sales made from POS
+  const localSales = getLocalSalesInvoices();
+  const liveSalesTotal = localSales.reduce((s: number, inv) => s + Number(inv.totalAmount || 0), 0);
+
   const brandSales = companySales.find((c) => c.brandId === currentBrand.id);
   const brandCash = cashPosition.find((c) => c.brandId === currentBrand.id);
+
+  const effectiveTodaySales = (brandSales?.todaySales ?? 0) + liveSalesTotal;
+  const effectiveMonthSales = (brandSales?.monthSales ?? 0) + liveSalesTotal;
 
   const brandBranches = branchPerformance.filter(
     (b) => b.brandId === currentBrand.id
@@ -65,14 +73,14 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
           <p className="text-sm text-ink/50">{t.groupDashboard.todaySales}</p>
           <p className="numeric-ltr mt-1 text-2xl font-semibold text-ink">
-            {formatKD(brandSales?.todaySales ?? 0)}{" "}
+            {formatKD(effectiveTodaySales)}{" "}
             <span className="text-sm font-normal text-ink/40">KD</span>
           </p>
         </div>
         <div className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
           <p className="text-sm text-ink/50">{t.groupDashboard.monthSales}</p>
           <p className="numeric-ltr mt-1 text-2xl font-semibold text-ink">
-            {formatKD(brandSales?.monthSales ?? 0)}{" "}
+            {formatKD(effectiveMonthSales)}{" "}
             <span className="text-sm font-normal text-ink/40">KD</span>
           </p>
         </div>

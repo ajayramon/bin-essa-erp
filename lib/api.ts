@@ -177,6 +177,23 @@ export async function createItemRequest(
 
   const currentItems = getStoredItems();
   saveStoredItems([newItem, ...currentItems]);
+
+  // Also register initial branch stock for the new item across branches
+  if (typeof window !== "undefined") {
+    try {
+      const rawBranchStock = localStorage.getItem("bin-essa-branch-stock-v2");
+      const branchStockMap = rawBranchStock ? JSON.parse(rawBranchStock) : {};
+      branchStockMap[newItem.id] = {
+        "br-01": payload.stockQuantity ?? 10,
+        "br-02": 5,
+        "br-08": 50,
+      };
+      localStorage.setItem("bin-essa-branch-stock-v2", JSON.stringify(branchStockMap));
+    } catch {
+      // Ignore
+    }
+  }
+
   clearApiCache();
   return newItem as any;
 }
@@ -1370,7 +1387,7 @@ const DEFAULT_FALLBACK_SALES_INVOICES: SalesInvoiceResponse[] = [
   },
 ];
 
-function getLocalSalesInvoices(): SalesInvoiceResponse[] {
+export function getLocalSalesInvoices(): SalesInvoiceResponse[] {
   if (typeof window === "undefined") return DEFAULT_FALLBACK_SALES_INVOICES;
   try {
     const raw = localStorage.getItem("bin-essa-local-sales-invoices");
@@ -1382,7 +1399,7 @@ function getLocalSalesInvoices(): SalesInvoiceResponse[] {
   }
 }
 
-function saveLocalSalesInvoice(inv: SalesInvoiceResponse) {
+export function saveLocalSalesInvoice(inv: SalesInvoiceResponse) {
   if (typeof window === "undefined") return;
   try {
     const raw = localStorage.getItem("bin-essa-local-sales-invoices");
@@ -1861,6 +1878,24 @@ export async function createPurchaseInvoiceRequest(
     }
   });
   saveStoredItems(storedItems);
+
+  // Increment branch-level persistent stock
+  if (typeof window !== "undefined") {
+    try {
+      const rawBranchStock = localStorage.getItem("bin-essa-branch-stock-v2");
+      const branchStockMap = rawBranchStock ? JSON.parse(rawBranchStock) : {};
+      payload.lines.forEach((l) => {
+        if (!branchStockMap[l.itemId]) {
+          branchStockMap[l.itemId] = {};
+        }
+        const cur = branchStockMap[l.itemId][payload.branchId] || 0;
+        branchStockMap[l.itemId][payload.branchId] = cur + l.quantity;
+      });
+      localStorage.setItem("bin-essa-branch-stock-v2", JSON.stringify(branchStockMap));
+    } catch {
+      // Ignore
+    }
+  }
 
   const subtotal = payload.lines.reduce((s, l) => s + l.quantity * l.unitCost, 0);
   const taxAmount = payload.taxAmount || 0;

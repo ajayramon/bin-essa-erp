@@ -74,6 +74,9 @@ export interface Item {
   hasVariants: boolean;
   hasSerials: boolean;
   visibility: ItemVisibility;
+  blockDiscount?: boolean;
+  blockFreeGift?: boolean;
+  blockSale?: boolean;
 }
 
 // Default visibility per category. Every category must have an entry here.
