@@ -402,11 +402,15 @@ export default function BranchPosPage() {
         userId: user.id,
         paymentMethod: backendPaymentMethod,
         taxAmount: 0,
-        lines: cartLines.map((l) => ({
-          itemId: l.item.id,
-          quantity: l.qty,
-          unitPrice: l.isGift ? 0 : l.item.sellPriceKd,
-        })),
+        lines: cartLines.map((l) => {
+          const basePrice = l.isGift ? 0 : l.item.sellPriceKd;
+          const linePrice = discountPct > 0 ? basePrice * (1 - discountPct / 100) : basePrice;
+          return {
+            itemId: l.item.id,
+            quantity: l.qty,
+            unitPrice: Number(linePrice.toFixed(3)),
+          };
+        }),
       });
     } catch {
       // Graceful fallback to offline/in-memory update
