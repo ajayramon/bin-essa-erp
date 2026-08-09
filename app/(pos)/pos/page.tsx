@@ -175,16 +175,17 @@ export default function BranchPosPage() {
 
     return [
       { id: "all", label: locale === "ar" ? "جميع الأصناف" : "All Items", count: counts.all ?? 0 },
-      { id: "disposable_vapes", label: locale === "ar" ? "سحبات جاهزة" : "E-Cigarettes", count: counts.disposable_vapes ?? 12 },
-      { id: "pod_systems", label: locale === "ar" ? "أجهزة بود" : "Pod Systems", count: counts.pod_systems ?? 8 },
-      { id: "nicotine_pouches", label: locale === "ar" ? "أكياس النيكوتين" : "Nicotine Pouches", count: counts.nicotine_pouches ?? 6 },
-      { id: "cigarette_lighters", label: locale === "ar" ? "ولاعات" : "Lighters", count: counts.cigarette_lighters ?? 7 },
-      { id: "rolling_papers", label: locale === "ar" ? "ورق لف" : "Rolling Papers", count: counts.rolling_papers ?? 5 },
-      { id: "dokha_medwakh", label: locale === "ar" ? "دوخة ومدواخ" : "Dokha & Medwakh", count: counts.dokha_medwakh ?? 8 },
-      { id: "custom_gifts_signage", label: locale === "ar" ? "هدايا ومطبوعات" : "Gifts & Party", count: counts.custom_gifts_signage ?? 9 },
-      { id: "beverages", label: locale === "ar" ? "مشروبات" : "Beverages", count: counts.beverages ?? 4 },
-      { id: "snacks", label: locale === "ar" ? "سناكس" : "Snacks", count: counts.snacks ?? 6 },
-      { id: "household", label: locale === "ar" ? "أخرى ومستلزمات" : "Household", count: counts.household ?? 5 },
+      { id: "disposable_vapes", label: locale === "ar" ? "سحبات جاهزة (فيب)" : "Disposable Vapes", count: counts.disposable_vapes ?? 0 },
+      { id: "pod_systems", label: locale === "ar" ? "أجهزة بود ونكهات" : "Pod Systems & Liquids", count: counts.pod_systems ?? 0 },
+      { id: "nicotine_pouches", label: locale === "ar" ? "أكياس النيكوتين (سيبيريا/فوكس)" : "Nicotine Pouches", count: counts.nicotine_pouches ?? 0 },
+      { id: "dokha_medwakh", label: locale === "ar" ? "دوخة ومدواخ" : "Dokha & Medwakh", count: counts.dokha_medwakh ?? 0 },
+      { id: "cigarette_lighters", label: locale === "ar" ? "ولاعات (كريكيت/فويغو)" : "Cigarette Lighters", count: counts.cigarette_lighters ?? 0 },
+      { id: "rolling_papers", label: locale === "ar" ? "ورق لف ومخاريط (RAW)" : "Rolling Papers & Cones", count: counts.rolling_papers ?? 0 },
+      { id: "rolling_tobacco_hbt", label: locale === "ar" ? "تبغ لف السجائر (HBT)" : "Rolling Tobacco (HBT)", count: counts.rolling_tobacco_hbt ?? 0 },
+      { id: "pipe_accessories", label: locale === "ar" ? "مستلزمات الغليون (بايب)" : "Pipe Accessories", count: counts.pipe_accessories ?? 0 },
+      { id: "general_smoking_accessories", label: locale === "ar" ? "مستلزمات تدخين وفحم كراون" : "Charcoal & Accessories", count: counts.general_smoking_accessories ?? 0 },
+      { id: "marine_outdoor", label: locale === "ar" ? "بن عيسى الخيران (بحري)" : "Khiran Marine & Outdoor", count: counts.marine_outdoor ?? 0 },
+      { id: "custom_gifts_signage", label: locale === "ar" ? "جي إم آرت زون (هدايا/أكريليك)" : "JM Art Zone Gifts", count: counts.custom_gifts_signage ?? 0 },
     ];
   }, [itemsCatalog, locale]);
 

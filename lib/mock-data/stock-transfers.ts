@@ -16,8 +16,8 @@ export const INITIAL_STOCK_REQUESTS: StockRequestRecord[] = [
     date: "07/08/2026 10:30 AM",
     fromBranch: "Shuwaikh Main Warehouse",
     toBranch: "Salmiya 5th",
-    itemsCount: 12,
-    itemsSummary: "Tropical Mix, Elf Bar, Clipper Lighters",
+    itemsCount: 50,
+    itemsSummary: "Beco Pro 6000 Puffs, RAW Classic King Size, Cricket Lighters Box 50s",
     status: "Pending",
   },
   {
@@ -26,8 +26,8 @@ export const INITIAL_STOCK_REQUESTS: StockRequestRecord[] = [
     date: "06/08/2026 04:20 PM",
     fromBranch: "Shuwaikh Main Warehouse",
     toBranch: "Salmiya 5th",
-    itemsCount: 8,
-    itemsSummary: "Velo Mint, IQOS Terea Yellow",
+    itemsCount: 30,
+    itemsSummary: "SIBERIA -80°C Red, White Fox All White, CHARCOAL CROWN 40 MM",
     status: "Approved",
   },
   {
@@ -36,8 +36,8 @@ export const INITIAL_STOCK_REQUESTS: StockRequestRecord[] = [
     date: "05/08/2026 11:15 AM",
     fromBranch: "Shuwaikh Main Warehouse",
     toBranch: "Salmiya 5th",
-    itemsCount: 15,
-    itemsSummary: "Dokha Medwakh, Rolling Tobacco",
+    itemsCount: 25,
+    itemsSummary: "Al Basha Dokha Warm 50ml, Handcrafted Ebony Medwakh Gold, Cones 32s",
     status: "Prepared",
   },
   {
@@ -46,8 +46,8 @@ export const INITIAL_STOCK_REQUESTS: StockRequestRecord[] = [
     date: "03/08/2026 09:45 AM",
     fromBranch: "Shuwaikh Main Warehouse",
     toBranch: "Salmiya 5th",
-    itemsCount: 9,
-    itemsSummary: "Stainless Steel Ashtrays, Pod Kits",
+    itemsCount: 40,
+    itemsSummary: "BLVK Unicorn Cuban Cigar 30ML, Wafer 5000 Puffs Blueberry, Fuego Lighters",
     status: "Received",
   },
 ];
