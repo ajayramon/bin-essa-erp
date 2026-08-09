@@ -44,7 +44,8 @@ export function PosStatusBar({
     function updateClock() {
       const now = new Date();
       setTimeString(
-        now.toLocaleTimeString("en-US", {
+        now.toLocaleTimeString(locale === "ar" ? "ar-KW" : "en-US", {
+          timeZone: "Asia/Kuwait",
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
@@ -53,9 +54,11 @@ export function PosStatusBar({
       );
       setDateString(
         now.toLocaleDateString(locale === "ar" ? "ar-KW" : "en-US", {
+          timeZone: "Asia/Kuwait",
           weekday: "short",
           month: "short",
           day: "numeric",
+          year: "numeric",
         })
       );
     }
@@ -118,11 +121,14 @@ export function PosStatusBar({
           </span>
         </div>
 
-        {/* Live Clock & Date */}
+        {/* Live Clock & Date (Kuwait Time AST GMT+3) */}
         <div className="flex items-center gap-2 border-s border-neutral-800 ps-4">
           <Clock className="h-3.5 w-3.5 text-[#FDCE0C]" />
           <div className="numeric-ltr flex items-center gap-1.5 text-neutral-300 font-mono font-medium">
             <span className="font-bold text-white">{timeString}</span>
+            <span className="text-[10px] text-[#FDCE0C] font-semibold">
+              {locale === "ar" ? "توقيت الكويت" : "AST (KW)"}
+            </span>
             <span className="hidden lg:inline text-neutral-400 text-[11px]">
               • {dateString}
             </span>

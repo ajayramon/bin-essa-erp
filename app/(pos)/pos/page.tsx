@@ -9,6 +9,14 @@ import { branches } from "@/lib/mock-data/branches";
 import { isItemVisibleToBrand } from "@/lib/utils/visibility";
 import type { Item, Customer, ItemCategory } from "@/lib/types";
 import { createSalesInvoiceRequest } from "@/lib/api";
+import {
+  getPersistentItemsCatalog,
+  deductBranchStock,
+} from "@/lib/utils/pos-stock";
+import {
+  formatKuwaitDateTime,
+  formatKuwaitTime,
+} from "@/lib/utils/kuwait-time";
 
 import { PosTopbar } from "@/components/pos/PosTopbar";
 import { PosSidebar, type PosTab } from "@/components/pos/PosSidebar";
@@ -43,9 +51,22 @@ export default function BranchPosPage() {
     branchesForCurrentBrand,
   } = useSession();
 
-  // 1. Live Inventory & Catalog State (allows local decrement after sale)
-  const [itemsCatalog, setItemsCatalog] = useState<Item[]>(initialItems);
+  // 1. Live Inventory & Catalog State (synced with persistent storage)
+  const [itemsCatalog, setItemsCatalog] = useState<Item[]>(() => getPersistentItemsCatalog());
   const [customersList] = useState<Customer[]>(initialCustomers);
+
+  // Sync inventory whenever page regains focus or visibility
+  useEffect(() => {
+    function syncStock() {
+      setItemsCatalog(getPersistentItemsCatalog());
+    }
+    window.addEventListener("focus", syncStock);
+    document.addEventListener("visibilitychange", syncStock);
+    return () => {
+      window.removeEventListener("focus", syncStock);
+      document.removeEventListener("visibilitychange", syncStock);
+    };
+  }, []);
 
   // 2. Active POS Tab & Search & Filter
   const [activeTab, setActiveTab] = useState<PosTab>("sales");
@@ -248,10 +269,7 @@ export default function BranchPosPage() {
     if (cartLines.length === 0) return;
     const newHeld: HeldSaleRecord = {
       id: `hold-${Date.now()}`,
-      heldAt: new Date().toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      heldAt: formatKuwaitTime(new Date(), locale),
       customerName: selectedCustomer
         ? locale === "ar"
           ? selectedCustomer.nameAr
@@ -298,10 +316,7 @@ export default function BranchPosPage() {
 
     const saleRecord: CompletedSaleRecord = {
       invoiceNumber,
-      date: new Date().toLocaleString("en-US", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
+      date: formatKuwaitDateTime(new Date(), locale),
       branchName,
       cashierName,
       customerName: custName,
@@ -344,21 +359,12 @@ export default function BranchPosPage() {
       // Graceful fallback to offline/in-memory update if backend is unreachable
     }
 
-    // 2. Decrement local branch stock immediately
-    setItemsCatalog((prevItems) => {
-      return prevItems.map((item) => {
-        const line = cartLines.find((l) => l.item.id === item.id);
-        if (!line) return item;
-        const currentStock = item.stockByBranch[activeBranch.id] ?? 0;
-        return {
-          ...item,
-          stockByBranch: {
-            ...item.stockByBranch,
-            [activeBranch.id]: Math.max(0, currentStock - line.qty),
-          },
-        };
-      });
-    });
+    // 2. Decrement persistent branch stock immediately
+    const updatedCatalog = deductBranchStock(
+      activeBranch.id,
+      cartLines.map((l) => ({ itemId: l.item.id, quantity: l.qty }))
+    );
+    setItemsCatalog(updatedCatalog);
 
     // 3. Update Register Metrics
     setTodaySalesKd((prev) => prev + total);

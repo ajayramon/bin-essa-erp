@@ -197,12 +197,12 @@ export function PosTopbar({
         <button
           type="button"
           onClick={toggleLocale}
-          className="flex h-9 items-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 text-xs font-medium text-neutral-300 transition-colors hover:border-neutral-700 hover:text-white"
-          title={t.common.language}
+          className="flex h-9 items-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 px-3 text-xs font-semibold text-neutral-300 transition-colors hover:border-[#FDCE0C] hover:text-white"
+          title={locale === "ar" ? "Switch to English" : "التبديل إلى العربية"}
         >
-          <Globe className="h-4 w-4 text-neutral-400" />
-          <span className="numeric-ltr uppercase font-bold text-[#FDCE0C]">
-            {locale === "ar" ? "EN" : "عربي"}
+          <Globe className="h-4 w-4 text-[#FDCE0C]" />
+          <span className="font-bold text-[#FDCE0C]">
+            {locale === "ar" ? "English" : "العربية"}
           </span>
         </button>
 
