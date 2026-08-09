@@ -99,7 +99,7 @@ export function PosSidebar({
         </div>
 
         {/* Categories List */}
-        <div className="space-y-0.5 max-h-[calc(100vh-280px)] overflow-y-auto pe-1">
+        <div className="space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto pe-1">
           {categories.map((cat) => {
             const Icon = getCategoryIcon(cat.id);
             const isActive = activeCategory === cat.id;
@@ -111,17 +111,17 @@ export function PosSidebar({
                 onClick={() => onSelectCategory(cat.id)}
                 className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-start font-semibold transition-all ${
                   isActive
-                    ? "bg-[#2563EB] text-white shadow-xs"
-                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-[#FDCE0C] text-black shadow-xs font-black"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-black"
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-black" : "text-slate-500"}`} />
                   <span className="truncate text-xs">{cat.label}</span>
                 </div>
                 <span
-                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold numeric-ltr ${
-                    isActive ? "bg-white/20 text-white" : "text-slate-400 bg-slate-100"
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] font-black numeric-ltr ${
+                    isActive ? "bg-black text-[#FDCE0C]" : "text-slate-500 bg-slate-100"
                   }`}
                 >
                   {cat.count}
@@ -137,11 +137,11 @@ export function PosSidebar({
         <button
           type="button"
           onClick={() => setShowBranchTools((prev) => !prev)}
-          className="flex w-full items-center justify-between rounded-xl p-2 font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors"
+          className="flex w-full items-center justify-between rounded-xl p-2 font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors"
         >
           <div className="flex items-center gap-1.5">
-            <Truck className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-[11px]">{locale === "ar" ? "عمليات الفرع والتقارير" : "Branch Operations"}</span>
+            <Truck className="h-3.5 w-3.5 text-black" />
+            <span className="text-[11px] font-bold">{locale === "ar" ? "عمليات الفرع والتقارير" : "Branch Operations"}</span>
           </div>
           {showBranchTools ? (
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -155,46 +155,46 @@ export function PosSidebar({
             <button
               type="button"
               onClick={onOpenNewStockRequest}
-              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700"
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-amber-50 hover:text-black"
             >
-              <Truck className="h-3.5 w-3.5 text-blue-600" />
-              <span className="text-[11px] truncate">{locale === "ar" ? "طلب بضاعة من المخزن" : "Stock Request"}</span>
+              <Truck className="h-3.5 w-3.5 text-amber-600" />
+              <span className="text-[11px] truncate font-semibold">{locale === "ar" ? "طلب بضاعة من المخزن" : "Stock Request"}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenStockHistory}
-              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-black"
             >
               <History className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-[11px] truncate">{locale === "ar" ? "سجل الطلبات" : "Request History"}</span>
+              <span className="text-[11px] truncate font-semibold">{locale === "ar" ? "سجل الطلبات" : "Request History"}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenTodaySalesSummary}
-              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-black"
             >
               <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-[11px] truncate">{locale === "ar" ? "ملخص مبيعات اليوم" : "Today's Sales"}</span>
+              <span className="text-[11px] truncate font-semibold">{locale === "ar" ? "ملخص مبيعات اليوم" : "Today's Sales"}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenTodayShiftSummary}
-              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-black"
             >
-              <Clock className="h-3.5 w-3.5 text-purple-600" />
-              <span className="text-[11px] truncate">{locale === "ar" ? "ملخص الوردية (F10)" : "Shift Summary (F10)"}</span>
+              <Clock className="h-3.5 w-3.5 text-slate-600" />
+              <span className="text-[11px] truncate font-semibold">{locale === "ar" ? "ملخص الوردية (F10)" : "Shift Summary (F10)"}</span>
             </button>
 
             <button
               type="button"
               onClick={onOpenStockSummary}
-              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              className="flex w-full items-center gap-2 rounded-lg p-1.5 text-start font-medium text-slate-700 hover:bg-slate-50 hover:text-black"
             >
-              <BarChart3 className="h-3.5 w-3.5 text-indigo-600" />
-              <span className="text-[11px] truncate">{locale === "ar" ? "ملخص المخزون" : "Stock Summary"}</span>
+              <BarChart3 className="h-3.5 w-3.5 text-slate-600" />
+              <span className="text-[11px] truncate font-semibold">{locale === "ar" ? "ملخص المخزون" : "Stock Summary"}</span>
             </button>
           </div>
         )}

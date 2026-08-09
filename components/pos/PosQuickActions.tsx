@@ -47,7 +47,7 @@ export function PosQuickActions({
         onClick={onOpenRecentSales}
         className="flex shrink-0 items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-2xs transition-colors hover:border-[#FDCE0C] hover:bg-neutral-50"
       >
-        <Clock className="h-3.5 w-3.5 text-blue-600" />
+        <Clock className="h-3.5 w-3.5 text-slate-700" />
         <span>{t.posScreen.recentSales}</span>
         {heldOrdersCount > 0 && (
           <span className="rounded-full bg-[#FDCE0C] px-1.5 py-0.2 text-[10px] font-bold text-black numeric-ltr">

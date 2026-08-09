@@ -18,8 +18,6 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
-  FileText,
-  Percent,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import type { Item, Customer } from "@/lib/types";
@@ -150,7 +148,7 @@ export function PosCartPanel({
           <button
             type="button"
             onClick={onOpenCustomerModal}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-start shadow-2xs hover:border-[#2563EB] transition-colors"
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-start shadow-2xs hover:border-[#FDCE0C] transition-colors"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -163,7 +161,7 @@ export function PosCartPanel({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-blue-600 shrink-0">
+            <span className="text-[10px] font-bold text-amber-700 shrink-0">
               {locale === "ar" ? "تغيير" : "Change"}
             </span>
           </button>
@@ -172,7 +170,7 @@ export function PosCartPanel({
           <button
             type="button"
             onClick={onOpenSalespersonModal}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-start shadow-2xs hover:border-[#2563EB] transition-colors"
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-start shadow-2xs hover:border-[#FDCE0C] transition-colors"
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -185,7 +183,7 @@ export function PosCartPanel({
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-blue-600 shrink-0">
+            <span className="text-[10px] font-bold text-amber-700 shrink-0">
               {locale === "ar" ? "تغيير" : "Change"}
             </span>
           </button>
@@ -240,7 +238,7 @@ export function PosCartPanel({
                       <td className="py-2 ps-2.5 pe-1 font-bold text-slate-900 leading-tight">
                         <p className="line-clamp-1">{itemName}</p>
                         {isGift && (
-                          <span className="inline-block rounded bg-amber-100 text-amber-800 px-1 text-[9px] font-extrabold uppercase mt-0.5">
+                          <span className="inline-block rounded bg-[#FDCE0C] text-black px-1 text-[9px] font-black uppercase mt-0.5">
                             Free Gift
                           </span>
                         )}
@@ -269,7 +267,7 @@ export function PosCartPanel({
                       <td className="py-2 px-1 text-end numeric-ltr font-semibold text-slate-600">
                         {formatKD(lineRate)}
                       </td>
-                      <td className="py-2 px-1 text-end numeric-ltr font-bold text-blue-700">
+                      <td className="py-2 px-1 text-end numeric-ltr font-black text-slate-950">
                         {formatKD(lineTotal)}
                       </td>
                       <td className="py-2 pe-2 ps-1 text-center">
@@ -294,13 +292,13 @@ export function PosCartPanel({
           <button
             type="button"
             onClick={() => setShowOptions((prev) => !prev)}
-            className="flex w-full items-center justify-between px-3 py-2 text-start font-bold text-slate-700 bg-slate-50/70 hover:bg-slate-100 transition-colors"
+            className="flex w-full items-center justify-between px-3 py-2 text-start font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100 transition-colors"
           >
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="h-3.5 w-3.5 text-blue-600" />
+              <SlidersHorizontal className="h-3.5 w-3.5 text-amber-500" />
               <span>{locale === "ar" ? "خيارات الطلب (خصم / توصيل / ملاحظات)" : "Order Options"}</span>
               {hasActiveOptions && (
-                <span className="rounded-full bg-blue-100 text-blue-800 px-1.5 py-0.2 text-[9px] font-extrabold">
+                <span className="rounded-full bg-[#FDCE0C] text-black px-1.5 py-0.2 text-[9px] font-black">
                   Active
                 </span>
               )}
@@ -348,9 +346,9 @@ export function PosCartPanel({
                   <button
                     type="button"
                     onClick={onAddGiftItem}
-                    className="flex w-full h-7 items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 font-bold hover:bg-amber-100 text-[11px]"
+                    className="flex w-full h-7 items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 text-black font-bold hover:bg-amber-100 text-[11px]"
                   >
-                    <Gift className="h-3.5 w-3.5 text-amber-600" />
+                    <Gift className="h-3.5 w-3.5 text-amber-700" />
                     <span>{locale === "ar" ? "+ إضافة هدية" : "+ Add Gift"}</span>
                   </button>
                 </div>
@@ -368,7 +366,7 @@ export function PosCartPanel({
                       onClick={() => onFulfillmentModeChange("pickup")}
                       className={`rounded py-1 text-[11px] font-bold transition-all ${
                         fulfillmentMode === "pickup"
-                          ? "bg-white text-slate-900 shadow-2xs"
+                          ? "bg-black text-[#FDCE0C] shadow-2xs font-black"
                           : "text-slate-600"
                       }`}
                     >
@@ -379,7 +377,7 @@ export function PosCartPanel({
                       onClick={() => onFulfillmentModeChange("delivery")}
                       className={`rounded py-1 text-[11px] font-bold transition-all ${
                         fulfillmentMode === "delivery"
-                          ? "bg-white text-slate-900 shadow-2xs"
+                          ? "bg-black text-[#FDCE0C] shadow-2xs font-black"
                           : "text-slate-600"
                       }`}
                     >
@@ -398,7 +396,7 @@ export function PosCartPanel({
                       onClick={() => onInvoiceTypeChange("cash")}
                       className={`rounded py-1 text-[11px] font-bold transition-all ${
                         invoiceType === "cash"
-                          ? "bg-white text-slate-900 shadow-2xs"
+                          ? "bg-black text-[#FDCE0C] shadow-2xs font-black"
                           : "text-slate-600"
                       }`}
                     >
@@ -409,7 +407,7 @@ export function PosCartPanel({
                       onClick={() => onInvoiceTypeChange("credit")}
                       className={`rounded py-1 text-[11px] font-bold transition-all ${
                         invoiceType === "credit"
-                          ? "bg-white text-slate-900 shadow-2xs"
+                          ? "bg-black text-[#FDCE0C] shadow-2xs font-black"
                           : "text-slate-600"
                       }`}
                     >
@@ -427,7 +425,7 @@ export function PosCartPanel({
                     value={deliveryAddress}
                     onChange={(e) => onDeliveryAddressChange(e.target.value)}
                     placeholder={locale === "ar" ? "عنوان التوصيل..." : "Delivery Address (Salmiya Block 5)"}
-                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-600"
+                    className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#FDCE0C]"
                   />
                 </div>
               )}
@@ -440,7 +438,7 @@ export function PosCartPanel({
                   value={orderNote}
                   onChange={(e) => onOrderNoteChange(e.target.value)}
                   placeholder={locale === "ar" ? "ملاحظة الفاتورة..." : "Order notes or delivery instructions..."}
-                  className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-600"
+                  className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-[#FDCE0C]"
                 />
               </div>
             </div>
@@ -458,9 +456,9 @@ export function PosCartPanel({
           </div>
 
           {invoiceDiscountAmount > 0 && (
-            <div className="flex justify-between text-red-600">
+            <div className="flex justify-between text-red-600 font-bold">
               <span>{t.posScreen.discount} ({discountPct}%)</span>
-              <span className="numeric-ltr font-bold">-{formatKD(invoiceDiscountAmount)} KD</span>
+              <span className="numeric-ltr">-{formatKD(invoiceDiscountAmount)} KD</span>
             </div>
           )}
 
@@ -473,7 +471,7 @@ export function PosCartPanel({
 
           <div className="flex justify-between border-t border-slate-200 pt-1.5 text-sm font-black text-slate-950">
             <span>{t.posScreen.total}</span>
-            <span className="numeric-ltr text-lg font-black text-blue-700">{formatKD(total)} KD</span>
+            <span className="numeric-ltr text-lg font-black text-slate-950">{formatKD(total)} KD</span>
           </div>
         </div>
 
@@ -501,8 +499,8 @@ export function PosCartPanel({
                   }}
                   className={`flex items-center justify-center gap-1 rounded-xl py-2 font-bold transition-all border ${
                     isSelected
-                      ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      ? "bg-[#FDCE0C] text-black border-[#FDCE0C] shadow-xs font-black"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -515,9 +513,9 @@ export function PosCartPanel({
 
         {/* Cash Tendered & Change (Only if Cash is active) */}
         {isCash && (
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-blue-50/80 border border-blue-100 p-2 text-xs">
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-amber-50/70 border border-amber-200 p-2 text-xs">
             <div>
-              <span className="text-[10px] font-bold text-slate-600 block mb-0.5">
+              <span className="text-[10px] font-bold text-slate-700 block mb-0.5">
                 {locale === "ar" ? "المبلغ المدفوع" : "Paid"}
               </span>
               <input
@@ -526,14 +524,14 @@ export function PosCartPanel({
                 value={cashReceived === 0 ? "" : cashReceived}
                 onChange={(e) => onCashReceivedChange(parseFloat(e.target.value) || 0)}
                 placeholder={formatKD(total)}
-                className="numeric-ltr w-full rounded-lg border border-blue-200 bg-white px-2 py-1 font-bold text-slate-950 outline-none focus:border-blue-600 text-xs"
+                className="numeric-ltr w-full rounded-lg border border-amber-300 bg-white px-2 py-1 font-black text-slate-950 outline-none focus:border-[#FDCE0C] text-xs"
               />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-600 block mb-0.5">
+              <span className="text-[10px] font-bold text-slate-700 block mb-0.5">
                 {locale === "ar" ? "الباقي" : "Change"}
               </span>
-              <div className="numeric-ltr flex h-7 items-center rounded-lg bg-white border border-blue-200 px-2 font-black text-emerald-700 text-xs">
+              <div className="numeric-ltr flex h-7 items-center rounded-lg bg-white border border-amber-300 px-2 font-black text-emerald-700 text-xs">
                 {formatKD(changeDue)} KD
               </div>
             </div>
@@ -546,9 +544,9 @@ export function PosCartPanel({
             type="button"
             onClick={onCheckout}
             disabled={!canCheckout || isProcessing}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3 text-sm font-black text-white shadow-md transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-40 cursor-pointer"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FDCE0C] py-3 text-sm font-black text-black shadow-md transition-all hover:bg-[#E5B80B] active:scale-[0.99] disabled:opacity-40 cursor-pointer"
           >
-            <Printer className="h-4 w-4" />
+            <Printer className="h-4 w-4 text-black" />
             <span>{isProcessing ? "Processing..." : `${locale === "ar" ? "دفع وطباعة" : "Pay & Print"} (F9)`}</span>
           </button>
 
@@ -556,7 +554,7 @@ export function PosCartPanel({
             type="button"
             onClick={onHoldSale}
             disabled={isCartEmpty}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white py-1.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white py-1.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-40"
           >
             <PauseCircle className="h-3.5 w-3.5 text-slate-400" />
             <span>{locale === "ar" ? "تعليق الفاتورة (F6)" : "Hold Invoice (F6)"}</span>

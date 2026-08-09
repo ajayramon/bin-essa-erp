@@ -82,7 +82,7 @@ export function PosStatusBar({
 
         {/* Transactions Count */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <Receipt className="h-3.5 w-3.5 text-blue-400" />
+          <Receipt className="h-3.5 w-3.5 text-[#FDCE0C]" />
           <span className="text-neutral-400">{t.posScreen.transactions}:</span>
           <span className="numeric-ltr font-bold text-white">
             {transactionsCount}

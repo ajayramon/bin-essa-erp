@@ -76,10 +76,12 @@ export function PosReceiptModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            <h3 className="text-base font-bold">{t.posScreen.saleComplete}</h3>
+            <Receipt className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
+              {locale === "ar" ? "إيصال البيع الحراري" : "Thermal Sales Receipt"}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -89,133 +91,173 @@ export function PosReceiptModal({
           </button>
         </div>
 
-        {/* Printable Thermal Receipt Area */}
-        <div className="flex-1 overflow-y-auto p-6 text-slate-800 font-mono text-xs space-y-4">
-          <div className="text-center space-y-1">
-            <h2 className="text-base font-extrabold tracking-wider text-black">
-              BIN ESSA POS
-            </h2>
-            <p className="text-slate-500 font-sans">{sale.branchName}</p>
-            <p className="text-[11px] text-slate-400 font-sans">
-              Invoice #{sale.invoiceNumber}
-            </p>
-            <p className="text-[11px] text-slate-400 font-sans">{sale.date}</p>
-          </div>
+        {/* Printable Receipt Paper */}
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+          <div
+            id="pos-thermal-receipt"
+            className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 shadow-sm text-slate-900 font-mono text-xs leading-relaxed"
+          >
+            {/* Header */}
+            <div className="text-center pb-4 border-b border-dashed border-slate-300">
+              <h2 className="text-base font-black tracking-wider uppercase">
+                BIN ESSA SMOKING CENTER
+              </h2>
+              <p className="text-[11px] font-sans text-slate-600">
+                {locale === "ar" ? "مركز بن عيسى للتدخين" : "Bin Essa Group Kuwait"}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-1">
+                {sale.branchName} • State of Kuwait
+              </p>
+              <p className="text-[10px] text-slate-500">
+                CR: 349120 • Tel: +965 2200 8800
+              </p>
+            </div>
 
-          <div className="border-t border-b border-dashed border-slate-300 py-2 space-y-1 text-[11px] font-sans">
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.posScreen.cashier}:</span>
-              <span className="font-semibold">{sale.cashierName}</span>
-            </div>
-            {sale.salespersonName && (
+            {/* Meta */}
+            <div className="py-3 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-slate-500">{locale === "ar" ? "البائع:" : "Seller:"}</span>
-                <span className="font-semibold">{sale.salespersonName}</span>
+                <span className="text-slate-500">Invoice No:</span>
+                <span className="font-bold">{sale.invoiceNumber}</span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-slate-500">{t.posScreen.customer}:</span>
-              <span className="font-semibold">{sale.customerName}</span>
-            </div>
-            {sale.fulfillmentMode === "delivery" && sale.deliveryAddress && (
               <div className="flex justify-between">
-                <span className="text-slate-500">{locale === "ar" ? "التوصيل:" : "Delivery:"}</span>
-                <span className="font-semibold truncate max-w-[200px]">{sale.deliveryAddress}</span>
+                <span className="text-slate-500">Date/Time (AST):</span>
+                <span>{sale.date}</span>
               </div>
-            )}
-          </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Cashier:</span>
+                <span className="font-bold">{sale.cashierName}</span>
+              </div>
+              {sale.salespersonName && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Salesperson:</span>
+                  <span>{sale.salespersonName}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">Customer:</span>
+                <span className="font-bold">{sale.customerName}</span>
+              </div>
+              {sale.fulfillmentMode === "delivery" && (
+                <div className="flex justify-between text-amber-800 font-bold">
+                  <span>Delivery:</span>
+                  <span>{sale.deliveryAddress || "Home Delivery"}</span>
+                </div>
+              )}
+            </div>
 
-          {/* Items Table */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between font-bold text-slate-500 text-[11px] border-b border-slate-200 pb-1">
-              <span>Item / Qty</span>
-              <span>Total</span>
+            {/* Items Table */}
+            <div className="py-3 border-b border-dashed border-slate-300">
+              <table className="w-full text-start text-[11px]">
+                <thead>
+                  <tr className="border-b border-slate-200 font-bold text-slate-600 pb-1">
+                    <th className="text-start pb-1">ITEM</th>
+                    <th className="text-center pb-1">QTY</th>
+                    <th className="text-end pb-1">PRICE</th>
+                    <th className="text-end pb-1">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sale.lines.map(({ item, qty, isGift }) => {
+                    const price = isGift ? 0 : item.sellPriceKd;
+                    const lineTotal = price * qty;
+                    const name = locale === "ar" ? item.nameAr : item.nameEn;
+
+                    return (
+                      <tr key={item.id} className="py-1">
+                        <td className="py-1.5 font-sans leading-tight">
+                          <p className="font-bold">{name}</p>
+                          {isGift && (
+                            <span className="text-[9px] font-black uppercase text-amber-700">
+                              (Free Gift)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 text-center font-bold">{qty}</td>
+                        <td className="py-1.5 text-end numeric-ltr">{formatKD(price)}</td>
+                        <td className="py-1.5 text-end font-black numeric-ltr">
+                          {formatKD(lineTotal)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            {sale.lines.map(({ item, qty, isGift }) => {
-              const lineRate = isGift ? 0 : item.sellPriceKd;
-              return (
-                <div key={item.id} className="flex justify-between text-xs py-0.5">
-                  <div className="min-w-0 pr-2">
-                    <p className="font-medium truncate">
-                      {locale === "ar" ? item.nameAr : item.nameEn}
-                    </p>
-                    <p className="text-[10px] text-slate-500 numeric-ltr">
-                      {qty} × {formatKD(lineRate)} KD {isGift ? "(Free Gift)" : ""}
-                    </p>
+
+            {/* Totals */}
+            <div className="py-3 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Subtotal:</span>
+                <span className="numeric-ltr font-bold">{formatKD(sale.subtotal)} KD</span>
+              </div>
+              {sale.discount > 0 && (
+                <div className="flex justify-between text-red-600 font-bold">
+                  <span>Discount:</span>
+                  <span className="numeric-ltr">-{formatKD(sale.discount)} KD</span>
+                </div>
+              )}
+              {sale.deliveryFee && sale.deliveryFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Delivery Fee:</span>
+                  <span className="numeric-ltr font-bold">+{formatKD(sale.deliveryFee)} KD</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tax (0%):</span>
+                <span className="numeric-ltr font-bold">0.000 KD</span>
+              </div>
+              <div className="flex justify-between text-sm font-black pt-1 border-t border-slate-200 text-black">
+                <span>NET TOTAL:</span>
+                <span className="numeric-ltr">{formatKD(sale.total)} KD</span>
+              </div>
+            </div>
+
+            {/* Payment & Cash Tendered */}
+            <div className="py-3 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Payment Method:</span>
+                <span className="font-bold uppercase">{sale.paymentMethod}</span>
+              </div>
+              {sale.cashReceived !== undefined && (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Cash Tendered:</span>
+                    <span className="numeric-ltr font-bold">
+                      {formatKD(sale.cashReceived)} KD
+                    </span>
                   </div>
-                  <span className="numeric-ltr font-bold text-slate-900 shrink-0">
-                    {formatKD(lineRate * qty)} KD
-                  </span>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Change Due:</span>
+                    <span className="numeric-ltr font-black text-emerald-700">
+                      {formatKD(sale.changeDue || 0)} KD
+                    </span>
+                  </div>
+                </>
+              )}
+              {sale.note && (
+                <div className="pt-1 text-[10px] text-slate-500 italic">
+                  Note: {sale.note}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Totals */}
-          <div className="border-t border-dashed border-slate-300 pt-3 space-y-1 text-xs font-sans">
-            <div className="flex justify-between text-slate-600">
-              <span>{t.posScreen.subtotal}</span>
-              <span className="numeric-ltr font-medium">
-                {formatKD(sale.subtotal)} KD
-              </span>
-            </div>
-            {sale.discount > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>{t.posScreen.discount}</span>
-                <span className="numeric-ltr font-medium">
-                  -{formatKD(sale.discount)} KD
-                </span>
-              </div>
-            )}
-            {sale.deliveryFee && sale.deliveryFee > 0 && (
-              <div className="flex justify-between text-slate-600">
-                <span>{locale === "ar" ? "رسوم التوصيل" : "Delivery Fee"}</span>
-                <span className="numeric-ltr font-medium">
-                  {formatKD(sale.deliveryFee)} KD
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-slate-600">
-              <span>{t.posScreen.tax}</span>
-              <span className="numeric-ltr font-medium">
-                {formatKD(sale.tax)} KD
-              </span>
-            </div>
-            <div className="flex justify-between text-sm font-extrabold border-t border-slate-300 pt-2 text-black font-mono">
-              <span>{t.posScreen.total}</span>
-              <span className="numeric-ltr">{formatKD(sale.total)} KD</span>
+              )}
             </div>
 
-            <div className="flex justify-between text-[11px] text-slate-600 pt-1">
-              <span>{t.posScreen.paymentMethod}</span>
-              <span className="uppercase font-bold">{sale.paymentMethod}</span>
+            {/* Footer */}
+            <div className="text-center pt-4 space-y-1 text-[10px] text-slate-500 font-sans">
+              <p className="font-bold text-slate-700">
+                {locale === "ar"
+                  ? "شكراً لزيارتكم مركز بن عيسى للتدخين"
+                  : "Thank you for shopping at Bin Essa Smoking Center!"}
+              </p>
+              <p>Goods once sold can be exchanged within 14 days with original receipt.</p>
+              <p className="font-mono text-[9px] text-slate-400">
+                System: Bin Essa Cloud ERP • Kuwait AST
+              </p>
             </div>
-            {sale.paymentMethod === "cash" && sale.cashReceived !== undefined && (
-              <>
-                <div className="flex justify-between text-[11px] text-slate-600">
-                  <span>{t.posScreen.cashReceived}</span>
-                  <span className="numeric-ltr">
-                    {formatKD(sale.cashReceived)} KD
-                  </span>
-                </div>
-                <div className="flex justify-between text-[11px] font-bold text-emerald-700">
-                  <span>{t.posScreen.change}</span>
-                  <span className="numeric-ltr">
-                    {formatKD(sale.changeDue ?? 0)} KD
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="text-center pt-2 text-[11px] text-slate-400 font-sans">
-            <p>Thank you for shopping with Bin Essa!</p>
-            <p>شكراً لزيارتكم</p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 border-t border-slate-200 bg-slate-50 p-4">
+        {/* Actions */}
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white p-4">
           <button
             type="button"
             onClick={() => window.print()}
@@ -228,7 +270,7 @@ export function PosReceiptModal({
           <button
             type="button"
             onClick={onNewSale}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#FDCE0C] py-2.5 text-xs font-black text-black hover:bg-[#E5B80B] shadow-md"
           >
             <span>{t.posScreen.newSale}</span>
           </button>
@@ -258,20 +300,22 @@ export function PosHeldSalesModal({
   isOpen: boolean;
   onClose: () => void;
   heldSales: HeldSaleRecord[];
-  onRecallSale: (record: HeldSaleRecord) => void;
+  onRecallSale: (sale: HeldSaleRecord) => void;
   onDeleteHeldSale: (id: string) => void;
 }) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">{t.posScreen.heldSales}</h3>
+            <FileText className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
+              {t.posScreen.heldSales} ({heldSales.length})
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -284,70 +328,65 @@ export function PosHeldSalesModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
           {heldSales.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
-              <Clock className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-              <p className="text-sm font-medium">{t.posScreen.noHeldSales}</p>
+              <p className="text-sm font-semibold">No held invoices</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Use Hold Invoice (F6) during a sale to store transactions temporarily.
+              </p>
             </div>
           ) : (
-            heldSales.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 hover:border-slate-300"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">
-                      {h.customerName}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      • {h.heldAt}
-                    </span>
+            heldSales.map((h) => {
+              const itemsCount = h.cartLines.reduce((s, l) => s + l.qty, 0);
+
+              return (
+                <div
+                  key={h.id}
+                  className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 hover:border-slate-300"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-xs">
+                        {h.customerName}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        • {h.heldAt}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {itemsCount} items • {h.salespersonName ? `Seller: ${h.salespersonName}` : "Direct"}
+                    </p>
+                    <p className="numeric-ltr text-xs font-black text-slate-950 mt-1">
+                      {formatKD(h.total)} KD
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {h.cartLines.length} {t.posScreen.itemsCount} (
-                    {h.cartLines.map((l) => l.item.nameEn).join(", ")})
-                  </p>
-                  <p className="numeric-ltr text-xs font-extrabold text-slate-950 mt-1">
-                    {formatKD(h.total)} KD
-                  </p>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onRecallSale(h)}
-                    className="flex items-center gap-1 rounded-xl bg-[#2563EB] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
-                  >
-                    <span>{t.posScreen.recall}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onRecallSale(h)}
+                      className="flex items-center gap-1 rounded-xl bg-[#FDCE0C] px-3 py-1.5 text-xs font-black text-black hover:bg-[#E5B80B]"
+                    >
+                      <span>{t.posScreen.recall}</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onDeleteHeldSale(h.id)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteHeldSale(h.id)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
-        </div>
-
-        <div className="border-t border-slate-200 bg-slate-50 p-3 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
-          >
-            {t.posScreen.close}
-          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// 3. BARCODE SCANNER MODAL
+// 3. BARCODE SCANNER MODAL (F4)
 export function PosBarcodeModal({
   isOpen,
   onClose,
@@ -357,7 +396,7 @@ export function PosBarcodeModal({
   onClose: () => void;
   onBarcodeSubmit: (code: string) => boolean;
 }) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [code, setCode] = useState("");
   const [error, setError] = useState(false);
 
@@ -366,8 +405,8 @@ export function PosBarcodeModal({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!code.trim()) return;
-    const found = onBarcodeSubmit(code.trim());
-    if (found) {
+    const success = onBarcodeSubmit(code.trim());
+    if (success) {
       setCode("");
       setError(false);
       onClose();
@@ -379,10 +418,12 @@ export function PosBarcodeModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <ScanBarcode className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">{t.posScreen.barcodeScan}</h3>
+            <ScanBarcode className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
+              {t.posScreen.barcodeScan} (F4)
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -395,7 +436,7 @@ export function PosBarcodeModal({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              {t.posScreen.scanPrompt}
+              Enter SKU or Scan Barcode
             </label>
             <div className="relative">
               <ScanBarcode className="absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -407,8 +448,8 @@ export function PosBarcodeModal({
                   setCode(e.target.value);
                   setError(false);
                 }}
-                placeholder="e.g. 6281234500019 or VP-IQ-TRY-001"
-                className="numeric-ltr w-full rounded-xl border border-slate-300 ps-10 pe-4 py-2.5 text-sm font-semibold outline-none focus:border-[#2563EB]"
+                placeholder="e.g. 6281234500019 or VP-BECO-PRO-6K"
+                className="numeric-ltr w-full rounded-xl border border-slate-300 ps-10 pe-4 py-2.5 text-sm font-semibold outline-none focus:border-[#FDCE0C]"
               />
             </div>
             {error && (
@@ -428,7 +469,7 @@ export function PosBarcodeModal({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-[#2563EB] px-5 py-2 text-xs font-bold text-white hover:bg-blue-700"
+              className="rounded-xl bg-[#FDCE0C] px-5 py-2 text-xs font-black text-black hover:bg-[#E5B80B]"
             >
               {t.posScreen.addToCart}
             </button>
@@ -439,7 +480,7 @@ export function PosBarcodeModal({
   );
 }
 
-// 4. CUSTOMER MODAL
+// 4. CUSTOMER SELECTOR MODAL
 export function PosCustomerModal({
   isOpen,
   onClose,
@@ -450,8 +491,8 @@ export function PosCustomerModal({
   isOpen: boolean;
   onClose: () => void;
   customers: Customer[];
-  selectedCustomerId: string | null;
-  onSelectCustomer: (customer: Customer | null) => void;
+  selectedCustomerId?: string | null;
+  onSelectCustomer: (c: Customer | null) => void;
 }) {
   const { locale, t } = useLocale();
   const [search, setSearch] = useState("");
@@ -464,17 +505,19 @@ export function PosCustomerModal({
     return (
       c.nameEn.toLowerCase().includes(q) ||
       c.nameAr.includes(q) ||
-      c.id.toLowerCase().includes(q)
+      c.customerType.includes(q)
     );
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">{t.posScreen.selectCustomer}</h3>
+            <User className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
+              {locale === "ar" ? "اختيار العميل" : "Select Customer"}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -492,7 +535,7 @@ export function PosCustomerModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search customer name..."
-              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#2563EB]"
+              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#FDCE0C]"
             />
           </div>
         </div>
@@ -506,7 +549,7 @@ export function PosCustomerModal({
             }}
             className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
               selectedCustomerId === null
-                ? "bg-blue-50 border-blue-600 text-blue-900"
+                ? "bg-amber-50 border-amber-400 text-black font-bold"
                 : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
             }`}
           >
@@ -515,7 +558,7 @@ export function PosCustomerModal({
               <p className="text-[11px] text-slate-400">Default retail cash sale</p>
             </div>
             {selectedCustomerId === null && (
-              <CheckCircle2 className="h-4 w-4 text-blue-600" />
+              <CheckCircle2 className="h-4 w-4 text-amber-600" />
             )}
           </button>
 
@@ -533,7 +576,7 @@ export function PosCustomerModal({
                 }}
                 className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
                   isSelected
-                    ? "bg-blue-50 border-blue-600 text-blue-900"
+                    ? "bg-amber-50 border-amber-400 text-black font-bold"
                     : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
                 }`}
               >
@@ -544,7 +587,7 @@ export function PosCustomerModal({
                   </p>
                 </div>
                 {isSelected && (
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <CheckCircle2 className="h-4 w-4 text-amber-600" />
                 )}
               </button>
             );
@@ -566,7 +609,7 @@ export function PosSalespersonModal({
   isOpen: boolean;
   onClose: () => void;
   salespersons: Salesperson[];
-  selectedSalespersonId: string | null;
+  selectedSalespersonId?: string | null;
   onSelectSalesperson: (sp: Salesperson) => void;
 }) {
   const { locale } = useLocale();
@@ -575,12 +618,12 @@ export function PosSalespersonModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">
-              {locale === "ar" ? "اختيار مندوب المبيعات" : "Select Salesperson"}
+            <User className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
+              {locale === "ar" ? "اختيار مندوب المبيعات (البائع)" : "Select Salesperson"}
             </h3>
           </div>
           <button
@@ -591,7 +634,7 @@ export function PosSalespersonModal({
           </button>
         </div>
 
-        <div className="p-3 space-y-1.5 max-h-72 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {salespersons.map((sp) => {
             const isSelected = selectedSalespersonId === sp.id;
             const name = locale === "ar" ? sp.nameAr : sp.nameEn;
@@ -606,7 +649,7 @@ export function PosSalespersonModal({
                 }}
                 className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
                   isSelected
-                    ? "bg-blue-50 border-blue-600 text-blue-900"
+                    ? "bg-amber-50 border-amber-400 text-black font-bold"
                     : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
                 }`}
               >
@@ -615,7 +658,7 @@ export function PosSalespersonModal({
                   <p className="text-[11px] text-slate-500">Code: {sp.code}</p>
                 </div>
                 {isSelected && (
-                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                  <CheckCircle2 className="h-4 w-4 text-amber-600" />
                 )}
               </button>
             );
@@ -656,10 +699,10 @@ export function PosAddGiftModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">
+            <Gift className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
               {locale === "ar" ? "إضافة صنف هدية (خصم 100%)" : "Add Gift Item (100% Free)"}
             </h3>
           </div>
@@ -677,7 +720,7 @@ export function PosAddGiftModal({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search promotional gift items..."
-            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563EB]"
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#FDCE0C]"
           />
         </div>
 
@@ -698,7 +741,7 @@ export function PosAddGiftModal({
                 </p>
                 <p className="text-[11px] text-slate-500">Regular: {formatKD(item.sellPriceKd)} KD</p>
               </div>
-              <span className="rounded-lg bg-emerald-100 text-emerald-800 font-bold px-2 py-1 text-[10px]">
+              <span className="rounded-lg bg-[#FDCE0C] text-black font-black px-2 py-1 text-[10px]">
                 + Free Gift
               </span>
             </button>
@@ -709,7 +752,7 @@ export function PosAddGiftModal({
   );
 }
 
-// 7. STOCK REQUESTS & TRANSFER MODAL (Stock Request from Warehouse + Request History)
+// 7. STOCK REQUESTS & TRANSFER MODAL
 export function PosStockRequestsModal({
   isOpen,
   onClose,
@@ -731,10 +774,10 @@ export function PosStockRequestsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">
+            <Truck className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
               {locale === "ar" ? "طلبات البضاعة من المخزن الرئيسي" : "Stock Request from Main Warehouse"}
             </h3>
           </div>
@@ -742,7 +785,7 @@ export function PosStockRequestsModal({
             <button
               type="button"
               onClick={() => setShowNewForm((prev) => !prev)}
-              className="rounded-xl bg-[#2563EB] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+              className="rounded-xl bg-[#FDCE0C] px-3 py-1.5 text-xs font-black text-black hover:bg-[#E5B80B]"
             >
               + {locale === "ar" ? "طلب جديد" : "New Request"}
             </button>
@@ -756,7 +799,7 @@ export function PosStockRequestsModal({
         </div>
 
         {showNewForm && (
-          <div className="p-4 bg-blue-50/60 border-b border-blue-100 space-y-3">
+          <div className="p-4 bg-amber-50/60 border-b border-amber-200 space-y-3">
             <h4 className="font-bold text-slate-900 text-xs">
               {locale === "ar" ? "إنشاء طلب بضاعة جديد من المخزن الرئيسي" : "Create New Stock Request from Shuwaikh Warehouse"}
             </h4>
@@ -767,7 +810,7 @@ export function PosStockRequestsModal({
                   value={itemsText}
                   onChange={(e) => setItemsText(e.target.value)}
                   placeholder="e.g. 50x Tropical Mix 6000 Puffs, 20x Clipper Lighters"
-                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563EB] bg-white"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#FDCE0C] bg-white"
                 />
               </div>
               <div>
@@ -779,7 +822,7 @@ export function PosStockRequestsModal({
                     setItemsText("");
                     setShowNewForm(false);
                   }}
-                  className="w-full rounded-xl bg-[#2563EB] py-2 text-xs font-bold text-white hover:bg-blue-700"
+                  className="w-full rounded-xl bg-[#FDCE0C] py-2 text-xs font-black text-black hover:bg-[#E5B80B]"
                 >
                   {locale === "ar" ? "إرسال للمخزن" : "Submit to Warehouse"}
                 </button>
@@ -802,7 +845,7 @@ export function PosStockRequestsModal({
             <tbody className="divide-y divide-slate-100 font-medium">
               {requests.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
-                  <td className="py-2.5 px-3 font-mono font-bold text-blue-700">
+                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
                     {r.requestNo}
                   </td>
                   <td className="py-2.5 px-3 text-slate-500 font-sans">
@@ -820,7 +863,7 @@ export function PosStockRequestsModal({
                         r.status === "Pending"
                           ? "bg-amber-100 text-amber-800"
                           : r.status === "Approved"
-                          ? "bg-blue-100 text-blue-800"
+                          ? "bg-slate-200 text-slate-900"
                           : r.status === "Prepared"
                           ? "bg-purple-100 text-purple-800"
                           : "bg-emerald-100 text-emerald-800"
@@ -872,10 +915,10 @@ export function PosCurrentShiftModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">
+            <Clock className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
               {locale === "ar" ? "الوردية الحالية (مسائي) - مفتوح" : "Current Shift (Evening) - OPEN"}
             </h3>
           </div>
@@ -932,7 +975,7 @@ export function PosCurrentShiftModal({
                 <span>Credit (آجل):</span>
                 <span className="font-bold text-slate-900">{formatKD(creditSales)} KD</span>
               </div>
-              <div className="flex justify-between col-span-2 border-t border-slate-200 pt-2 font-black text-blue-700 text-sm">
+              <div className="flex justify-between col-span-2 border-t border-slate-200 pt-2 font-black text-slate-950 text-sm">
                 <span>Expected Cash in Drawer:</span>
                 <span>{formatKD(expectedCash)} KD</span>
               </div>
@@ -953,7 +996,7 @@ export function PosCurrentShiftModal({
                 onCloseShift();
                 onClose();
               }}
-              className="rounded-xl bg-[#2563EB] px-5 py-2 font-bold text-white hover:bg-blue-700 shadow-md"
+              className="rounded-xl bg-[#FDCE0C] px-5 py-2 font-black text-black hover:bg-[#E5B80B] shadow-md"
             >
               {locale === "ar" ? "إغلاق الوردية (F10)" : "Close Shift (F10)"}
             </button>
@@ -989,10 +1032,10 @@ export function PosDailyClosingModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Lock className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">
+            <Lock className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">
               {locale === "ar" ? "إقفال اليومية للفرع" : "Daily Closing (Branch)"}
             </h3>
           </div>
@@ -1016,7 +1059,7 @@ export function PosDailyClosingModal({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Total Sales:</span>
-              <span className="font-black text-slate-900 text-sm">{formatKD(totalSalesKd)} KD</span>
+              <span className="font-black text-slate-950 text-sm">{formatKD(totalSalesKd)} KD</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Total Cash:</span>
@@ -1024,7 +1067,7 @@ export function PosDailyClosingModal({
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Total KNET:</span>
-              <span className="font-bold text-blue-700">{formatKD(totalKnetKd)} KD</span>
+              <span className="font-bold text-slate-900">{formatKD(totalKnetKd)} KD</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Total Hesabi:</span>
@@ -1046,7 +1089,7 @@ export function PosDailyClosingModal({
                 onCloseDay();
                 onClose();
               }}
-              className="rounded-xl bg-[#2563EB] px-5 py-2 font-bold text-white hover:bg-blue-700 shadow-md"
+              className="rounded-xl bg-[#FDCE0C] px-5 py-2 font-black text-black hover:bg-[#E5B80B] shadow-md"
             >
               {locale === "ar" ? "إقفال اليومية (F11)" : "Close Day (F11)"}
             </button>
@@ -1088,10 +1131,10 @@ export function PosStockLookupModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+        <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-[#38BDF8]" />
-            <h3 className="text-base font-bold">{t.posScreen.stockLookup}</h3>
+            <Boxes className="h-5 w-5 text-[#FDCE0C]" />
+            <h3 className="text-base font-bold text-white">{t.posScreen.stockLookup}</h3>
           </div>
           <button
             onClick={onClose}
@@ -1109,7 +1152,7 @@ export function PosStockLookupModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.posScreen.searchPlaceholder}
-              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#2563EB]"
+              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#FDCE0C]"
             />
           </div>
         </div>
@@ -1129,7 +1172,7 @@ export function PosStockLookupModal({
                     {item.sku} • {item.barcode}
                   </p>
                 </div>
-                <span className="numeric-ltr text-xs font-black text-blue-700">
+                <span className="numeric-ltr text-xs font-black text-slate-950">
                   {formatKD(item.sellPriceKd)} KD
                 </span>
               </div>

@@ -99,27 +99,27 @@ export function PosTopbar({
   const isCashierLocked = Boolean(user?.branchId && !isHeadOffice);
 
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-slate-800 bg-[#0B1528] px-4 text-white select-none">
+    <header className="flex h-16 w-full items-center justify-between border-b border-black/20 bg-[#0B0F17] px-4 text-white select-none">
       {/* 1. Left: Branding + Mode Toggle (Sales Invoice / Sales Order) */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5">
         {/* Brand Logo */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div className="flex items-center font-black tracking-wider text-white text-lg">
             <span>BIN ESSA</span>
-            <span className="ms-1.5 rounded-md bg-[#2563EB] px-1.5 py-0.5 text-xs font-bold text-white">
+            <span className="ms-1.5 rounded-md bg-[#FDCE0C] px-1.5 py-0.5 text-xs font-black text-black shadow-xs">
               POS
             </span>
           </div>
         </div>
 
         {/* Mode Switcher Tabs (Sales Invoice vs Sales Order) */}
-        <div className="flex items-center rounded-xl bg-[#1E293B] p-1 border border-slate-700/60 shadow-inner">
+        <div className="flex items-center rounded-xl bg-slate-900 p-1 border border-slate-800 shadow-inner">
           <button
             type="button"
             onClick={() => onModeChange("invoice")}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
               mode === "invoice"
-                ? "bg-white text-[#0B1528] shadow-sm"
+                ? "bg-[#FDCE0C] text-black shadow-xs font-black"
                 : "text-slate-300 hover:text-white"
             }`}
           >
@@ -132,7 +132,7 @@ export function PosTopbar({
             onClick={() => onModeChange("order")}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
               mode === "order"
-                ? "bg-white text-[#0B1528] shadow-sm"
+                ? "bg-[#FDCE0C] text-black shadow-xs font-black"
                 : "text-slate-300 hover:text-white"
             }`}
           >
@@ -142,11 +142,11 @@ export function PosTopbar({
         </div>
 
         {/* Branch Context Badge */}
-        <div className="hidden lg:flex items-center gap-2 rounded-xl border border-slate-700/60 bg-[#1E293B] px-3 py-1.5">
-          <Building2 className="h-4 w-4 text-[#38BDF8]" />
+        <div className="hidden lg:flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5">
+          <Building2 className="h-4 w-4 text-[#FDCE0C]" />
           {isCashierLocked ? (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-slate-100">
+              <span className="text-xs font-bold text-slate-100">
                 {t.posScreen.branch}: {branchName}
               </span>
               <span title={t.posScreen.branchLocked}>
@@ -161,14 +161,14 @@ export function PosTopbar({
                 onChange={(e) => {
                   if (e.target.value) switchBranch(e.target.value);
                 }}
-                className="cursor-pointer bg-transparent text-xs font-bold text-slate-100 outline-none hover:text-[#38BDF8] focus:text-[#38BDF8]"
+                className="cursor-pointer bg-transparent text-xs font-bold text-slate-100 outline-none hover:text-[#FDCE0C] focus:text-[#FDCE0C]"
                 title={t.posScreen.switchBranch}
               >
                 {branchesForCurrentBrand.map((b) => (
                   <option
                     key={b.id}
                     value={b.id}
-                    className="bg-[#0B1528] text-white"
+                    className="bg-[#0B0F17] text-white"
                   >
                     {locale === "ar" ? b.nameAr : b.nameEn}
                   </option>
@@ -207,10 +207,10 @@ export function PosTopbar({
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={
               locale === "ar"
-                ? "ابحث باسم الصنف أو الكود أو امسح الباركود"
-                : "Search item by name, SKU or scan barcode"
+                ? "ابحث باسم الصنف أو الكود أو امسح الباركود..."
+                : "Search item by name, SKU or scan barcode..."
             }
-            className="w-full rounded-xl border border-slate-700/80 bg-[#1E293B] ps-9 pe-8 py-2 text-xs text-white placeholder-slate-400 shadow-sm transition-colors outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8]"
+            className="w-full rounded-xl border border-slate-800 bg-slate-900 ps-9 pe-8 py-2 text-xs text-white placeholder-slate-400 shadow-sm transition-colors outline-none focus:border-[#FDCE0C] focus:ring-1 focus:ring-[#FDCE0C]"
           />
           {query && (
             <button
@@ -226,20 +226,20 @@ export function PosTopbar({
         <button
           onClick={onOpenBarcodeModal}
           type="button"
-          className="flex shrink-0 items-center justify-center h-8.5 w-8.5 rounded-xl border border-slate-700/80 bg-[#1E293B] text-slate-200 transition-colors hover:border-[#38BDF8] hover:text-[#38BDF8]"
+          className="flex shrink-0 items-center justify-center h-8.5 w-8.5 rounded-xl border border-slate-800 bg-slate-900 text-slate-200 transition-colors hover:border-[#FDCE0C] hover:text-[#FDCE0C]"
           title={t.posScreen.barcodeScan}
         >
           <ScanBarcode className="h-4 w-4" />
         </button>
 
         {/* Grid vs List View Toggle */}
-        <div className="hidden sm:flex items-center rounded-xl bg-[#1E293B] p-0.5 border border-slate-700/80">
+        <div className="hidden sm:flex items-center rounded-xl bg-slate-900 p-0.5 border border-slate-800">
           <button
             type="button"
             onClick={() => onViewModeChange("grid")}
             className={`p-1.5 rounded-lg transition-colors ${
               viewMode === "grid"
-                ? "bg-[#2563EB] text-white shadow-xs"
+                ? "bg-[#FDCE0C] text-black shadow-xs font-black"
                 : "text-slate-400 hover:text-white"
             }`}
             title="Grid View"
@@ -251,7 +251,7 @@ export function PosTopbar({
             onClick={() => onViewModeChange("list")}
             className={`p-1.5 rounded-lg transition-colors ${
               viewMode === "list"
-                ? "bg-[#2563EB] text-white shadow-xs"
+                ? "bg-[#FDCE0C] text-black shadow-xs font-black"
                 : "text-slate-400 hover:text-white"
             }`}
             title="List View"
@@ -261,38 +261,38 @@ export function PosTopbar({
         </div>
       </div>
 
-      {/* 3. Right: Notifications, Language, Settings, Cashier Profile & Logout */}
+      {/* 3. Right: Language, Notifications, Settings, Cashier Profile */}
       <div className="flex items-center gap-2">
         {/* Bilingual Language Switch */}
         <button
           type="button"
           onClick={toggleLocale}
-          className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-700 bg-[#1E293B] px-2.5 text-xs font-semibold text-slate-200 transition-colors hover:border-[#38BDF8] hover:text-white"
+          className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-2.5 text-xs font-bold text-slate-200 transition-colors hover:border-[#FDCE0C] hover:text-white"
           title={locale === "ar" ? "Switch to English" : "التبديل إلى العربية"}
         >
-          <Globe className="h-4 w-4 text-[#38BDF8]" />
-          <span className="font-bold text-[#38BDF8]">
+          <Globe className="h-4 w-4 text-[#FDCE0C]" />
+          <span className="font-black text-[#FDCE0C]">
             {locale === "ar" ? "English" : "العربية"}
           </span>
         </button>
 
-        {/* Notifications Icon with Badge 3 */}
+        {/* Notifications Icon with Badge */}
         <div className="relative" ref={notifRef}>
           <button
             type="button"
             onClick={() => setNotificationsOpen((prev) => !prev)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-[#1E293B] text-slate-300 transition-colors hover:border-slate-600 hover:text-white"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-300 transition-colors hover:border-slate-700 hover:text-white"
             title="Notifications"
           >
             <Bell className="h-4 w-4" />
-            <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white shadow-xs">
+            <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#FDCE0C] text-black px-1 text-[10px] font-black shadow-xs">
               3
             </span>
           </button>
 
           {notificationsOpen && (
             <div
-              className={`absolute top-full z-50 mt-2 w-72 rounded-2xl border border-slate-700 bg-[#1E293B] p-3 shadow-2xl ${
+              className={`absolute top-full z-50 mt-2 w-72 rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-2xl ${
                 locale === "ar" ? "start-0" : "end-0"
               }`}
             >
@@ -300,15 +300,15 @@ export function PosTopbar({
                 {t.posScreen.notifications}
               </h3>
               <div className="space-y-2 text-xs text-slate-300">
-                <div className="rounded-xl bg-[#0B1528] p-2.5 border border-slate-700/60">
-                  <p className="font-bold text-[#38BDF8]">
+                <div className="rounded-xl bg-[#0B0F17] p-2.5 border border-slate-800">
+                  <p className="font-bold text-[#FDCE0C]">
                     Stock Transfer Approved
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     REQ-00031 approved by Shuwaikh Central Warehouse.
                   </p>
                 </div>
-                <div className="rounded-xl bg-[#0B1528] p-2.5 border border-slate-700/60">
+                <div className="rounded-xl bg-[#0B0F17] p-2.5 border border-slate-800">
                   <p className="font-bold text-emerald-400">
                     Shift Started
                   </p>
@@ -325,7 +325,7 @@ export function PosTopbar({
         <button
           type="button"
           onClick={onOpenSettingsModal}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 bg-[#1E293B] text-slate-300 transition-colors hover:border-slate-600 hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 text-slate-300 transition-colors hover:border-slate-700 hover:text-white"
           title="Terminal Settings"
         >
           <SettingsIcon className="h-4 w-4" />
@@ -337,9 +337,9 @@ export function PosTopbar({
             type="button"
             onClick={() => setMenuOpen((open) => !open)}
             aria-expanded={menuOpen}
-            className="flex h-9 items-center gap-2 rounded-xl border border-slate-700 bg-[#1E293B] px-2.5 text-xs text-slate-200 transition-colors hover:border-slate-600 hover:text-white"
+            className="flex h-9 items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-2.5 text-xs text-slate-200 transition-colors hover:border-slate-700 hover:text-white"
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2563EB] text-white font-bold text-xs">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#FDCE0C] text-black font-black text-xs">
               {userName.charAt(0)}
             </div>
             <div className="hidden text-start md:block">
@@ -357,13 +357,13 @@ export function PosTopbar({
 
           {menuOpen && (
             <div
-              className={`absolute top-full z-50 mt-2 w-64 rounded-2xl border border-slate-700 bg-[#1E293B] p-2.5 shadow-2xl ${
+              className={`absolute top-full z-50 mt-2 w-64 rounded-2xl border border-slate-800 bg-slate-900 p-2.5 shadow-2xl ${
                 locale === "ar" ? "start-0" : "end-0"
               }`}
             >
-              <div className="px-3 py-2 border-b border-slate-700/60">
+              <div className="px-3 py-2 border-b border-slate-800">
                 <p className="text-sm font-bold text-white">{userName}</p>
-                <p className="text-xs text-[#38BDF8]">{roleLabel}</p>
+                <p className="text-xs text-[#FDCE0C] font-bold">{roleLabel}</p>
                 <p className="mt-0.5 text-[11px] text-slate-400">
                   {branchName}
                 </p>
@@ -376,7 +376,7 @@ export function PosTopbar({
                   onClick={() => setMenuOpen(false)}
                   className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 transition-colors hover:bg-slate-800 hover:text-white"
                 >
-                  <LayoutDashboard className="h-4 w-4 text-[#38BDF8]" />
+                  <LayoutDashboard className="h-4 w-4 text-[#FDCE0C]" />
                   {t.posScreen.backToAdmin}
                 </Link>
               )}
@@ -393,7 +393,7 @@ export function PosTopbar({
                 {t.posScreen.endOfDay}
               </button>
 
-              <div className="my-1.5 h-px bg-slate-700/60" />
+              <div className="my-1.5 h-px bg-slate-800" />
 
               <button
                 type="button"

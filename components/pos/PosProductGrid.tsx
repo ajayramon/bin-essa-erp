@@ -22,20 +22,20 @@ function formatKD(amount: number) {
   });
 }
 
-// Category visual palettes
+// Category visual palettes (Harmonious neutral & gold-tinted badges)
 const categoryColorMap: Record<string, { bg: string; text: string }> = {
-  disposable_vapes: { bg: "bg-indigo-50", text: "text-indigo-600" },
-  pod_systems: { bg: "bg-blue-50", text: "text-blue-600" },
-  nicotine_pouches: { bg: "bg-emerald-50", text: "text-emerald-600" },
-  dokha_medwakh: { bg: "bg-amber-50", text: "text-amber-700" },
-  cigarette_lighters: { bg: "bg-orange-50", text: "text-orange-600" },
-  rolling_papers: { bg: "bg-yellow-50", text: "text-yellow-700" },
-  rolling_tobacco_hbt: { bg: "bg-stone-50", text: "text-stone-700" },
-  pipe_accessories: { bg: "bg-rose-50", text: "text-rose-600" },
-  general_smoking_accessories: { bg: "bg-slate-50", text: "text-slate-700" },
-  marine_outdoor: { bg: "bg-cyan-50", text: "text-cyan-700" },
-  custom_gifts_signage: { bg: "bg-fuchsia-50", text: "text-fuchsia-700" },
-  licensed_collectibles: { bg: "bg-purple-50", text: "text-purple-700" },
+  disposable_vapes: { bg: "bg-amber-50", text: "text-amber-700" },
+  pod_systems: { bg: "bg-slate-100", text: "text-slate-800" },
+  nicotine_pouches: { bg: "bg-emerald-50", text: "text-emerald-700" },
+  dokha_medwakh: { bg: "bg-amber-100/70", text: "text-amber-800" },
+  cigarette_lighters: { bg: "bg-orange-50", text: "text-orange-700" },
+  rolling_papers: { bg: "bg-yellow-50", text: "text-yellow-800" },
+  rolling_tobacco_hbt: { bg: "bg-stone-100", text: "text-stone-800" },
+  pipe_accessories: { bg: "bg-amber-50", text: "text-amber-900" },
+  general_smoking_accessories: { bg: "bg-slate-100", text: "text-slate-700" },
+  marine_outdoor: { bg: "bg-sky-50", text: "text-sky-800" },
+  custom_gifts_signage: { bg: "bg-yellow-100/60", text: "text-yellow-900" },
+  licensed_collectibles: { bg: "bg-stone-100", text: "text-stone-700" },
 };
 
 export function PosProductGrid({
@@ -58,7 +58,7 @@ export function PosProductGrid({
             <select
               value={selectedBrand}
               onChange={(e) => onSelectBrand(e.target.value)}
-              className="appearance-none rounded-xl border border-slate-200 bg-white ps-3 pe-8 py-1.5 text-xs font-bold text-slate-800 shadow-2xs outline-none focus:border-[#2563EB]"
+              className="appearance-none rounded-xl border border-slate-200 bg-white ps-3 pe-8 py-1.5 text-xs font-bold text-slate-800 shadow-2xs outline-none focus:border-[#FDCE0C]"
             >
               <option value="all">{locale === "ar" ? "جميع العلامات" : "All Brands"}</option>
               <option value="smoking">{locale === "ar" ? "مركز بن عيسى للتدخين" : "Bin Essa Smoking Center"}</option>
@@ -96,7 +96,7 @@ export function PosProductGrid({
               const itemName = locale === "ar" ? item.nameAr : item.nameEn;
               const catStyle = categoryColorMap[item.category] ?? {
                 bg: "bg-slate-100",
-                text: "text-slate-600",
+                text: "text-slate-700",
               };
 
               return (
@@ -108,7 +108,7 @@ export function PosProductGrid({
                   className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-2.5 text-start transition-all ${
                     isOutOfStock
                       ? "border-slate-200 opacity-50 cursor-not-allowed bg-slate-50/60"
-                      : "border-slate-200 shadow-2xs hover:border-[#2563EB] hover:shadow-sm active:scale-[0.98]"
+                      : "border-slate-200 shadow-2xs hover:border-[#FDCE0C] hover:shadow-md active:scale-[0.98]"
                   }`}
                 >
                   {/* Thumbnail & In-Cart Badge */}
@@ -120,7 +120,7 @@ export function PosProductGrid({
                     </div>
 
                     {inCart > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2563EB] px-1.5 text-[10px] font-bold text-white shadow-xs numeric-ltr">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FDCE0C] px-1.5 text-[10px] font-black text-black shadow-xs numeric-ltr">
                         {inCart}
                       </span>
                     )}
@@ -128,7 +128,7 @@ export function PosProductGrid({
 
                   {/* Product Name */}
                   <div className="mt-2 flex-1">
-                    <h3 className="line-clamp-2 text-xs font-bold text-slate-900 leading-snug group-hover:text-[#2563EB]">
+                    <h3 className="line-clamp-2 text-xs font-bold text-slate-900 leading-snug group-hover:text-amber-600">
                       {itemName}
                     </h3>
                   </div>
@@ -136,9 +136,9 @@ export function PosProductGrid({
                   {/* Price & Stock */}
                   <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-end justify-between">
                     <div>
-                      <span className="numeric-ltr block text-xs font-black text-blue-700 leading-none">
+                      <span className="numeric-ltr block text-xs font-black text-slate-950 leading-none">
                         {formatKD(item.sellPriceKd)}{" "}
-                        <span className="text-[10px] font-semibold text-slate-500">
+                        <span className="text-[10px] font-bold text-amber-600">
                           KD
                         </span>
                       </span>
@@ -157,7 +157,7 @@ export function PosProductGrid({
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg transition-colors ${
                         isOutOfStock
                           ? "bg-slate-100 text-slate-400"
-                          : "bg-slate-100 text-slate-700 group-hover:bg-[#2563EB] group-hover:text-white"
+                          : "bg-slate-100 text-slate-700 group-hover:bg-[#FDCE0C] group-hover:text-black"
                       }`}
                     >
                       <Plus className="h-3 w-3" />
@@ -198,7 +198,7 @@ export function PosProductGrid({
                       <td className="py-2 px-3 text-slate-500 font-mono text-[11px]">
                         {item.sku}
                       </td>
-                      <td className="py-2 px-3 numeric-ltr font-bold text-blue-700">
+                      <td className="py-2 px-3 numeric-ltr font-black text-slate-950">
                         {formatKD(item.sellPriceKd)} KD
                       </td>
                       <td className="py-2 px-3 numeric-ltr font-semibold">
@@ -211,7 +211,7 @@ export function PosProductGrid({
                           type="button"
                           onClick={() => onAddToCart(item)}
                           disabled={isOutOfStock}
-                          className="rounded-lg bg-[#2563EB] px-2.5 py-1 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-40"
+                          className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-bold text-[#FDCE0C] hover:bg-black disabled:opacity-40"
                         >
                           {t.posScreen.addToCart}
                         </button>
