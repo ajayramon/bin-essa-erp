@@ -16,10 +16,18 @@ import {
   ArrowRight,
   Receipt,
   Building2,
+  Truck,
+  History,
+  ShieldAlert,
+  Gift,
+  Lock,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import type { Item, Customer, Branch } from "@/lib/types";
+import type { Salesperson } from "@/lib/mock-data/salespersons";
+import type { StockRequestRecord } from "@/lib/mock-data/stock-transfers";
 import type { CartItemLine, PosPaymentMethod } from "./PosCartPanel";
+import { formatKuwaitDateTime } from "@/lib/utils/kuwait-time";
 
 function formatKD(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -34,7 +42,11 @@ export interface CompletedSaleRecord {
   date: string;
   branchName: string;
   cashierName: string;
+  salespersonName?: string;
   customerName: string;
+  fulfillmentMode?: "pickup" | "delivery";
+  deliveryAddress?: string;
+  deliveryFee?: number;
   lines: CartItemLine[];
   subtotal: number;
   discount: number;
@@ -63,71 +75,85 @@ export function PosReceiptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-900 p-4 text-white">
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-100 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             <h3 className="text-base font-bold">{t.posScreen.saleComplete}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Printable Thermal Receipt Area */}
-        <div className="flex-1 overflow-y-auto p-6 text-neutral-800 font-mono text-xs space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 text-slate-800 font-mono text-xs space-y-4">
           <div className="text-center space-y-1">
             <h2 className="text-base font-extrabold tracking-wider text-black">
-              BIN ESSA ENTERPRISES
+              BIN ESSA POS
             </h2>
-            <p className="text-neutral-500 font-sans">{sale.branchName}</p>
-            <p className="text-[11px] text-neutral-400 font-sans">
+            <p className="text-slate-500 font-sans">{sale.branchName}</p>
+            <p className="text-[11px] text-slate-400 font-sans">
               Invoice #{sale.invoiceNumber}
             </p>
-            <p className="text-[11px] text-neutral-400 font-sans">{sale.date}</p>
+            <p className="text-[11px] text-slate-400 font-sans">{sale.date}</p>
           </div>
 
-          <div className="border-t border-b border-dashed border-neutral-300 py-2 space-y-1 text-[11px] font-sans">
+          <div className="border-t border-b border-dashed border-slate-300 py-2 space-y-1 text-[11px] font-sans">
             <div className="flex justify-between">
-              <span className="text-neutral-500">{t.posScreen.cashier}:</span>
+              <span className="text-slate-500">{t.posScreen.cashier}:</span>
               <span className="font-semibold">{sale.cashierName}</span>
             </div>
+            {sale.salespersonName && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">{locale === "ar" ? "البائع:" : "Seller:"}</span>
+                <span className="font-semibold">{sale.salespersonName}</span>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-neutral-500">{t.posScreen.customer}:</span>
+              <span className="text-slate-500">{t.posScreen.customer}:</span>
               <span className="font-semibold">{sale.customerName}</span>
             </div>
+            {sale.fulfillmentMode === "delivery" && sale.deliveryAddress && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">{locale === "ar" ? "التوصيل:" : "Delivery:"}</span>
+                <span className="font-semibold truncate max-w-[200px]">{sale.deliveryAddress}</span>
+              </div>
+            )}
           </div>
 
           {/* Items Table */}
           <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between font-bold text-neutral-500 text-[11px] border-b border-neutral-200 pb-1">
+            <div className="flex justify-between font-bold text-slate-500 text-[11px] border-b border-slate-200 pb-1">
               <span>Item / Qty</span>
               <span>Total</span>
             </div>
-            {sale.lines.map(({ item, qty }) => (
-              <div key={item.id} className="flex justify-between text-xs py-0.5">
-                <div className="min-w-0 pr-2">
-                  <p className="font-medium truncate">
-                    {locale === "ar" ? item.nameAr : item.nameEn}
-                  </p>
-                  <p className="text-[10px] text-neutral-500 numeric-ltr">
-                    {qty} × {formatKD(item.sellPriceKd)} KD
-                  </p>
+            {sale.lines.map(({ item, qty, isGift }) => {
+              const lineRate = isGift ? 0 : item.sellPriceKd;
+              return (
+                <div key={item.id} className="flex justify-between text-xs py-0.5">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-medium truncate">
+                      {locale === "ar" ? item.nameAr : item.nameEn}
+                    </p>
+                    <p className="text-[10px] text-slate-500 numeric-ltr">
+                      {qty} × {formatKD(lineRate)} KD {isGift ? "(Free Gift)" : ""}
+                    </p>
+                  </div>
+                  <span className="numeric-ltr font-bold text-slate-900 shrink-0">
+                    {formatKD(lineRate * qty)} KD
+                  </span>
                 </div>
-                <span className="numeric-ltr font-bold text-neutral-900 shrink-0">
-                  {formatKD(item.sellPriceKd * qty)} KD
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Totals */}
-          <div className="border-t border-dashed border-neutral-300 pt-3 space-y-1 text-xs font-sans">
-            <div className="flex justify-between text-neutral-600">
+          <div className="border-t border-dashed border-slate-300 pt-3 space-y-1 text-xs font-sans">
+            <div className="flex justify-between text-slate-600">
               <span>{t.posScreen.subtotal}</span>
               <span className="numeric-ltr font-medium">
                 {formatKD(sale.subtotal)} KD
@@ -141,24 +167,32 @@ export function PosReceiptModal({
                 </span>
               </div>
             )}
-            <div className="flex justify-between text-neutral-600">
+            {sale.deliveryFee && sale.deliveryFee > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>{locale === "ar" ? "رسوم التوصيل" : "Delivery Fee"}</span>
+                <span className="numeric-ltr font-medium">
+                  {formatKD(sale.deliveryFee)} KD
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-slate-600">
               <span>{t.posScreen.tax}</span>
               <span className="numeric-ltr font-medium">
                 {formatKD(sale.tax)} KD
               </span>
             </div>
-            <div className="flex justify-between text-sm font-extrabold border-t border-neutral-300 pt-2 text-black font-mono">
+            <div className="flex justify-between text-sm font-extrabold border-t border-slate-300 pt-2 text-black font-mono">
               <span>{t.posScreen.total}</span>
               <span className="numeric-ltr">{formatKD(sale.total)} KD</span>
             </div>
 
-            <div className="flex justify-between text-[11px] text-neutral-600 pt-1">
+            <div className="flex justify-between text-[11px] text-slate-600 pt-1">
               <span>{t.posScreen.paymentMethod}</span>
               <span className="uppercase font-bold">{sale.paymentMethod}</span>
             </div>
             {sale.paymentMethod === "cash" && sale.cashReceived !== undefined && (
               <>
-                <div className="flex justify-between text-[11px] text-neutral-600">
+                <div className="flex justify-between text-[11px] text-slate-600">
                   <span>{t.posScreen.cashReceived}</span>
                   <span className="numeric-ltr">
                     {formatKD(sale.cashReceived)} KD
@@ -174,18 +208,18 @@ export function PosReceiptModal({
             )}
           </div>
 
-          <div className="text-center pt-2 text-[11px] text-neutral-400 font-sans">
+          <div className="text-center pt-2 text-[11px] text-slate-400 font-sans">
             <p>Thank you for shopping with Bin Essa!</p>
             <p>شكراً لزيارتكم</p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 border-t border-neutral-200 bg-neutral-50 p-4">
+        <div className="flex gap-2 border-t border-slate-200 bg-slate-50 p-4">
           <button
             type="button"
             onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white py-2.5 text-xs font-bold text-neutral-800 hover:bg-neutral-100"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white py-2.5 text-xs font-bold text-slate-800 hover:bg-slate-100"
           >
             <Printer className="h-4 w-4" />
             <span>{t.posScreen.printReceipt}</span>
@@ -194,7 +228,7 @@ export function PosReceiptModal({
           <button
             type="button"
             onClick={onNewSale}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-950 py-2.5 text-xs font-extrabold text-[#FDCE0C] hover:bg-black"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-2.5 text-xs font-bold text-white hover:bg-blue-700"
           >
             <span>{t.posScreen.newSale}</span>
           </button>
@@ -204,11 +238,12 @@ export function PosReceiptModal({
   );
 }
 
-// 2. HELD SALES / RECENT ORDERS MODAL
+// 2. HELD SALES MODAL
 export interface HeldSaleRecord {
   id: string;
   heldAt: string;
   customerName: string;
+  salespersonName?: string;
   cartLines: CartItemLine[];
   total: number;
 }
@@ -232,15 +267,15 @@ export function PosHeldSalesModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-[#FDCE0C]" />
+            <Clock className="h-5 w-5 text-[#38BDF8]" />
             <h3 className="text-base font-bold">{t.posScreen.heldSales}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -248,30 +283,30 @@ export function PosHeldSalesModal({
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
           {heldSales.length === 0 ? (
-            <div className="py-12 text-center text-neutral-400">
-              <Clock className="mx-auto h-8 w-8 text-neutral-300 mb-2" />
+            <div className="py-12 text-center text-slate-400">
+              <Clock className="mx-auto h-8 w-8 text-slate-300 mb-2" />
               <p className="text-sm font-medium">{t.posScreen.noHeldSales}</p>
             </div>
           ) : (
             heldSales.map((h) => (
               <div
                 key={h.id}
-                className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50/70 p-3.5 hover:border-neutral-300"
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 hover:border-slate-300"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-neutral-900">
+                    <span className="text-xs font-bold text-slate-900">
                       {h.customerName}
                     </span>
-                    <span className="text-[11px] text-neutral-400">
+                    <span className="text-[11px] text-slate-400">
                       • {h.heldAt}
                     </span>
                   </div>
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     {h.cartLines.length} {t.posScreen.itemsCount} (
                     {h.cartLines.map((l) => l.item.nameEn).join(", ")})
                   </p>
-                  <p className="numeric-ltr text-xs font-extrabold text-neutral-950 mt-1">
+                  <p className="numeric-ltr text-xs font-extrabold text-slate-950 mt-1">
                     {formatKD(h.total)} KD
                   </p>
                 </div>
@@ -280,7 +315,7 @@ export function PosHeldSalesModal({
                   <button
                     type="button"
                     onClick={() => onRecallSale(h)}
-                    className="flex items-center gap-1 rounded-xl bg-neutral-950 px-3 py-1.5 text-xs font-bold text-[#FDCE0C] hover:bg-black"
+                    className="flex items-center gap-1 rounded-xl bg-[#2563EB] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
                   >
                     <span>{t.posScreen.recall}</span>
                   </button>
@@ -288,7 +323,7 @@ export function PosHeldSalesModal({
                   <button
                     type="button"
                     onClick={() => onDeleteHeldSale(h.id)}
-                    className="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -298,11 +333,11 @@ export function PosHeldSalesModal({
           )}
         </div>
 
-        <div className="border-t border-neutral-200 bg-neutral-50 p-3 flex justify-end">
+        <div className="border-t border-slate-200 bg-slate-50 p-3 flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-100"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
           >
             {t.posScreen.close}
           </button>
@@ -343,15 +378,15 @@ export function PosBarcodeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <ScanBarcode className="h-5 w-5 text-[#FDCE0C]" />
+            <ScanBarcode className="h-5 w-5 text-[#38BDF8]" />
             <h3 className="text-base font-bold">{t.posScreen.barcodeScan}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
@@ -359,11 +394,11 @@ export function PosBarcodeModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-neutral-700 mb-1">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               {t.posScreen.scanPrompt}
             </label>
             <div className="relative">
-              <ScanBarcode className="absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-400" />
+              <ScanBarcode className="absolute start-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 autoFocus
@@ -373,7 +408,7 @@ export function PosBarcodeModal({
                   setError(false);
                 }}
                 placeholder="e.g. 6281234500019 or VP-IQ-TRY-001"
-                className="numeric-ltr w-full rounded-xl border border-neutral-300 ps-10 pe-4 py-2.5 text-sm font-semibold outline-none focus:border-[#FDCE0C]"
+                className="numeric-ltr w-full rounded-xl border border-slate-300 ps-10 pe-4 py-2.5 text-sm font-semibold outline-none focus:border-[#2563EB]"
               />
             </div>
             {error && (
@@ -387,13 +422,13 @@ export function PosBarcodeModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-100"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
             >
               {t.posScreen.close}
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-neutral-950 px-5 py-2 text-xs font-extrabold text-[#FDCE0C] hover:bg-black"
+              className="rounded-xl bg-[#2563EB] px-5 py-2 text-xs font-bold text-white hover:bg-blue-700"
             >
               {t.posScreen.addToCart}
             </button>
@@ -404,7 +439,7 @@ export function PosBarcodeModal({
   );
 }
 
-// 4. CUSTOMER SELECTOR MODAL
+// 4. CUSTOMER MODAL
 export function PosCustomerModal({
   isOpen,
   onClose,
@@ -435,35 +470,34 @@ export function PosCustomerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <User className="h-5 w-5 text-[#FDCE0C]" />
+            <User className="h-5 w-5 text-[#38BDF8]" />
             <h3 className="text-base font-bold">{t.posScreen.selectCustomer}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-3 border-b border-neutral-200">
+        <div className="p-3 border-b border-slate-200">
           <div className="relative">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search customer name..."
-              className="w-full rounded-xl border border-neutral-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#FDCE0C]"
+              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#2563EB]"
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-          {/* Walk-in Customer Option */}
           <button
             type="button"
             onClick={() => {
@@ -472,16 +506,16 @@ export function PosCustomerModal({
             }}
             className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
               selectedCustomerId === null
-                ? "bg-neutral-950 text-white border-neutral-950"
-                : "bg-neutral-50 text-neutral-800 border-neutral-200 hover:bg-neutral-100"
+                ? "bg-blue-50 border-blue-600 text-blue-900"
+                : "bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100"
             }`}
           >
             <div>
-              <p className="text-xs font-bold">{t.posScreen.walkInCustomer}</p>
-              <p className="text-[11px] text-neutral-400">Default retail cash sale</p>
+              <p className="text-xs font-bold">{locale === "ar" ? "عميل نقدي مباشر" : "Walk-in Customer"}</p>
+              <p className="text-[11px] text-slate-400">Default retail cash sale</p>
             </div>
             {selectedCustomerId === null && (
-              <CheckCircle2 className="h-4 w-4 text-[#FDCE0C]" />
+              <CheckCircle2 className="h-4 w-4 text-blue-600" />
             )}
           </button>
 
@@ -499,18 +533,18 @@ export function PosCustomerModal({
                 }}
                 className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
                   isSelected
-                    ? "bg-neutral-950 text-white border-neutral-950"
-                    : "bg-white text-neutral-800 border-neutral-200 hover:bg-neutral-50"
+                    ? "bg-blue-50 border-blue-600 text-blue-900"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
                 }`}
               >
                 <div>
                   <p className="text-xs font-bold">{name}</p>
-                  <p className="text-[11px] text-neutral-500 capitalize">
+                  <p className="text-[11px] text-slate-500 capitalize">
                     {c.customerType} • Limit: {formatKD(c.creditLimitKd)} KD
                   </p>
                 </div>
                 {isSelected && (
-                  <CheckCircle2 className="h-4 w-4 text-[#FDCE0C]" />
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
                 )}
               </button>
             );
@@ -521,162 +555,407 @@ export function PosCustomerModal({
   );
 }
 
-// 5. DISCOUNT MODAL
-export function PosDiscountModal({
+// 5. SALESPERSON SELECTOR MODAL
+export function PosSalespersonModal({
   isOpen,
   onClose,
-  discountPct,
-  onApplyDiscount,
+  salespersons,
+  selectedSalespersonId,
+  onSelectSalesperson,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  discountPct: number;
-  onApplyDiscount: (pct: number) => void;
+  salespersons: Salesperson[];
+  selectedSalespersonId: string | null;
+  onSelectSalesperson: (sp: Salesperson) => void;
 }) {
-  const { t } = useLocale();
-  const [val, setVal] = useState(discountPct);
+  const { locale } = useLocale();
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Percent className="h-5 w-5 text-[#FDCE0C]" />
-            <h3 className="text-base font-bold">{t.posScreen.discount}</h3>
+            <User className="h-5 w-5 text-[#38BDF8]" />
+            <h3 className="text-base font-bold">
+              {locale === "ar" ? "اختيار مندوب المبيعات" : "Select Salesperson"}
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          {/* Preset Discount Chips */}
-          <div className="flex gap-2 justify-center">
-            {[0, 5, 10, 15, 20].map((p) => (
+        <div className="p-3 space-y-1.5 max-h-72 overflow-y-auto">
+          {salespersons.map((sp) => {
+            const isSelected = selectedSalespersonId === sp.id;
+            const name = locale === "ar" ? sp.nameAr : sp.nameEn;
+
+            return (
               <button
-                key={p}
+                key={sp.id}
                 type="button"
-                onClick={() => setVal(p)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold border transition-colors ${
-                  val === p
-                    ? "bg-[#FDCE0C] text-black border-[#FDCE0C]"
-                    : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100"
+                onClick={() => {
+                  onSelectSalesperson(sp);
+                  onClose();
+                }}
+                className={`flex w-full items-center justify-between rounded-xl p-3 text-start border transition-colors ${
+                  isSelected
+                    ? "bg-blue-50 border-blue-600 text-blue-900"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                {p}%
+                <div>
+                  <p className="text-xs font-bold">{name}</p>
+                  <p className="text-[11px] text-slate-500">Code: {sp.code}</p>
+                </div>
+                {isSelected && (
+                  <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                )}
               </button>
-            ))}
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-neutral-700 mb-1">
-              {t.posScreen.discount} (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={val}
-              onChange={(e) => setVal(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-              className="numeric-ltr w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm font-bold text-center outline-none focus:border-[#FDCE0C]"
-            />
-          </div>
-
-          {val > 10 && (
-            <p className="text-xs font-bold text-red-600 text-center">
-              {t.posScreen.discountApprovalNeeded}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-100"
-            >
-              {t.posScreen.close}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onApplyDiscount(val);
-                onClose();
-              }}
-              className="rounded-xl bg-neutral-950 px-5 py-2 text-xs font-extrabold text-[#FDCE0C] hover:bg-black"
-            >
-              {t.posScreen.apply}
-            </button>
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-// 6. SALE NOTE MODAL
-export function PosNoteModal({
+// 6. ADD GIFT ITEM MODAL
+export function PosAddGiftModal({
   isOpen,
   onClose,
-  note,
-  onSaveNote,
+  items,
+  onSelectGiftItem,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  note: string;
-  onSaveNote: (note: string) => void;
+  items: Item[];
+  onSelectGiftItem: (item: Item) => void;
 }) {
-  const { t } = useLocale();
-  const [val, setVal] = useState(note);
+  const { locale } = useLocale();
+  const [search, setSearch] = useState("");
+
+  if (!isOpen) return null;
+
+  const filtered = items.filter((i) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      i.nameEn.toLowerCase().includes(q) ||
+      i.nameAr.includes(q) ||
+      i.sku.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+          <div className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-[#38BDF8]" />
+            <h3 className="text-base font-bold">
+              {locale === "ar" ? "إضافة صنف هدية (خصم 100%)" : "Add Gift Item (100% Free)"}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-3 border-b border-slate-200">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search promotional gift items..."
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563EB]"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          {filtered.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                onSelectGiftItem(item);
+                onClose();
+              }}
+              className="flex w-full items-center justify-between rounded-xl p-2.5 text-start border border-slate-200 bg-white hover:bg-slate-50"
+            >
+              <div>
+                <p className="text-xs font-bold text-slate-900">
+                  {locale === "ar" ? item.nameAr : item.nameEn}
+                </p>
+                <p className="text-[11px] text-slate-500">Regular: {formatKD(item.sellPriceKd)} KD</p>
+              </div>
+              <span className="rounded-lg bg-emerald-100 text-emerald-800 font-bold px-2 py-1 text-[10px]">
+                + Free Gift
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 7. STOCK REQUESTS & TRANSFER MODAL (Stock Request from Warehouse + Request History)
+export function PosStockRequestsModal({
+  isOpen,
+  onClose,
+  requests,
+  onCreateNewRequest,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  requests: StockRequestRecord[];
+  onCreateNewRequest: (data: { itemsSummary: string; count: number }) => void;
+}) {
+  const { locale } = useLocale();
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [itemsText, setItemsText] = useState("");
+  const [qty, setQty] = useState(10);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#FDCE0C]" />
-            <h3 className="text-base font-bold">{t.posScreen.addNote}</h3>
+            <Truck className="h-5 w-5 text-[#38BDF8]" />
+            <h3 className="text-base font-bold">
+              {locale === "ar" ? "طلبات البضاعة من المخزن الرئيسي" : "Stock Request from Main Warehouse"}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNewForm((prev) => !prev)}
+              className="rounded-xl bg-[#2563EB] px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700"
+            >
+              + {locale === "ar" ? "طلب جديد" : "New Request"}
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {showNewForm && (
+          <div className="p-4 bg-blue-50/60 border-b border-blue-100 space-y-3">
+            <h4 className="font-bold text-slate-900 text-xs">
+              {locale === "ar" ? "إنشاء طلب بضاعة جديد من المخزن الرئيسي" : "Create New Stock Request from Shuwaikh Warehouse"}
+            </h4>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <input
+                  type="text"
+                  value={itemsText}
+                  onChange={(e) => setItemsText(e.target.value)}
+                  placeholder="e.g. 50x Tropical Mix 6000 Puffs, 20x Clipper Lighters"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs outline-none focus:border-[#2563EB] bg-white"
+                />
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!itemsText.trim()) return;
+                    onCreateNewRequest({ itemsSummary: itemsText, count: qty });
+                    setItemsText("");
+                    setShowNewForm(false);
+                  }}
+                  className="w-full rounded-xl bg-[#2563EB] py-2 text-xs font-bold text-white hover:bg-blue-700"
+                >
+                  {locale === "ar" ? "إرسال للمخزن" : "Submit to Warehouse"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <table className="w-full text-start text-xs">
+            <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-600">
+              <tr>
+                <th className="py-2.5 px-3">REQUEST NO</th>
+                <th className="py-2.5 px-3">DATE</th>
+                <th className="py-2.5 px-3">ITEMS</th>
+                <th className="py-2.5 px-3">DESTINATION</th>
+                <th className="py-2.5 px-3 text-center">STATUS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {requests.map((r) => (
+                <tr key={r.id} className="hover:bg-slate-50">
+                  <td className="py-2.5 px-3 font-mono font-bold text-blue-700">
+                    {r.requestNo}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-500 font-sans">
+                    {r.date}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-900">
+                    <span className="font-bold">{r.itemsCount} items</span> ({r.itemsSummary})
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600">
+                    {r.toBranch}
+                  </td>
+                  <td className="py-2.5 px-3 text-center">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                        r.status === "Pending"
+                          ? "bg-amber-100 text-amber-800"
+                          : r.status === "Approved"
+                          ? "bg-blue-100 text-blue-800"
+                          : r.status === "Prepared"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 8. CURRENT SHIFT & CLOSE SHIFT (F10) MODAL
+export function PosCurrentShiftModal({
+  isOpen,
+  onClose,
+  cashierName,
+  salespersonName,
+  todaySalesKd,
+  salesByMethod,
+  onCloseShift,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  cashierName: string;
+  salespersonName: string;
+  todaySalesKd: number;
+  salesByMethod: Record<PosPaymentMethod, number>;
+  onCloseShift: () => void;
+}) {
+  const { locale } = useLocale();
+
+  if (!isOpen) return null;
+
+  const cashSales = salesByMethod.cash ?? 0;
+  const knetSales = salesByMethod.knet ?? 0;
+  const hesabiSales = salesByMethod.hesabi ?? 0;
+  const tabbySales = salesByMethod.tabby ?? 0;
+  const creditSales = salesByMethod.credit ?? 0;
+  const openingCash = 100.0;
+  const expectedCash = openingCash + cashSales;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-[#38BDF8]" />
+            <h3 className="text-base font-bold">
+              {locale === "ar" ? "الوردية الحالية (مسائي) - مفتوح" : "Current Shift (Evening) - OPEN"}
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
-          <textarea
-            rows={4}
-            value={val}
-            onChange={(e) => setVal(e.target.value)}
-            placeholder={t.posScreen.notePlaceholder}
-            className="w-full rounded-2xl border border-neutral-300 p-3 text-xs outline-none focus:border-[#FDCE0C]"
-          />
+          <div className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4 border border-slate-200">
+            <div>
+              <p className="text-slate-500">Shift:</p>
+              <p className="font-bold text-slate-900 text-sm">Evening Shift</p>
+              <p className="text-slate-500 mt-2">Cashier (User):</p>
+              <p className="font-bold text-slate-900">{cashierName || "Ahmed"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">Salesperson (Seller):</p>
+              <p className="font-bold text-slate-900">{salespersonName || "Mohamed Ali"}</p>
+              <p className="text-slate-500 mt-2">Start Time / Opening Float:</p>
+              <p className="font-bold text-slate-900">100.000 KD Opening Cash</p>
+            </div>
+          </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="rounded-2xl border border-slate-200 p-4 space-y-2">
+            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+              {locale === "ar" ? "ملخص مبيعات الوردية" : "Sales Summary (This Shift)"}
+            </h4>
+            <div className="grid grid-cols-2 gap-2 text-slate-600">
+              <div className="flex justify-between">
+                <span>Total Sales:</span>
+                <span className="font-bold text-slate-900">{formatKD(todaySalesKd)} KD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Cash Sales:</span>
+                <span className="font-bold text-slate-900">{formatKD(cashSales)} KD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>KNET:</span>
+                <span className="font-bold text-slate-900">{formatKD(knetSales)} KD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Hesabi:</span>
+                <span className="font-bold text-slate-900">{formatKD(hesabiSales)} KD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tabby:</span>
+                <span className="font-bold text-slate-900">{formatKD(tabbySales)} KD</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Credit (آجل):</span>
+                <span className="font-bold text-slate-900">{formatKD(creditSales)} KD</span>
+              </div>
+              <div className="flex justify-between col-span-2 border-t border-slate-200 pt-2 font-black text-blue-700 text-sm">
+                <span>Expected Cash in Drawer:</span>
+                <span>{formatKD(expectedCash)} KD</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-100"
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
             >
-              {t.posScreen.close}
+              Close
             </button>
             <button
               type="button"
               onClick={() => {
-                onSaveNote(val);
+                onCloseShift();
                 onClose();
               }}
-              className="rounded-xl bg-neutral-950 px-5 py-2 text-xs font-extrabold text-[#FDCE0C] hover:bg-black"
+              className="rounded-xl bg-[#2563EB] px-5 py-2 font-bold text-white hover:bg-blue-700 shadow-md"
             >
-              {t.common.save}
+              {locale === "ar" ? "إغلاق الوردية (F10)" : "Close Shift (F10)"}
             </button>
           </div>
         </div>
@@ -685,7 +964,100 @@ export function PosNoteModal({
   );
 }
 
-// 7. STOCK LOOKUP MODAL
+// 9. DAILY CLOSING MODAL (F11)
+export function PosDailyClosingModal({
+  isOpen,
+  onClose,
+  totalSalesKd,
+  totalCashKd,
+  totalKnetKd,
+  totalHesabiKd,
+  onCloseDay,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  totalSalesKd: number;
+  totalCashKd: number;
+  totalKnetKd: number;
+  totalHesabiKd: number;
+  onCloseDay: () => void;
+}) {
+  const { locale } = useLocale();
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
+          <div className="flex items-center gap-2">
+            <Lock className="h-5 w-5 text-[#38BDF8]" />
+            <h3 className="text-base font-bold">
+              {locale === "ar" ? "إقفال اليومية للفرع" : "Daily Closing (Branch)"}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="rounded-2xl bg-slate-50 p-4 border border-slate-200 space-y-2">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Date:</span>
+              <span className="font-bold text-slate-900">09/08/2026</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Shifts Today:</span>
+              <span className="font-bold text-slate-900">2 Shifts</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Sales:</span>
+              <span className="font-black text-slate-900 text-sm">{formatKD(totalSalesKd)} KD</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Cash:</span>
+              <span className="font-bold text-emerald-700">{formatKD(totalCashKd)} KD</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total KNET:</span>
+              <span className="font-bold text-blue-700">{formatKD(totalKnetKd)} KD</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Total Hesabi:</span>
+              <span className="font-bold text-purple-700">{formatKD(totalHesabiKd)} KD</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onCloseDay();
+                onClose();
+              }}
+              className="rounded-xl bg-[#2563EB] px-5 py-2 font-bold text-white hover:bg-blue-700 shadow-md"
+            >
+              {locale === "ar" ? "إقفال اليومية (F11)" : "Close Day (F11)"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 10. STOCK SUMMARY LOOKUP MODAL
 export function PosStockLookupModal({
   isOpen,
   onClose,
@@ -715,29 +1087,29 @@ export function PosStockLookupModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-[#0B1528] p-4 text-white">
           <div className="flex items-center gap-2">
-            <Boxes className="h-5 w-5 text-[#FDCE0C]" />
+            <Boxes className="h-5 w-5 text-[#38BDF8]" />
             <h3 className="text-base font-bold">{t.posScreen.stockLookup}</h3>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-4 border-b border-neutral-200 bg-neutral-50">
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
           <div className="relative">
-            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t.posScreen.searchPlaceholder}
-              className="w-full rounded-xl border border-neutral-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#FDCE0C]"
+              className="w-full rounded-xl border border-slate-300 ps-9 pe-3 py-2 text-xs outline-none focus:border-[#2563EB]"
             />
           </div>
         </div>
@@ -746,37 +1118,36 @@ export function PosStockLookupModal({
           {filtered.map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl border border-neutral-200 p-3.5 space-y-2 hover:border-neutral-300"
+              className="rounded-2xl border border-slate-200 p-3.5 space-y-2 hover:border-slate-300"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-neutral-900">
+                  <h4 className="text-xs font-bold text-slate-900">
                     {locale === "ar" ? item.nameAr : item.nameEn}
                   </h4>
-                  <p className="numeric-ltr text-[11px] text-neutral-400">
+                  <p className="numeric-ltr text-[11px] text-slate-400">
                     {item.sku} • {item.barcode}
                   </p>
                 </div>
-                <span className="numeric-ltr text-xs font-extrabold text-neutral-950">
+                <span className="numeric-ltr text-xs font-black text-blue-700">
                   {formatKD(item.sellPriceKd)} KD
                 </span>
               </div>
 
-              {/* Stock by branch breakdown */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1 text-[11px]">
                 {branches.slice(0, 6).map((b) => {
                   const qty = item.stockByBranch[b.id] ?? 0;
                   return (
                     <div
                       key={b.id}
-                      className="flex items-center justify-between rounded-lg bg-neutral-50 px-2 py-1 border border-neutral-200/60"
+                      className="flex items-center justify-between rounded-lg bg-slate-50 px-2 py-1 border border-slate-200/60"
                     >
-                      <span className="truncate text-neutral-600">
+                      <span className="truncate text-slate-600">
                         {locale === "ar" ? b.nameAr : b.nameEn}
                       </span>
                       <span
                         className={`numeric-ltr font-bold ${
-                          qty > 0 ? "text-neutral-900" : "text-red-500"
+                          qty > 0 ? "text-slate-900" : "text-red-500"
                         }`}
                       >
                         {qty}
@@ -787,124 +1158,6 @@ export function PosStockLookupModal({
               </div>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 8. SHIFT & DAILY REPORT MODAL
-export function PosShiftReportModal({
-  isOpen,
-  onClose,
-  branchName,
-  cashierName,
-  todaySalesKd,
-  transactionsCount,
-  cashInHandKd,
-  salesByMethod,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  branchName: string;
-  cashierName: string;
-  todaySalesKd: number;
-  transactionsCount: number;
-  cashInHandKd: number;
-  salesByMethod: Record<PosPaymentMethod, number>;
-}) {
-  const { t } = useLocale();
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden border border-neutral-200">
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-950 p-4 text-white">
-          <div className="flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-[#FDCE0C]" />
-            <h3 className="text-base font-bold">{t.posScreen.endOfDay}</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-800 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-4 text-xs">
-          <div className="rounded-2xl bg-neutral-50 p-3.5 border border-neutral-200 space-y-1">
-            <div className="flex justify-between">
-              <span className="text-neutral-500">{t.posScreen.branch}:</span>
-              <span className="font-bold">{branchName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-500">{t.posScreen.cashier}:</span>
-              <span className="font-bold">{cashierName}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-neutral-500">{t.posScreen.currentShift}:</span>
-              <span className="font-bold">{t.posScreen.shift1}</span>
-            </div>
-          </div>
-
-          <div className="space-y-2 border-t border-b border-neutral-200 py-3">
-            <div className="flex justify-between font-medium">
-              <span className="text-neutral-600">{t.posScreen.todaySales}</span>
-              <span className="numeric-ltr font-bold text-neutral-950">
-                {formatKD(todaySalesKd)} KD
-              </span>
-            </div>
-            <div className="flex justify-between font-medium">
-              <span className="text-neutral-600">{t.posScreen.transactions}</span>
-              <span className="numeric-ltr font-bold text-neutral-950">
-                {transactionsCount}
-              </span>
-            </div>
-            <div className="flex justify-between font-medium">
-              <span className="text-neutral-600">{t.posScreen.cashInHand}</span>
-              <span className="numeric-ltr font-bold text-emerald-700">
-                {formatKD(cashInHandKd)} KD
-              </span>
-            </div>
-          </div>
-
-          {/* Payment Methods Breakdown */}
-          <div className="space-y-1.5">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-              Sales by Payment Method
-            </h4>
-            {(
-              [
-                { id: "cash", label: t.posScreen.cash },
-                { id: "knet", label: t.posScreen.knet },
-                { id: "card", label: t.posScreen.card },
-                { id: "credit", label: t.posScreen.credit },
-                { id: "tabby", label: t.posScreen.tabby },
-              ] as const
-            ).map((m) => (
-              <div
-                key={m.id}
-                className="flex justify-between rounded-lg bg-neutral-50 px-2.5 py-1 text-neutral-700"
-              >
-                <span>{m.label}</span>
-                <span className="numeric-ltr font-bold">
-                  {formatKD(salesByMethod[m.id] ?? 0)} KD
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl bg-neutral-950 px-5 py-2 text-xs font-bold text-white hover:bg-black"
-            >
-              {t.posScreen.done}
-            </button>
-          </div>
         </div>
       </div>
     </div>

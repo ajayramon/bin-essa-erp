@@ -11,18 +11,26 @@ import {
   Banknote,
   Smartphone,
   Layers,
-  Percent,
+  Gift,
+  Printer,
+  PauseCircle,
+  Truck,
+  Building2,
   CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import type { Item, Customer } from "@/lib/types";
+import type { Salesperson } from "@/lib/mock-data/salespersons";
 
-export type PosPaymentMethod = "cash" | "card" | "knet" | "credit" | "tabby";
+export type PosInvoiceType = "cash" | "credit";
+export type PosPaymentMethod = "cash" | "knet" | "hesabi" | "tabby" | "card" | "credit";
+export type PosFulfillmentMode = "pickup" | "delivery";
 
 export interface CartItemLine {
   item: Item;
   qty: number;
+  discountKd?: number; // item-level discount
+  isGift?: boolean; // 100% free gift item
 }
 
 interface PosCartPanelProps {
@@ -30,22 +38,34 @@ interface PosCartPanelProps {
   onUpdateQty: (itemId: string, qty: number) => void;
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
+  onAddGiftItem: () => void;
   selectedCustomer: Customer | null;
   onOpenCustomerModal: () => void;
+  selectedSalesperson: Salesperson | null;
+  onOpenSalespersonModal: () => void;
+  fulfillmentMode: PosFulfillmentMode;
+  onFulfillmentModeChange: (mode: PosFulfillmentMode) => void;
+  deliveryAddress: string;
+  onDeliveryAddressChange: (addr: string) => void;
+  deliveryFee: number;
+  invoiceType: PosInvoiceType;
+  onInvoiceTypeChange: (type: PosInvoiceType) => void;
+  paymentMethod: PosPaymentMethod;
+  onPaymentMethodChange: (method: PosPaymentMethod) => void;
   discountPct: number;
   onDiscountPctChange: (pct: number) => void;
   subtotal: number;
-  discountAmount: number;
+  itemDiscountsTotal: number;
+  invoiceDiscountAmount: number;
   taxAmount: number;
   total: number;
-  paymentMethod: PosPaymentMethod;
-  onPaymentMethodChange: (method: PosPaymentMethod) => void;
   cashReceived: number;
   onCashReceivedChange: (amt: number) => void;
+  orderNote: string;
+  onOrderNoteChange: (note: string) => void;
   onCheckout: () => void;
+  onHoldSale: () => void;
   isProcessing: boolean;
-  orderNote?: string;
-  onOpenNoteModal: () => void;
 }
 
 function formatKD(amount: number) {
@@ -60,22 +80,34 @@ export function PosCartPanel({
   onUpdateQty,
   onRemoveItem,
   onClearCart,
+  onAddGiftItem,
   selectedCustomer,
   onOpenCustomerModal,
+  selectedSalesperson,
+  onOpenSalespersonModal,
+  fulfillmentMode,
+  onFulfillmentModeChange,
+  deliveryAddress,
+  onDeliveryAddressChange,
+  deliveryFee,
+  invoiceType,
+  onInvoiceTypeChange,
+  paymentMethod,
+  onPaymentMethodChange,
   discountPct,
   onDiscountPctChange,
   subtotal,
-  discountAmount,
+  itemDiscountsTotal,
+  invoiceDiscountAmount,
   taxAmount,
   total,
-  paymentMethod,
-  onPaymentMethodChange,
   cashReceived,
   onCashReceivedChange,
-  onCheckout,
-  isProcessing,
   orderNote,
-  onOpenNoteModal,
+  onOrderNoteChange,
+  onCheckout,
+  onHoldSale,
+  isProcessing,
 }: PosCartPanelProps) {
   const { locale, t } = useLocale();
 
@@ -83,310 +115,445 @@ export function PosCartPanel({
   const isCash = paymentMethod === "cash";
   const needsDiscountApproval = discountPct > 10;
   const isCartEmpty = cartLines.length === 0;
-  const canCheckout = !isCartEmpty && (!isCash || cashReceived >= total || cashReceived === 0);
+  const canCheckout = !isCartEmpty;
 
-  // Quick cash denomination presets
-  const cashPresets = [
-    { label: t.posScreen.exact, value: total },
-    { label: "5 KD", value: 5 },
-    { label: "10 KD", value: 10 },
-    { label: "20 KD", value: 20 },
-    { label: "50 KD", value: 50 },
-  ];
+  const totalItemsCount = cartLines.reduce((sum, l) => sum + l.qty, 0);
 
   return (
-    <div className="flex h-full w-full flex-col justify-between bg-white border-s border-neutral-200 shadow-sm select-none">
-      {/* 1. Header: Cart Count & Customer Bar */}
-      <div className="border-b border-neutral-200 p-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5 text-neutral-800" />
-            <h2 className="text-base font-bold text-neutral-900">
-              {t.posScreen.cart}
-            </h2>
-            <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs font-bold text-[#FDCE0C] numeric-ltr">
-              {cartLines.reduce((sum, l) => sum + l.qty, 0)}
-            </span>
+    <div className="flex h-full w-full flex-col justify-between overflow-y-auto bg-white border-s border-slate-200 shadow-sm select-none text-xs">
+      <div className="p-3 space-y-3">
+        {/* 1. Customer & Salesperson Cards */}
+        <div className="grid grid-cols-1 gap-2">
+          {/* Customer */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "العميل" : "Customer"}
+            </label>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-1.5">
+              <div className="flex items-center gap-2 truncate">
+                <User className="h-4 w-4 text-slate-500 shrink-0" />
+                <span className="truncate font-bold text-slate-900">
+                  {selectedCustomer
+                    ? locale === "ar"
+                      ? selectedCustomer.nameAr
+                      : selectedCustomer.nameEn
+                    : locale === "ar"
+                    ? "عميل نقدي مباشر"
+                    : "Walk-in Customer"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenCustomerModal}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white border border-slate-300 text-blue-600 font-bold hover:bg-blue-50"
+              >
+                +
+              </button>
+            </div>
           </div>
 
-          {!isCartEmpty && (
+          {/* Salesperson */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "مندوب المبيعات (البائع)" : "Salesperson (Seller)"}
+            </label>
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-1.5">
+              <div className="flex items-center gap-2 truncate">
+                <User className="h-4 w-4 text-slate-500 shrink-0" />
+                <span className="truncate font-bold text-slate-900">
+                  {selectedSalesperson
+                    ? locale === "ar"
+                      ? selectedSalesperson.nameAr
+                      : selectedSalesperson.nameEn
+                    : "Mohamed Ali"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenSalespersonModal}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white border border-slate-300 text-blue-600 font-bold hover:bg-blue-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Fulfillment Mode: Pickup vs Delivery */}
+        <div>
+          <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+            {locale === "ar" ? "طريقة الاستلام والتوصيل" : "Delivery"}
+          </label>
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 border border-slate-200/80">
             <button
               type="button"
-              onClick={onClearCart}
-              className="text-xs font-medium text-red-600 hover:text-red-700 hover:underline"
+              onClick={() => onFulfillmentModeChange("pickup")}
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 font-bold transition-all ${
+                fulfillmentMode === "pickup"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
-              {t.posScreen.clearCart}
+              <Building2 className="h-3.5 w-3.5" />
+              <span>{locale === "ar" ? "استلام من الفرع" : "Pickup from Branch"}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => onFulfillmentModeChange("delivery")}
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 font-bold transition-all ${
+                fulfillmentMode === "delivery"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Truck className="h-3.5 w-3.5" />
+              <span>{locale === "ar" ? "توصيل طلب" : "Delivery"}</span>
+            </button>
+          </div>
+
+          {fulfillmentMode === "delivery" && (
+            <input
+              type="text"
+              value={deliveryAddress}
+              onChange={(e) => onDeliveryAddressChange(e.target.value)}
+              placeholder={locale === "ar" ? "عنوان التوصيل..." : "Delivery Address (e.g. Salmiya Blk 5 St 10)"}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-600"
+            />
           )}
         </div>
 
-        {/* Customer Selector Strip */}
-        <div className="mt-2.5 flex items-center justify-between rounded-xl bg-neutral-50 p-2 border border-neutral-200/80">
-          <div className="flex items-center gap-2 truncate">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-neutral-700">
-              <User className="h-3.5 w-3.5" />
+        {/* 3. Invoice Type (Cash vs Credit) & Payment Methods */}
+        <div className="space-y-2">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "نوع الفاتورة" : "Invoice Type"}
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 border border-slate-200/80">
+              <button
+                type="button"
+                onClick={() => onInvoiceTypeChange("cash")}
+                className={`rounded-lg py-1.5 font-bold transition-all ${
+                  invoiceType === "cash"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {locale === "ar" ? "نقدي" : "Cash"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onInvoiceTypeChange("credit")}
+                className={`rounded-lg py-1.5 font-bold transition-all ${
+                  invoiceType === "credit"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {locale === "ar" ? "آجل (Credit)" : "Credit (آجل)"}
+              </button>
             </div>
-            <span className="truncate text-xs font-medium text-neutral-800">
-              {selectedCustomer
-                ? locale === "ar"
-                  ? selectedCustomer.nameAr
-                  : selectedCustomer.nameEn
-                : t.posScreen.walkInCustomer}
+          </div>
+
+          {/* Payment Methods Cards */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "طريقة الدفع" : "Payment Method"}
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { id: "cash", label: "Cash", icon: Banknote, color: "text-emerald-600" },
+                { id: "knet", label: "KNET", icon: Smartphone, color: "text-blue-600" },
+                { id: "hesabi", label: "Hesabi", icon: Layers, color: "text-purple-600" },
+                { id: "tabby", label: "Tabby", icon: CheckCircle2, color: "text-teal-600" },
+              ].map((m) => {
+                const Icon = m.icon;
+                const isSelected = paymentMethod === m.id;
+
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      onPaymentMethodChange(m.id as PosPaymentMethod);
+                      if (m.id === "cash" && cashReceived === 0) {
+                        onCashReceivedChange(total);
+                      }
+                    }}
+                    className={`flex flex-col items-center justify-center rounded-xl p-2 font-bold transition-all border ${
+                      isSelected
+                        ? "bg-blue-50 border-blue-600 text-blue-700 shadow-xs ring-1 ring-blue-600"
+                        : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 mb-0.5 ${isSelected ? "text-blue-600" : m.color}`} />
+                    <span className="text-[11px] leading-tight">{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Cart Table */}
+        <div>
+          <div className="flex items-center justify-between pb-1">
+            <span className="font-bold text-slate-900 text-xs">
+              {locale === "ar" ? "السلة" : "Cart"} ({totalItemsCount} {locale === "ar" ? "أصناف" : "Items"})
             </span>
           </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-start text-[11px]">
+              <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-600">
+                <tr>
+                  <th className="py-1.5 ps-2 pe-1 text-center w-6">S.NO</th>
+                  <th className="py-1.5 px-1">{locale === "ar" ? "الصنف" : "ITEM NAME"}</th>
+                  <th className="py-1.5 px-1 text-center">{locale === "ar" ? "الكمية" : "QTY"}</th>
+                  <th className="py-1.5 px-1 text-end">{locale === "ar" ? "السعر" : "RATE"}</th>
+                  <th className="py-1.5 px-1 text-end">{locale === "ar" ? "خصم" : "DISC"}</th>
+                  <th className="py-1.5 px-1 text-end">{locale === "ar" ? "المجموع" : "AMOUNT"}</th>
+                  <th className="py-1.5 pe-2 ps-1 text-center w-6"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {isCartEmpty ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-400 font-medium">
+                      {t.posScreen.emptyCart}
+                    </td>
+                  </tr>
+                ) : (
+                  cartLines.map(({ item, qty, isGift }, idx) => {
+                    const lineRate = isGift ? 0 : item.sellPriceKd;
+                    const lineTotal = lineRate * qty;
+                    const itemName = locale === "ar" ? item.nameAr : item.nameEn;
+
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/60">
+                        <td className="py-1.5 ps-2 pe-1 text-center font-bold text-slate-400 text-[10px]">
+                          {idx + 1}
+                        </td>
+                        <td className="py-1.5 px-1 font-bold text-slate-900 leading-tight">
+                          <span className="line-clamp-1">{itemName}</span>
+                          {isGift && (
+                            <span className="rounded bg-amber-100 text-amber-800 px-1 text-[9px] font-extrabold uppercase">
+                              Gift Promo (100%)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-1.5 px-1 text-center">
+                          <div className="inline-flex items-center gap-1 rounded border border-slate-200 bg-slate-50 px-1 py-0.5">
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQty(item.id, qty - 1)}
+                              className="text-slate-600 hover:text-black font-bold"
+                            >
+                              -
+                            </button>
+                            <span className="numeric-ltr font-bold text-slate-900 px-1">
+                              {qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => onUpdateQty(item.id, qty + 1)}
+                              className="text-slate-600 hover:text-black font-bold"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-1.5 px-1 text-end numeric-ltr font-semibold text-slate-600">
+                          {formatKD(lineRate)}
+                        </td>
+                        <td className="py-1.5 px-1 text-end numeric-ltr font-semibold text-slate-400">
+                          0.000
+                        </td>
+                        <td className="py-1.5 px-1 text-end numeric-ltr font-black text-slate-900">
+                          {formatKD(lineTotal)}
+                        </td>
+                        <td className="py-1.5 pe-2 ps-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() => onRemoveItem(item.id)}
+                            className="text-red-400 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Quick Cart Actions (Add Gift Item / Clear Cart) */}
+          <div className="mt-1.5 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onAddGiftItem}
+              className="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-700"
+            >
+              <Gift className="h-3.5 w-3.5" />
+              <span>{locale === "ar" ? "إضافة صنف هدية" : "Add Gift Item"}</span>
+            </button>
+
+            {!isCartEmpty && (
+              <button
+                type="button"
+                onClick={onClearCart}
+                className="flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{t.posScreen.clearCart}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 5. Invoice Discount & Notes */}
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          {/* Discount Stepper */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "نسبة خصم الفاتورة %" : "Invoice Discount %"}
+            </label>
+            <div className="flex items-center rounded-xl border border-slate-300 bg-white p-1 justify-between">
+              <button
+                type="button"
+                onClick={() => onDiscountPctChange(Math.max(0, discountPct - 1))}
+                className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 font-bold hover:bg-slate-200"
+              >
+                -
+              </button>
+              <span className="numeric-ltr font-black text-slate-900 text-xs">
+                {discountPct}%
+              </span>
+              <button
+                type="button"
+                onClick={() => onDiscountPctChange(Math.min(100, discountPct + 1))}
+                className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 font-bold hover:bg-slate-200"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              (Max allowed: 10%)
+            </p>
+          </div>
+
+          {/* Calculated Discount Amount */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 mb-0.5">
+              {locale === "ar" ? "مبلغ الخصم" : "Discount Amount"}
+            </label>
+            <div className="flex h-8 items-center rounded-xl border border-slate-200 bg-slate-50 px-2.5 numeric-ltr font-black text-slate-900 text-xs">
+              {formatKD(invoiceDiscountAmount)} KD
+            </div>
+          </div>
+        </div>
+
+        {/* Notes on Invoice */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-0.5">
+            <span>{locale === "ar" ? "ملاحظات على الفاتورة" : "Notes on Invoice"}</span>
+            <span className="text-[10px] text-slate-400">{orderNote.length}/200</span>
+          </div>
+          <input
+            type="text"
+            maxLength={200}
+            value={orderNote}
+            onChange={(e) => onOrderNoteChange(e.target.value)}
+            placeholder={locale === "ar" ? "اكتب ملاحظة أو تعليمات التوصيل..." : "Please deliver after 7 PM."}
+            className="w-full rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs outline-none focus:border-blue-600"
+          />
+        </div>
+
+        {/* 6. Summary Totals */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-2.5 space-y-1 text-xs">
+          <div className="flex justify-between text-slate-600">
+            <span>{t.posScreen.subtotal}</span>
+            <span className="numeric-ltr font-bold text-slate-900">{formatKD(subtotal)} KD</span>
+          </div>
+
+          {invoiceDiscountAmount > 0 && (
+            <div className="flex justify-between text-red-600">
+              <span>{t.posScreen.discount}</span>
+              <span className="numeric-ltr font-bold">-{formatKD(invoiceDiscountAmount)} KD</span>
+            </div>
+          )}
+
+          {fulfillmentMode === "delivery" && deliveryFee > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <span>{locale === "ar" ? "رسوم التوصيل" : "Delivery Fee"}</span>
+              <span className="numeric-ltr font-bold text-slate-900">{formatKD(deliveryFee)} KD</span>
+            </div>
+          )}
+
+          <div className="flex justify-between text-slate-600">
+            <span>{locale === "ar" ? "الضريبة (0%)" : "Tax (0%)"}</span>
+            <span className="numeric-ltr font-bold text-slate-900">{formatKD(taxAmount)} KD</span>
+          </div>
+
+          <div className="flex justify-between border-t border-slate-200 pt-1.5 text-sm font-black text-slate-950">
+            <span>{t.posScreen.total}</span>
+            <span className="numeric-ltr text-base font-black text-blue-700">{formatKD(total)} KD</span>
+          </div>
+        </div>
+
+        {/* 7. Cash Received & Change */}
+        {isCash && (
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-blue-50/70 border border-blue-100 p-2 text-xs">
+            <div>
+              <span className="text-[11px] font-bold text-slate-600 block mb-0.5">
+                {locale === "ar" ? "المبلغ المدفوع" : "Amount Paid"}
+              </span>
+              <input
+                type="number"
+                step="0.250"
+                value={cashReceived === 0 ? "" : cashReceived}
+                onChange={(e) => onCashReceivedChange(parseFloat(e.target.value) || 0)}
+                placeholder={formatKD(total)}
+                className="numeric-ltr w-full rounded-lg border border-blue-200 bg-white px-2 py-1 font-black text-slate-950 outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div>
+              <span className="text-[11px] font-bold text-slate-600 block mb-0.5">
+                {locale === "ar" ? "المتبقي / الفكة" : "Remaining / Change"}
+              </span>
+              <div className="numeric-ltr flex h-7 items-center rounded-lg bg-white border border-blue-200 px-2 font-black text-emerald-700">
+                {formatKD(changeDue)} KD
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 8. Dominant Action Buttons */}
+        <div className="space-y-1.5 pt-1">
           <button
             type="button"
-            onClick={onOpenCustomerModal}
-            className="shrink-0 text-xs font-semibold text-neutral-700 hover:text-black"
+            onClick={onCheckout}
+            disabled={!canCheckout || isProcessing}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] py-3 text-sm font-black text-white shadow-md transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-40 cursor-pointer"
           >
-            {selectedCustomer ? t.common.edit : t.posScreen.selectCustomer}
+            <Printer className="h-4 w-4" />
+            <span>{isProcessing ? "Processing..." : `${locale === "ar" ? "دفع وطباعة" : "Pay & Print"} (F9)`}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onHoldSale}
+            disabled={isCartEmpty}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40"
+          >
+            <PauseCircle className="h-4 w-4 text-slate-500" />
+            <span>{locale === "ar" ? "تعليق الفاتورة (F6)" : "Hold Invoice (F6)"}</span>
           </button>
         </div>
-      </div>
-
-      {/* 2. Scrollable Cart Items List */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
-        {isCartEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center text-center p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-400 mb-2">
-              <ShoppingBag className="h-6 w-6" />
-            </div>
-            <p className="text-sm font-semibold text-neutral-700">
-              {t.posScreen.emptyCart}
-            </p>
-            <p className="text-xs text-neutral-400 mt-1">
-              {t.posScreen.searchPlaceholder}
-            </p>
-          </div>
-        ) : (
-          cartLines.map(({ item, qty }) => {
-            const lineTotal = item.sellPriceKd * qty;
-            const itemName = locale === "ar" ? item.nameAr : item.nameEn;
-
-            return (
-              <div
-                key={item.id}
-                className="group relative flex items-center justify-between gap-2.5 rounded-xl border border-neutral-200/90 bg-white p-2.5 shadow-2xs hover:border-neutral-300"
-              >
-                {/* Item Name & Unit Price */}
-                <div className="min-w-0 flex-1">
-                  <h4 className="truncate text-xs font-bold text-neutral-900 leading-tight">
-                    {itemName}
-                  </h4>
-                  <p className="numeric-ltr text-[11px] font-medium text-neutral-500 mt-0.5">
-                    {formatKD(item.sellPriceKd)} KD
-                  </p>
-                </div>
-
-                {/* Quantity Stepper */}
-                <div className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => onUpdateQty(item.id, qty - 1)}
-                    className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-neutral-700 shadow-2xs hover:bg-neutral-100 active:scale-95"
-                    title="Decrease"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-
-                  <input
-                    type="number"
-                    min={1}
-                    value={qty}
-                    onChange={(e) =>
-                      onUpdateQty(item.id, Math.max(0, parseInt(e.target.value) || 0))
-                    }
-                    className="numeric-ltr w-8 text-center text-xs font-bold text-neutral-900 bg-transparent outline-none"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => onUpdateQty(item.id, qty + 1)}
-                    className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-neutral-700 shadow-2xs hover:bg-neutral-100 active:scale-95"
-                    title="Increase"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                </div>
-
-                {/* Line Total & Remove */}
-                <div className="flex items-center gap-2">
-                  <span className="numeric-ltr text-xs font-extrabold text-neutral-950 min-w-16 text-end">
-                    {formatKD(lineTotal)} KD
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(item.id)}
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 hover:bg-red-50 hover:text-red-600"
-                    title={t.posScreen.remove}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* 3. Bottom Summary & Checkout Section */}
-      <div className="border-t border-neutral-200 bg-neutral-50/80 p-3.5 space-y-3">
-        {/* Calculations Strip */}
-        <div className="space-y-1.5 text-xs text-neutral-600">
-          <div className="flex items-center justify-between">
-            <span>{t.posScreen.subtotal}</span>
-            <span className="numeric-ltr font-semibold text-neutral-900">
-              {formatKD(subtotal)} KD
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1">
-              <span>{t.posScreen.discount}</span>
-              {discountPct > 0 && (
-                <span className="text-[10px] text-neutral-500">
-                  ({discountPct}%)
-                </span>
-              )}
-            </span>
-            <span className="numeric-ltr font-semibold text-red-600">
-              {discountAmount > 0 ? `-${formatKD(discountAmount)} KD` : "0.000 KD"}
-            </span>
-          </div>
-
-          {needsDiscountApproval && (
-            <p className="text-[10px] font-bold text-red-600">
-              {t.posScreen.discountApprovalNeeded}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between">
-            <span>{t.posScreen.tax}</span>
-            <span className="numeric-ltr font-semibold text-neutral-900">
-              {formatKD(taxAmount)} KD
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between border-t border-neutral-200 pt-2 text-sm">
-            <span className="font-bold text-neutral-900">
-              {t.posScreen.total}
-            </span>
-            <span className="numeric-ltr text-base font-extrabold text-neutral-950">
-              {formatKD(total)} KD
-            </span>
-          </div>
-        </div>
-
-        {/* Payment Method Selector */}
-        <div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {(
-              [
-                { id: "cash", label: t.posScreen.cash, icon: Banknote },
-                { id: "knet", label: t.posScreen.knet, icon: Smartphone },
-                { id: "card", label: t.posScreen.card, icon: CreditCard },
-                { id: "credit", label: t.posScreen.credit, icon: Layers },
-                { id: "tabby", label: t.posScreen.tabby, icon: CheckCircle2 },
-              ] as const
-            ).map((m) => {
-              const Icon = m.icon;
-              const isSelected = paymentMethod === m.id;
-
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => {
-                    onPaymentMethodChange(m.id);
-                    if (m.id === "cash" && cashReceived === 0) {
-                      onCashReceivedChange(total);
-                    }
-                  }}
-                  className={`flex flex-col items-center justify-center rounded-xl py-2 px-1 text-[11px] font-bold transition-all ${
-                    isSelected
-                      ? "bg-neutral-950 text-white shadow-sm ring-2 ring-[#FDCE0C]"
-                      : "bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-100"
-                  }`}
-                >
-                  <Icon
-                    className={`h-4 w-4 mb-1 ${
-                      isSelected ? "text-[#FDCE0C]" : "text-neutral-500"
-                    }`}
-                  />
-                  <span className="leading-tight truncate max-w-full">
-                    {m.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Cash Tender & Change calculation if Cash is selected */}
-        {isCash && (
-          <div className="rounded-xl border border-neutral-200 bg-white p-2.5 space-y-2">
-            {/* Quick Bill Presets */}
-            <div className="flex gap-1 overflow-x-auto pb-0.5">
-              {cashPresets.map((p, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => onCashReceivedChange(p.value)}
-                  className={`shrink-0 rounded-lg px-2 py-1 text-[11px] font-bold border transition-colors ${
-                    cashReceived === p.value
-                      ? "bg-[#FDCE0C] text-black border-[#FDCE0C]"
-                      : "bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Cash Input & Change Due */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                  {t.posScreen.cashReceived}
-                </label>
-                <input
-                  type="number"
-                  step="0.250"
-                  min={0}
-                  value={cashReceived === 0 ? "" : cashReceived}
-                  onChange={(e) =>
-                    onCashReceivedChange(parseFloat(e.target.value) || 0)
-                  }
-                  placeholder={formatKD(total)}
-                  className="numeric-ltr w-full rounded-lg border border-neutral-300 px-2 py-1.5 text-xs font-bold text-neutral-900 outline-none focus:border-[#FDCE0C]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-1">
-                  {t.posScreen.change}
-                </label>
-                <div className="numeric-ltr flex h-8 items-center rounded-lg bg-neutral-100 px-2 text-xs font-extrabold text-emerald-700">
-                  {formatKD(changeDue)} KD
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Dominant Checkout Button */}
-        <button
-          type="button"
-          onClick={onCheckout}
-          disabled={!canCheckout || isProcessing}
-          className="relative flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-950 py-3.5 text-sm font-extrabold text-[#FDCE0C] shadow-lg transition-all hover:bg-black hover:shadow-xl active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-        >
-          <span>{isProcessing ? "Processing..." : t.posScreen.payAndComplete}</span>
-          <span className="numeric-ltr text-white font-black">
-            ({formatKD(total)} KD)
-          </span>
-        </button>
       </div>
     </div>
   );
