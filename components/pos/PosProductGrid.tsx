@@ -1,8 +1,8 @@
 "use client";
 
-import { Package, Plus, AlertCircle, ChevronDown } from "lucide-react";
+import { Package, Plus, ChevronDown } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import type { Item, BrandId } from "@/lib/types";
+import type { Item } from "@/lib/types";
 import type { PosViewMode } from "./PosTopbar";
 
 interface PosProductGridProps {
@@ -50,17 +50,17 @@ export function PosProductGrid({
   const { locale, t } = useLocale();
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Top Controls: Brand Filter */}
-      <div className="mb-3 flex items-center justify-between">
+    <div className="flex h-full flex-col overflow-hidden p-2">
+      {/* Top Filter Bar */}
+      <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="relative">
             <select
               value={selectedBrand}
               onChange={(e) => onSelectBrand(e.target.value)}
-              className="appearance-none rounded-xl border border-slate-300 bg-white ps-3 pe-8 py-1.5 text-xs font-bold text-slate-800 shadow-2xs outline-none focus:border-[#2563EB]"
+              className="appearance-none rounded-xl border border-slate-200 bg-white ps-3 pe-8 py-1.5 text-xs font-bold text-slate-800 shadow-2xs outline-none focus:border-[#2563EB]"
             >
-              <option value="all">{locale === "ar" ? "جميع العلامات التجارية" : "All Brands"}</option>
+              <option value="all">{locale === "ar" ? "جميع العلامات" : "All Brands"}</option>
               <option value="smoking">{locale === "ar" ? "مركز بن عيسى للتدخين" : "Bin Essa Smoking Center"}</option>
               <option value="khiran">{locale === "ar" ? "بن عيسى الخيران" : "Bin Essa Khiran"}</option>
               <option value="jmart">{locale === "ar" ? "جي إم آرت زون" : "JM Art Zone"}</option>
@@ -74,7 +74,7 @@ export function PosProductGrid({
         </div>
       </div>
 
-      {/* Product List or Grid */}
+      {/* Products Display */}
       {items.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-8 text-center">
           <Package className="h-10 w-10 text-slate-300 mb-2" />
@@ -87,7 +87,7 @@ export function PosProductGrid({
         </div>
       ) : viewMode === "grid" ? (
         <div className="flex-1 overflow-y-auto pe-1">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 auto-rows-fr">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 auto-rows-fr">
             {items.map((item) => {
               const stock = stockByItem(item);
               const inCart = cartQuantities[item.id] ?? 0;
@@ -105,18 +105,18 @@ export function PosProductGrid({
                   type="button"
                   onClick={() => onAddToCart(item)}
                   disabled={isOutOfStock}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-3 text-start transition-all ${
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-2.5 text-start transition-all ${
                     isOutOfStock
-                      ? "border-slate-200 opacity-55 cursor-not-allowed bg-slate-50/60"
-                      : "border-slate-200/90 shadow-2xs hover:border-[#2563EB] hover:shadow-md active:scale-[0.98]"
+                      ? "border-slate-200 opacity-50 cursor-not-allowed bg-slate-50/60"
+                      : "border-slate-200 shadow-2xs hover:border-[#2563EB] hover:shadow-sm active:scale-[0.98]"
                   }`}
                 >
-                  {/* Top Thumbnail & In-Cart Badge */}
+                  {/* Thumbnail & In-Cart Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div
-                      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl ${catStyle.bg} ${catStyle.text}`}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${catStyle.bg} ${catStyle.text}`}
                     >
-                      <Package className="h-7 w-7" />
+                      <Package className="h-5 w-5" />
                     </div>
 
                     {inCart > 0 && (
@@ -127,23 +127,23 @@ export function PosProductGrid({
                   </div>
 
                   {/* Product Name */}
-                  <div className="mt-2.5 flex-1">
+                  <div className="mt-2 flex-1">
                     <h3 className="line-clamp-2 text-xs font-bold text-slate-900 leading-snug group-hover:text-[#2563EB]">
                       {itemName}
                     </h3>
                   </div>
 
                   {/* Price & Stock */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-end justify-between">
+                  <div className="mt-2 pt-1.5 border-t border-slate-100 flex items-end justify-between">
                     <div>
-                      <span className="numeric-ltr block text-xs font-black text-blue-700">
+                      <span className="numeric-ltr block text-xs font-black text-blue-700 leading-none">
                         {formatKD(item.sellPriceKd)}{" "}
                         <span className="text-[10px] font-semibold text-slate-500">
                           KD
                         </span>
                       </span>
                       <span
-                        className={`numeric-ltr text-[10px] font-semibold ${
+                        className={`numeric-ltr block text-[10px] font-semibold mt-0.5 ${
                           stock > 0 ? "text-slate-500" : "text-red-500 font-bold"
                         }`}
                       >
@@ -154,13 +154,13 @@ export function PosProductGrid({
                     </div>
 
                     <div
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg transition-colors ${
                         isOutOfStock
                           ? "bg-slate-100 text-slate-400"
                           : "bg-slate-100 text-slate-700 group-hover:bg-[#2563EB] group-hover:text-white"
                       }`}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus className="h-3 w-3" />
                     </div>
                   </div>
                 </button>
