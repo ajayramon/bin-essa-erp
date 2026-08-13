@@ -102,12 +102,13 @@ export function Sidebar() {
     b2b_customer: ["b2b"],
   };
 
-  const allowedKeys = roleAllowedKeys[user.role] ?? roleAllowedKeys.admin;
+  const userRoleKey = (user.role || "admin").toLowerCase();
+  const allowedKeys = roleAllowedKeys[userRoleKey] ?? roleAllowedKeys.admin;
   const filteredModules = brandModules.filter((entry) => allowedKeys.includes(entry.key));
 
   return (
     <aside className="flex h-full w-64 flex-col overflow-y-auto border-e border-ink/10 bg-paper">
-      {isHeadOffice && user.role === "admin" && (
+      {isHeadOffice && (userRoleKey === "admin" || userRoleKey === "administrator") && (
         <div className="border-b border-ink/10 p-2">
           <Link
             href={groupDashboardItem.href}

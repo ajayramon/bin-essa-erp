@@ -55,43 +55,72 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [currentBranchId, setCurrentBranchId] = useState<string | null>(null);
   const [isRestoringSession, setIsRestoringSession] = useState(true);
 
-  // Restore a session from localStorage on mount. Works for both real
-  // backend logins and mock loginAs() sessions, since both now store the
-  // full user object under USER_KEY rather than just an id to re-look-up.
   useEffect(() => {
     try {
+      let restoredUser: User | null = null;
       const savedUserRaw = localStorage.getItem(USER_KEY);
-      if (!savedUserRaw) {
-        document.cookie = "bin_essa_session=; path=/; max-age=0";
-        document.cookie = "bin_essa_token=; path=/; max-age=0";
-        setIsRestoringSession(false);
-        return;
+
+      if (savedUserRaw) {
+        try {
+          const parsed = JSON.parse(savedUserRaw) as User;
+          if (parsed && parsed.id) {
+            const rawRole = (parsed.role || "admin").toString().toLowerCase();
+            parsed.role = (rawRole === "manager" ? "branch_manager" : rawRole === "b2b_client" ? "b2b_customer" : rawRole) as Role;
+            restoredUser = parsed;
+          }
+        } catch {
+          // ignore corrupted user json
+        }
       }
 
-      const savedUser = JSON.parse(savedUserRaw) as User;
-      setUser(savedUser);
+      // Fallback: Restore user from JWT token if user was not in localStorage
+      if (!restoredUser) {
+        const tokenCookie = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("bin_essa_token="))
+          ?.split("=")[1];
+        const token = localStorage.getItem(TOKEN_KEY) || tokenCookie;
 
-      const savedBrandId = localStorage.getItem(BRAND_KEY) as BrandId | null;
-      const savedBranchId = localStorage.getItem(BRANCH_KEY);
+        if (token && token.includes(".")) {
+          try {
+            const payloadBase64 = token.split(".")[1];
+            const decodedStr = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
+            const payload = JSON.parse(decodedStr);
+            if (payload && payload.username) {
+              const rawRole = (payload.role || "ADMIN").toString().toLowerCase();
+              const normalizedRole = (rawRole === "manager" ? "branch_manager" : rawRole === "b2b_client" ? "b2b_customer" : rawRole) as Role;
+              restoredUser = {
+                id: payload.sub || "u-restored",
+                nameEn: payload.fullName || payload.username,
+                nameAr: payload.fullName || payload.username,
+                role: normalizedRole,
+                branchId: payload.branchId || null,
+              };
+              localStorage.setItem(USER_KEY, JSON.stringify(restoredUser));
+            }
+          } catch {
+            // ignore token parse error
+          }
+        }
+      }
 
-      setCurrentBrandId(savedBrandId ?? DEFAULT_BRAND_ID);
-      setCurrentBranchId(savedBranchId ?? savedUser.branchId);
+      if (restoredUser) {
+        setUser(restoredUser);
+        const savedBrandId = localStorage.getItem(BRAND_KEY) as BrandId | null;
+        const savedBranchId = localStorage.getItem(BRANCH_KEY);
 
-      // Keep cookies in sync for server-side middleware route guards
-      document.cookie = "bin_essa_session=1; path=/; max-age=86400; SameSite=Lax";
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        document.cookie = `bin_essa_token=${token}; path=/; max-age=86400; SameSite=Lax`;
+        setCurrentBrandId(savedBrandId ?? DEFAULT_BRAND_ID);
+        setCurrentBranchId(savedBranchId ?? restoredUser.branchId);
+
+        // Keep cookies in sync for server-side middleware route guards
+        document.cookie = "bin_essa_session=1; path=/; max-age=604800; SameSite=Lax";
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+          document.cookie = `bin_essa_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+        }
       }
     } catch {
-      // Corrupted/unparseable saved session - clear it out rather than
-      // getting stuck in a broken state.
-      localStorage.removeItem(USER_KEY);
-      localStorage.removeItem(BRAND_KEY);
-      localStorage.removeItem(BRANCH_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-      document.cookie = "bin_essa_session=; path=/; max-age=0";
-      document.cookie = "bin_essa_token=; path=/; max-age=0";
+      // Safe fallback
     } finally {
       setIsRestoringSession(false);
     }
