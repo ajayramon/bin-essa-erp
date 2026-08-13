@@ -77,3 +77,113 @@ If it introduces a new feature before the current workflow is complete, postpone
 
 ## 9. Official ERP Development Standards & Governance
 - **15 Enterprise Pillars**: Every implementation must strictly follow [ERP_DEVELOPMENT_STANDARDS.md](file:///c:/Users/Abdul/bin-essa-erp/ERP_DEVELOPMENT_STANDARDS.md) covering Database Transactions (`$transaction`), Backend Service Logic, Movement-Based Inventory Ledger (`InventoryMovement`), Immutable Double-Entry GL Journal Entries (`sum(debit) === sum(credit)`), Reversing Entries for Corrections, Branch Isolation (`branchId`), Backend Permission Guards, Immutable Audit Logs, Soft Delete (`isActive`/`status`), Modular REST APIs, Indexing & Pagination, and Clean Error Validation payloads.
+
+## 10. Project Memory — Git, Secrets & Documentation Rules
+
+### 1. NEVER COMMIT SECRETS
+NEVER commit, push, or expose:
+- `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.*` containing real values
+- Database passwords, `DATABASE_URL` with real credentials, PostgreSQL usernames/passwords
+- `JWT_SECRET`, session secrets, API keys, OAuth client secrets, private keys, SSH keys
+- Cloud credentials (AWS / GCP / Azure), Vercel tokens, GitHub tokens, Firebase service accounts
+- Stripe secret keys, payment provider secrets, Redis passwords, SMTP passwords
+- Any customer/client credentials, or any production authentication credentials
+
+Before every commit, inspect changed files and verify that no secret or credential is included.
+
+**If a secret is accidentally committed:**
+1. STOP immediately.
+2. Do not push further changes.
+3. Remove the secret from the working tree.
+4. Check whether it exists in Git history.
+5. If already pushed, treat the secret as COMPROMISED.
+6. Alert the project owner immediately.
+7. Rotate/revoke the exposed credential.
+8. Remove it from Git history if required.
+9. Verify the repository no longer contains the secret.
+10. Only then continue development.
+*NEVER simply hide a secret in a later commit and assume it is safe.*
+
+### 2. REQUIRED .gitignore
+Keep sensitive/local files excluded from Git:
+```gitignore
+.env
+.env.*
+!.env.example
+!.env*.example
+
+node_modules/
+.next/
+dist/
+backups/
+*.sql
+*.sql.gz
+*.dump
+*.pem
+*.key
+```
+Do not blindly add exclusions that hide important source code.
+
+### 3. WHAT SHOULD BE COMMITTED
+Normal source code and project configuration SHOULD be committed, including:
+- Next.js source code, React components, NestJS source code
+- Prisma schema, Prisma migrations, API services, DTOs, Controllers
+- Database models/schema definitions, Dockerfile, docker-compose.yml, nginx.conf
+- package.json, package-lock.json, tsconfig files, next.config files, Tailwind config
+- Public assets, translation dictionaries, tests, test scripts, database seed code
+- Backup/restore SCRIPTS (but NEVER actual backup files)
+- Deployment configuration that contains NO secrets
+- `.env.example` with placeholder values only
+- Documentation needed to operate or understand the project
+
+**Examples:**
+- `GOOD`: `DATABASE_URL="postgresql://USERNAME:PASSWORD@HOST:5432/DATABASE"`
+- `BAD`: `DATABASE_URL="postgresql://realuser:RealPassword@production-server:5432/bin_essa"`
+
+### 4. AGENTS.md
+`AGENTS.md` MAY and SHOULD be committed if it contains architecture, standards, workflows, git/security rules, and instructions.
+However, `AGENTS.md` must NEVER contain real passwords, API keys, tokens, private credentials, production secrets, or customer confidential information. Use placeholders like `YOUR_DATABASE_URL`, `YOUR_API_KEY`, `YOUR_DOMAIN`.
+
+### 5. MARKDOWN DOCUMENTATION
+Normal `.md` documentation MAY be committed (`README.md`, `AGENTS.md`, `architecture.md`, `walkthrough.md`, etc.).
+Every Markdown file must be checked for passwords, API keys, tokens, private URLs, connection strings, and confidential information. *Documentation is NOT automatically safe just because it is `.md`.*
+
+### 6. WALKTHROUGH FILES
+`walkthrough.md` and similar files can be committed if they document features completed, tests performed, architecture, business workflows, and verification results.
+Before committing, remove or replace real credentials, secrets, private tokens, production connection strings, and sensitive customer information.
+- `GOOD`: "Production database is PostgreSQL 16."
+- `BAD`: "Production database is postgresql://admin:SuperSecretPassword@..."
+
+### 7. GIT STATUS CHECK BEFORE EVERY COMMIT
+Before every commit, run `git status`, inspect `git diff`, and when appropriate `git diff --cached`.
+Do NOT automatically use `git add .` without first reviewing what will be committed.
+Prefer explicitly staging project files:
+`git add app/`, `git add backend/`, `git add components/`, `git add lib/`, `git add package.json`, etc.
+
+### 8. SECRET SCAN BEFORE PUSH
+Before pushing, search changed files for suspicious credentials (`API_KEY`, `SECRET`, `PASSWORD`, `TOKEN`, `DATABASE_URL`, `PRIVATE_KEY`, `JWT_SECRET`, `STRIPE_SECRET`, `AWS_SECRET`, `SERVICE_ACCOUNT`).
+If a real credential is found, DO NOT COMMIT OR PUSH IT.
+
+### 9. NEVER FORCE-PUSH OR REWRITE HISTORY
+Do not use `git push --force` or rewrite Git history unless explicitly authorized by the project owner. If secrets were previously committed, STOP and report the issue before attempting history cleanup.
+
+### 10. BEFORE DEPLOYMENT VERIFICATION
+Before production deployment verify:
+- No `.env` file is tracked.
+- No secrets are present in source code or Markdown files.
+- No database dumps or backup archives are committed.
+- No credentials exist in Dockerfiles or docker-compose.yml.
+- Production secrets are supplied through the server/environment configuration.
+- `.env.example` contains placeholders only.
+
+### 11. AGENT BEHAVIOR & PRIORITY HIERARCHY
+Do not optimize for "successful commit" at the expense of security. The mandatory priority order is:
+1. Protect secrets.
+2. Protect customer/business data.
+3. Preserve working source code.
+4. Test changes.
+5. Review Git diff.
+6. Commit.
+7. Push.
+8. Deploy.
+
