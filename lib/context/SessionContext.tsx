@@ -127,11 +127,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   async function login(username: string, password: string) {
     const data = await loginRequest(username, password);
 
+    const rawRole = (data.user.role || "ADMIN").toLowerCase();
+    const normalizedRole: Role =
+      rawRole === "manager"
+        ? "branch_manager"
+        : rawRole === "b2b_client"
+        ? "b2b_customer"
+        : (rawRole as Role);
+
     const mappedUser: User = {
       id: data.user.id,
       nameEn: data.user.fullName,
       nameAr: data.user.fullName,
-      role: data.user.role as Role,
+      role: normalizedRole,
       branchId: data.user.branchId,
     };
 

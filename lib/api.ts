@@ -59,7 +59,9 @@ export async function loginRequest(
   username: string,
   password: string
 ): Promise<LoginResponse> {
-  let res: Response;
+  let res: Response | null = null;
+
+  // 1. Try configured external/internal API endpoint first
   try {
     res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -69,13 +71,35 @@ export async function loginRequest(
       body: JSON.stringify({ username, password }),
     });
   } catch {
-    throw new Error("Unable to connect to authentication server. Please check your network or server connection.");
+    // If backend connection refused (e.g. localhost:4000 is down or cross-origin blocked), proceed to local fallback
+  }
+
+  // 2. If primary fetch failed to connect or returned 404/502/503, fallback to local Next.js /api/auth/login route
+  if (!res || res.status === 404 || res.status === 502 || res.status === 503) {
+    try {
+      res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch {
+      throw new Error("Unable to connect to authentication server. Please check your network or server connection.");
+    }
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw new Error(body?.message ?? "Login failed");
+    const errorMsg =
+      typeof body?.message === "string"
+        ? body.message
+        : Array.isArray(body?.message)
+        ? body.message.join(", ")
+        : "Invalid username or password";
+    throw new Error(errorMsg);
   }
+
   return res.json();
 }
 

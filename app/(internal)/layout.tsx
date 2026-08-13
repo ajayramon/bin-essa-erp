@@ -19,7 +19,7 @@ export default function InternalLayout({
   // bounced to login before it's had a chance to load.
   useEffect(() => {
     if (!isRestoringSession && !user) {
-      router.replace("/");
+      router.replace("/login");
     }
   }, [user, isRestoringSession, router]);
 
