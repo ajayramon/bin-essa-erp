@@ -67,7 +67,10 @@ export default function NewPurchaseOrderPage() {
         ]);
 
         if (!cancelled) {
-          setItems(itemsData);
+          const purchasableItems = itemsData.filter(
+            (i) => i.allowPurchase !== false && i.isActive !== false
+          );
+          setItems(purchasableItems);
           setSuppliers(suppliersData);
           if (suppliersData.length > 0) {
             setSupplierId(suppliersData[0].id);

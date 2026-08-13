@@ -1,47 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  Package,
+  Plus,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  FolderTree,
+  ShieldCheck,
+  Percent,
+  Gift,
+  Clock,
+  Eye,
+  Tag,
+  DollarSign,
+  Image as ImageIcon,
+} from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import {
   createItemRequest,
+  listCategoriesRequest,
   type CreateItemPayload,
-  type ItemCategory,
+  type Category,
 } from "@/lib/api";
 
-const CATEGORIES: ItemCategory[] = [
-  "TOBACCO",
-  "ACCESSORIES",
-  "ELECTRONICS",
-  "ART_SUPPLIES",
-  "OTHER",
+const PRESET_ORIGINS = [
+  "Kuwait",
+  "Sweden",
+  "China",
+  "United States",
+  "United Arab Emirates",
+  "United Kingdom",
+  "Germany",
+  "Spain",
+  "Netherlands",
+  "France",
+  "Japan",
 ];
 
-const MAIN_CATEGORIES = [
-  "CIGAR",
-  "DISPOSABLE VAPE",
-  "POD SYSTEMS",
-  "DOKHA & MEDWAKH",
-  "E-LIQUIDS",
-  "CIGARETTE LIGHTERS",
-  "ROLLING PAPERS",
-  "GENERAL ACCESSORIES",
-];
-
-export default function NewItemPage() {
+export default function NewItemMasterPage() {
   const { locale, dir } = useLocale();
   const router = useRouter();
-
   const isAr = locale === "ar";
 
+  const [categoriesList, setCategoriesList] = useState<Category[]>([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+
   const [form, setForm] = useState({
+    nameEn: "",
+    nameAr: "",
     sku: "",
     barcode: "",
-    name: "",
-    category: "TOBACCO" as ItemCategory,
-    mainCategory: "CIGAR",
-    brand: "",
+    category: "disposable_vapes",
+    subCategory: "",
+    brand: "Bin Essa",
+    countryOfOrigin: "Kuwait",
+    imageUrl: "",
     price: "",
     retailPrice: "",
     semiWholesalePrice: "",
@@ -49,75 +67,116 @@ export default function NewItemPage() {
     cost: "",
     unit: "pcs",
     stockQuantity: "0",
-    trackExpiry: false,
-    blockFreeGift: false,
-    blockDiscount: false,
+    isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
     maxDiscountPercent: "10",
-    additionalBarcodes: [] as string[],
-    uoms: [
-      { unitName: "Piece", conversionRatio: 1, customCost: 0, customPrice: 0, isBase: true },
-      { unitName: "Pack", conversionRatio: 5, customCost: 0, customPrice: 0, isBase: false },
-      { unitName: "Box", conversionRatio: 100, customCost: 0, customPrice: 0, isBase: false },
-      { unitName: "Carton", conversionRatio: 1000, customCost: 0, customPrice: 0, isBase: false },
-    ],
+    allowGift: true,
+    expiryRequired: false,
+    posVisibility: true,
   });
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const cats = await listCategoriesRequest();
+        setCategoriesList(cats);
+        if (cats.length > 0) {
+          setForm((prev) => ({
+            ...prev,
+            category: cats[0].code,
+            subCategory: cats[0].subcategories?.[0]?.code || "",
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load categories", err);
+      } finally {
+        setLoadingCats(false);
+      }
+    }
+    loadCategories();
+  }, []);
+
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
+  // Handle Category Change (auto-update subcategory cascade)
+  const handleCategoryChange = (catCode: string) => {
+    const selected = categoriesList.find((c) => c.code === catCode || c.id === catCode);
+    const firstSub = selected?.subcategories?.[0]?.code || "";
+    setForm((prev) => ({
+      ...prev,
+      category: catCode,
+      subCategory: firstSub,
+    }));
+  };
+
+  const currentCategoryObj = categoriesList.find(
+    (c) => c.code === form.category || c.id === form.category
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(false);
 
-    if (!form.sku.trim() || !form.name.trim()) {
-      setError(isAr ? "رمز SKU واأسم الصنف مطلوبة" : "SKU and Product Name are required.");
+    if (!form.sku.trim()) {
+      setError(isAr ? "رمز الصنف (SKU) مطلوب" : "Item Code / SKU is required.");
       return;
     }
+    if (!form.nameEn.trim() && !form.nameAr.trim()) {
+      setError(isAr ? "يجب إدخال اسم الصنف (عربي أو إنجليزي)" : "Please enter item name in English or Arabic.");
+      return;
+    }
+
     const price = Number(form.price);
     const cost = Number(form.cost);
     const stockQuantity = Number(form.stockQuantity);
+
     if (Number.isNaN(price) || price < 0) {
-      setError(isAr ? "يجب أن يكون السعر رقماً موجباً" : "Price must be a valid non-negative number.");
+      setError(isAr ? "يجب أن يكون سعر البيع رقماً صحيحاً أو عشرياً موجباً" : "Sell price must be a valid non-negative number.");
       return;
     }
     if (Number.isNaN(cost) || cost < 0) {
-      setError(isAr ? "يجب أن تكون التكلفة رقماً موجباً" : "Cost must be a valid non-negative number.");
-      return;
-    }
-    if (Number.isNaN(stockQuantity) || stockQuantity < 0) {
-      setError(isAr ? "الكمية الافتتاحية يجب أن تكون رقماً موجباً" : "Stock Quantity must be a valid non-negative number.");
+      setError(isAr ? "يجب أن تكون التكلفة رقماً موجباً" : "Cost price must be a valid non-negative number.");
       return;
     }
 
     const payload: CreateItemPayload = {
       sku: form.sku.trim(),
-      name: form.name.trim(),
+      barcode: form.barcode.trim() || undefined,
+      name: form.nameEn.trim() || form.nameAr.trim(),
+      nameEn: form.nameEn.trim() || form.nameAr.trim(),
+      nameAr: form.nameAr.trim() || form.nameEn.trim(),
       category: form.category,
-      mainCategory: form.mainCategory,
+      subCategory: form.subCategory || undefined,
       brand: form.brand.trim() || undefined,
+      countryOfOrigin: form.countryOfOrigin.trim() || undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
       price,
       cost,
-      unit: form.unit.trim() || undefined,
-      barcode: form.barcode.trim() || undefined,
+      unit: form.unit.trim() || "pcs",
       stockQuantity,
       retailPrice: Number(form.retailPrice) || price,
       semiWholesalePrice: Number(form.semiWholesalePrice) || price,
       wholesalePrice: Number(form.wholesalePrice) || price,
-      trackExpiry: form.trackExpiry,
-      blockFreeGift: form.blockFreeGift,
-      blockDiscount: form.blockDiscount,
+      isActive: form.isActive,
+      allowSale: form.allowSale,
+      allowPurchase: form.allowPurchase,
+      allowDiscount: form.allowDiscount,
       maxDiscountPercent: Number(form.maxDiscountPercent) || 10,
-      additionalBarcodes: form.additionalBarcodes.filter((b) => b.trim().length > 0),
-      uoms: form.uoms.map((u) => ({
-        ...u,
-        customCost: Number(u.customCost) || undefined,
-        customPrice: Number(u.customPrice) || undefined,
-      })),
+      allowGift: form.allowGift,
+      expiryRequired: form.expiryRequired,
+      posVisibility: form.posVisibility,
+      blockDiscount: !form.allowDiscount,
+      blockFreeGift: !form.allowGift,
+      trackExpiry: form.expiryRequired,
     };
 
     setSubmitting(true);
@@ -126,398 +185,485 @@ export default function NewItemPage() {
       setSuccess(true);
       setTimeout(() => {
         router.push("/inventory");
-      }, 1000);
+      }, 900);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create item.");
+      setError(err instanceof Error ? err.message : "Failed to create item master record.");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6" dir={dir}>
+    <div className="max-w-4xl mx-auto p-6 space-y-6" dir={dir}>
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-ink/15 pb-4 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-ink">
-            {isAr ? "إضافة صنف جديد (Item Master Record)" : "Add New Item Master Record"}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-ink">
+              {isAr ? "إضافة بطاقة صنف جديدة (Item Master Record)" : "Add New Item Master Record"}
+            </h1>
+            <span className="rounded-full bg-[#FDCE0C] text-black px-2.5 py-0.5 text-xs font-black">
+              17 Requirements Standard
+            </span>
+          </div>
           <p className="text-xs font-medium text-ink/70 mt-1">
             {isAr
-              ? "تعيين رمز SKU، أسعار وتكاليف كل وحدة قياس (حبة، باكيت، كرتون)، الشركة المصنعة والفئة الرئيسية"
-              : "Configure item SKU, company brand, per-UOM custom prices & costs (Piece, Pack, Box, Carton)."}
+              ? "إنشاء بطاقة صنف جديدة مع ضبط الفئات والأسعار وضوابط نقاط البيع (POS) والتسليم"
+              : "Register official product master record with dual language names, category hierarchy, and POS operational controls."}
           </p>
         </div>
 
         <Link
           href="/inventory"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-ink/20 bg-white px-4 py-2 text-xs font-bold text-ink hover:bg-slate-100 transition-colors whitespace-nowrap shadow-xs"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-ink/20 bg-white px-4 py-2 text-xs font-bold text-ink hover:bg-slate-100 transition-colors shadow-2xs"
         >
-          {isAr ? "العودة إلى المخزون ←" : "← Back to Inventory"}
+          {isAr ? (
+            <>
+              <span>العودة إلى سجل المخزون</span>
+              <ArrowLeft className="h-3.5 w-3.5" />
+            </>
+          ) : (
+            <>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Item Master</span>
+            </>
+          )}
         </Link>
       </div>
 
+      {/* Notifications */}
       {error && (
-        <div className="p-3.5 rounded-xl bg-red-50 border border-red-300 text-xs font-bold text-red-800">
-          ⚠️ {error}
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-300 text-xs font-bold text-red-800 flex items-center gap-2.5">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-900">
-          ✓ {isAr ? "تم حفظ الصنف بنجاح! جاري التوجيه إلى قائمة الأصناف..." : "Item Master created successfully! Redirecting..."}
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 flex items-center gap-2.5">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>{isAr ? "تم حفظ بطاقة الصنف بنجاح! جاري التحويل للمخزون..." : "Item Master Record created successfully! Redirecting..."}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-2xl border border-ink/15 shadow-sm text-ink">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "اسم الصنف *" : "Item Name *"}
-            </label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-              placeholder={isAr ? "مثال: سيجار كوهيبا إسپلِنديدوس" : "e.g. Cohiba Esplendidos Cigar"}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-medium bg-white outline-none focus:border-gold"
-              required
-            />
+      {/* Item Master Form */}
+      <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+        {/* Section 1: Identification & Names */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Tag className="h-4 w-4 text-amber-500" />
+              <span>{isAr ? "1. التعريف والتسمية الثنائية (English / العربية)" : "1. Product Identification & Bilingual Names"}</span>
+            </h2>
+            <span className="text-[11px] font-bold text-slate-400">Required Attributes 1 - 9</span>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "رمز SKU للصنف *" : "Item SKU *"}
-            </label>
-            <input
-              type="text"
-              value={form.sku}
-              onChange={(e) => update("sku", e.target.value)}
-              placeholder="SKU-CIGAR-001"
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-mono font-bold bg-white outline-none focus:border-gold"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "اسم الشركة / الماركة (Brand)" : "Company Name / Brand"}
-            </label>
-            <input
-              type="text"
-              value={form.brand}
-              onChange={(e) => update("brand", e.target.value)}
-              placeholder={isAr ? "مثال: Philip Morris / Davidoff / Cohiba" : "e.g. Davidoff / Cohiba / VNSN"}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-medium bg-white outline-none focus:border-gold"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "الفئة الرئيسية (Main Category) *" : "Main Category *"}
-            </label>
-            <select
-              value={form.mainCategory}
-              onChange={(e) => update("mainCategory", e.target.value)}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-bold bg-white outline-none focus:border-gold"
-            >
-              {MAIN_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "الفئة العامة *" : "General Category *"}
-            </label>
-            <select
-              value={form.category}
-              onChange={(e) => update("category", e.target.value as ItemCategory)}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-bold bg-white outline-none focus:border-gold"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-ink mb-1">
-            {isAr ? "الباركود الرئيسي (Primary Barcode)" : "Primary Barcode"}
-          </label>
-          <input
-            type="text"
-            value={form.barcode}
-            onChange={(e) => update("barcode", e.target.value)}
-            placeholder="6291100998822"
-            className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-mono font-bold bg-white outline-none focus:border-gold"
-          />
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-50 border border-ink/15 space-y-3">
-          <span className="text-xs font-bold text-ink block">
-            {isAr ? "أسعار البيع الأساسية والتكلفة بالدينار (3-Tier Selling Prices & Cost KWD)" : "3-Tier Selling Prices & Cost (KWD)"}
-          </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-ink/80 mb-1">
-                {isAr ? "سعر التكلفة (Cost KD)" : "Cost Price (KD)"}
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "اسم الصنف بالإنجليزية *" : "Item Name (English) *"}
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Beco Pro 6000 Puffs - Tropical Mix"
+                value={form.nameEn}
+                onChange={(e) => update("nameEn", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 text-end">
+                {isAr ? "* اسم الصنف بالعربية" : "Item Name (Arabic) *"}
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="مثال: بيكو برو 6000 سحبة - تروبيكال مكس"
+                value={form.nameAr}
+                onChange={(e) => update("nameAr", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500 text-end"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "رمز الصنف (Item Code / SKU) *" : "Item Code / SKU *"}
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. VP-BECO-PRO-6K"
+                value={form.sku}
+                onChange={(e) => update("sku", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "الباركود الأساسي (Barcode)" : "Barcode"}
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 6281234500019"
+                value={form.barcode}
+                onChange={(e) => update("barcode", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "العلامة التجارية (Brand)" : "Brand"}
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Beco, RAW, Cricket, Siberia"
+                value={form.brand}
+                onChange={(e) => update("brand", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "بلد المنشأ (Country of Origin)" : "Country of Origin"}
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={form.countryOfOrigin}
+                  onChange={(e) => update("countryOfOrigin", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                >
+                  {PRESET_ORIGINS.map((orig) => (
+                    <option key={orig} value={orig}>
+                      {orig}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "رابط صورة الصنف (Product Image URL)" : "Product Image URL"}
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="https://images.example.com/product.jpg"
+                  value={form.imageUrl}
+                  onChange={(e) => update("imageUrl", e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs outline-none focus:border-amber-500"
+                />
+                {form.imageUrl && (
+                  <img
+                    src={form.imageUrl}
+                    alt="Preview"
+                    className="h-9 w-9 rounded-xl object-cover border border-slate-200 shrink-0"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Hierarchy & Classification (Category & Subcategory) */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <FolderTree className="h-4 w-4 text-amber-500" />
+              <span>{isAr ? "2. التصنيف الهيكلي (الفئة والفئة الفرعية)" : "2. Category & Subcategory Hierarchy"}</span>
+            </h2>
+            <span className="text-[11px] font-bold text-slate-400">Structured Reporting Base</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "الفئة الرئيسية (Category) *" : "Category *"}
+              </label>
+              <select
+                value={form.category}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
+              >
+                {categoriesList.map((c) => (
+                  <option key={c.id} value={c.code}>
+                    {isAr ? c.nameAr : c.nameEn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "الفئة الفرعية (Sub Category)" : "Sub Category"}
+              </label>
+              <select
+                value={form.subCategory}
+                onChange={(e) => update("subCategory", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
+              >
+                <option value="">{isAr ? "بدون فئة فرعية" : "None / Unassigned"}</option>
+                {(currentCategoryObj?.subcategories || []).map((s) => (
+                  <option key={s.id} value={s.code}>
+                    {isAr ? s.nameAr : s.nameEn}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Operational Governance Controls (The Core 17 Rules) */}
+        <div className="rounded-3xl border border-amber-300 bg-amber-50/30 p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-amber-200 pb-3">
+            <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-amber-600" />
+              <span>{isAr ? "3. ضوابط التشغيل والحوكمة المركزية (Operational Governance)" : "3. Master Operational Controls & Rules"}</span>
+            </h2>
+            <span className="text-[11px] font-bold text-amber-800">Directly Connected to POS & Purchasing</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* 1. Allow Sale */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.allowSale}
+                onChange={(e) => update("allowSale", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "السماح بالبيع" : "Allow Sale"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "البيع في كاشير POS" : "Sell at POS terminal"}
+                </p>
+              </div>
+            </label>
+
+            {/* 2. Allow Purchase */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.allowPurchase}
+                onChange={(e) => update("allowPurchase", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "السماح بالشراء" : "Allow Purchase"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "في أوامر الشراء والفواتير" : "Purchasable in POs"}
+                </p>
+              </div>
+            </label>
+
+            {/* 3. Allow Discount */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.allowDiscount}
+                onChange={(e) => update("allowDiscount", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "السماح بالخصم" : "Allow Discount"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "خصم الفاتورة والصنف" : "Invoice/Line Discount"}
+                </p>
+              </div>
+            </label>
+
+            {/* 4. Allow Gift */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.allowGift}
+                onChange={(e) => update("allowGift", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "السماح كهدية" : "Allow Gift"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "هدية مجانية 100%" : "Free promo gift item"}
+                </p>
+              </div>
+            </label>
+
+            {/* 5. POS Visibility */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.posVisibility}
+                onChange={(e) => update("posVisibility", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "الظهور في POS" : "POS Visibility"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "ظاهر في شبكة الكاشير" : "Visible in Cashier UI"}
+                </p>
+              </div>
+            </label>
+
+            {/* 6. Expiry Required */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.expiryRequired}
+                onChange={(e) => update("expiryRequired", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "تتبع الصلاحية" : "Expiry Required"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "تاريخ الانتهاء والباتش" : "Track batch/expiry"}
+                </p>
+              </div>
+            </label>
+
+            {/* 7. Active / Inactive */}
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl border border-slate-200 bg-white cursor-pointer hover:border-amber-500 shadow-2xs">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(e) => update("isActive", e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded text-amber-600 accent-amber-500"
+              />
+              <div>
+                <p className="font-bold text-slate-900">{isAr ? "حالة النشاط" : "Active Status"}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  {isAr ? "صنف نشط عملياتياً" : "Operational item"}
+                </p>
+              </div>
+            </label>
+
+            {/* 8. Maximum Discount % */}
+            <div className="p-3 rounded-2xl border border-slate-200 bg-white shadow-2xs">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                {isAr ? "أقصى خصم مسموح %" : "Max Discount %"}
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={form.maxDiscountPercent}
+                onChange={(e) => update("maxDiscountPercent", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-black text-slate-900 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Pricing & Inventory Opening */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-amber-500" />
+              <span>{isAr ? "4. الأسعار، التكاليف ورصيد الافتتاح (د.ك)" : "4. Pricing, Cost & Opening Stock"}</span>
+            </h2>
+            <span className="text-[11px] font-bold text-slate-400">Kuwait 3-Decimal Legal Standard</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "سعر البيع الأساسي (د.ك) *" : "Sell Price (KD) *"}
               </label>
               <input
                 type="number"
                 step="0.001"
-                min="0"
+                min={0}
                 required
+                placeholder="0.000"
+                value={form.price}
+                onChange={(e) => update("price", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "سعر التكلفة (د.ك) *" : "Cost Price (KD) *"}
+              </label>
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                required
+                placeholder="0.000"
                 value={form.cost}
                 onChange={(e) => update("cost", e.target.value)}
-                className="w-full border border-ink/20 rounded-lg px-2.5 py-1.5 text-xs text-ink font-mono font-bold bg-white outline-none focus:border-gold"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
               />
             </div>
+
             <div>
-              <label className="block text-xs font-bold text-ink/80 mb-1">
-                {isAr ? "سعر التجزئة (Retail KD)" : "Retail Price (KD)"}
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "سعر الجملة (د.ك)" : "Wholesale Price (KD)"}
               </label>
               <input
                 type="number"
                 step="0.001"
-                min="0"
-                required
-                value={form.price}
-                onChange={(e) => {
-                  update("price", e.target.value);
-                  update("retailPrice", e.target.value);
-                }}
-                className="w-full border border-ink/20 rounded-lg px-2.5 py-1.5 text-xs text-ink font-mono font-bold bg-white outline-none focus:border-gold"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-ink/80 mb-1">
-                {isAr ? "نصف الجملة (Semi-WS KD)" : "Semi-Wholesale (KD)"}
-              </label>
-              <input
-                type="number"
-                step="0.001"
-                min="0"
-                value={form.semiWholesalePrice}
-                onChange={(e) => update("semiWholesalePrice", e.target.value)}
-                className="w-full border border-ink/20 rounded-lg px-2.5 py-1.5 text-xs text-ink font-mono font-bold bg-white outline-none focus:border-gold"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-ink/80 mb-1">
-                {isAr ? "سعر الجملة (Wholesale KD)" : "Wholesale (KD)"}
-              </label>
-              <input
-                type="number"
-                step="0.001"
-                min="0"
+                min={0}
+                placeholder="0.000"
                 value={form.wholesalePrice}
                 onChange={(e) => update("wholesalePrice", e.target.value)}
-                className="w-full border border-ink/20 rounded-lg px-2.5 py-1.5 text-xs text-ink font-mono font-bold bg-white outline-none focus:border-gold"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "الوحدة الأساسية" : "Base Unit"}
+              </label>
+              <input
+                type="text"
+                placeholder="pcs, box, pack, can"
+                value={form.unit}
+                onChange={(e) => update("unit", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {isAr ? "رصيد المخزن الافتتاحي" : "Opening Stock Qty"}
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={form.stockQuantity}
+                onChange={(e) => update("stockQuantity", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 outline-none focus:border-amber-500"
               />
             </div>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-100/70 border border-ink/20 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span className="text-xs font-bold text-ink">
-              {isAr ? "جدول وحدات القياس وأسعار وتكاليف كل وحدة (UOM Pricing & Ratios)" : "Units of Measure (UOM) Multipliers, Custom Cost & Selling Prices"}
-            </span>
-            <span className="text-xs text-ink font-mono font-bold dir-ltr">1 Carton = 10 Box = 200 Pack = 1,000 Piece</span>
-          </div>
-          <p className="text-xs font-medium text-ink/75">
-            {isAr
-              ? "يمكنك تحديد سعر بيع وتكلفة مخصصة لكل وحدة (حبة، باكيت، صندوق، كرتون) بجانب معامل التحويل"
-              : "Define custom cost and selling price per unit size (Piece, Pack, Box, Carton) along with conversion ratio."}
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {form.uoms.map((uom, idx) => (
-              <div key={idx} className="p-3.5 rounded-xl bg-white border border-ink/20 space-y-2.5 shadow-xs">
-                <div className="flex items-center justify-between border-b border-ink/10 pb-2">
-                  <span className="text-xs font-bold text-ink">
-                    {uom.unitName === "Piece" ? (isAr ? "حبة (Piece)" : "Piece") :
-                     uom.unitName === "Pack" ? (isAr ? "باكيت (Pack)" : "Pack") :
-                     uom.unitName === "Box" ? (isAr ? "صندوق (Box)" : "Box") :
-                     (isAr ? "كرتون (Carton)" : "Carton")}
-                  </span>
-                  {uom.isBase && (
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-slate-200 text-ink">
-                      {isAr ? "الوحدة الأساسية" : "Base Unit"}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink/80 block mb-0.5">
-                    {isAr ? `معامل التحويل (1 ${uom.unitName} = كم حبة)` : `1 ${uom.unitName} = (Pieces)`}
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    value={uom.conversionRatio}
-                    onChange={(e) => {
-                      const updated = [...form.uoms];
-                      updated[idx] = { ...uom, conversionRatio: parseFloat(e.target.value) || 1 };
-                      setForm({ ...form, uoms: updated });
-                    }}
-                    className="w-full border border-ink/20 rounded-lg px-2 py-1 text-xs font-mono font-bold text-ink bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink/80 block mb-0.5">
-                    {isAr ? `تكلفة ${uom.unitName} (Cost KD)` : `${uom.unitName} Cost (KD)`}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    placeholder={(Number(form.cost || 0) * uom.conversionRatio).toFixed(3)}
-                    value={uom.customCost || ""}
-                    onChange={(e) => {
-                      const updated = [...form.uoms];
-                      updated[idx] = { ...uom, customCost: parseFloat(e.target.value) || 0 };
-                      setForm({ ...form, uoms: updated });
-                    }}
-                    className="w-full border border-ink/20 rounded-lg px-2 py-1 text-xs font-mono font-bold text-ink bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-ink/80 block mb-0.5">
-                    {isAr ? `سعر بيع ${uom.unitName} (Price KD)` : `${uom.unitName} Selling Price (KD)`}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.001"
-                    min="0"
-                    placeholder={(Number(form.price || 0) * uom.conversionRatio).toFixed(3)}
-                    value={uom.customPrice || ""}
-                    onChange={(e) => {
-                      const updated = [...form.uoms];
-                      updated[idx] = { ...uom, customPrice: parseFloat(e.target.value) || 0 };
-                      setForm({ ...form, uoms: updated });
-                    }}
-                    className="w-full border border-ink/20 rounded-lg px-2 py-1 text-xs font-mono font-bold text-ink bg-white"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "الكمية الافتتاحية في المخزون (قطع أساسية)" : "Initial Opening Stock Quantity (Base Pieces)"}
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={form.stockQuantity}
-              onChange={(e) => update("stockQuantity", e.target.value)}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-mono font-bold bg-white outline-none focus:border-gold"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-ink mb-1">
-              {isAr ? "اسم الوحدة الأساسية الافتراضية" : "Default Base Unit Name"}
-            </label>
-            <input
-              type="text"
-              value={form.unit}
-              onChange={(e) => update("unit", e.target.value)}
-              className="w-full border border-ink/20 rounded-xl px-3 py-2 text-sm text-ink font-medium bg-white outline-none focus:border-gold"
-            />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-50 border border-ink/20 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink">
-              {isAr ? "ضوابط النظام الإدارية والتراخيص (System Admin Operational Controls)" : "System Administrator Operational Controls"}
-            </span>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded bg-slate-200 text-ink">
-              {isAr ? "صلاحيات الأدمن فقط" : "Admin Only"}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-lg border border-ink/20">
-              <input
-                type="checkbox"
-                checked={form.trackExpiry}
-                onChange={(e) => update("trackExpiry", e.target.checked)}
-                className="h-4 w-4 rounded accent-gold"
-              />
-              <span className="font-bold text-ink">{isAr ? "تتبع تاريخ الصلاحية" : "Track Expiry Date"}</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-lg border border-ink/20">
-              <input
-                type="checkbox"
-                checked={form.blockFreeGift}
-                onChange={(e) => update("blockFreeGift", e.target.checked)}
-                className="h-4 w-4 rounded accent-gold"
-              />
-              <span className="font-bold text-ink">{isAr ? "منع الهدايا المجانية" : "Prevent Free Gift"}</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer bg-white p-2.5 rounded-lg border border-ink/20">
-              <input
-                type="checkbox"
-                checked={form.blockDiscount}
-                onChange={(e) => update("blockDiscount", e.target.checked)}
-                className="h-4 w-4 rounded accent-gold"
-              />
-              <span className="font-bold text-ink">{isAr ? "منع الخصومات" : "Prevent Discount"}</span>
-            </label>
-          </div>
-
-          <div className="pt-2 flex items-center gap-2 text-xs">
-            <span className="text-ink font-bold">Max Allowed Discount %:</span>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              max="100"
-              value={form.maxDiscountPercent}
-              onChange={(e) => update("maxDiscountPercent", e.target.value)}
-              className="w-20 rounded-lg border border-ink/20 px-2 py-1 text-xs font-mono font-bold text-ink bg-white"
-            />
-            <span className="text-ink/70 text-[11px] font-medium">% maximum discount cap for cashiers</span>
-          </div>
-        </div>
-
-        {error && <p className="text-xs font-bold text-red-700 bg-red-50 p-3 rounded-xl border border-red-200">{error}</p>}
-        {success && <p className="text-xs font-bold text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200">Item Master created successfully! Redirecting...</p>}
-
+        {/* Submit Actions */}
         <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => router.push("/inventory")}
-            className="px-5 py-2.5 rounded-xl border border-ink/20 bg-white text-xs font-bold text-ink hover:bg-slate-100 transition-colors shadow-xs"
+          <Link
+            href="/inventory"
+            className="rounded-xl border border-slate-300 bg-white px-6 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
           >
             {isAr ? "إلغاء" : "Cancel"}
-          </button>
+          </Link>
+
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl bg-ink text-xs font-bold text-white shadow-md hover:bg-gold hover:text-ink transition-colors disabled:opacity-50"
+            className="rounded-xl bg-black text-[#FDCE0C] px-8 py-2.5 text-xs font-bold shadow-md hover:bg-slate-900 disabled:opacity-50 transition-all flex items-center gap-2"
           >
-            {submitting
-              ? (isAr ? "جاري حفظ الصنف..." : "Saving Item...")
-              : (isAr ? "حفظ سجل الصنف في قاعدة البيانات" : "Save Item Master Record")}
+            <Plus className="h-4 w-4" />
+            <span>{submitting ? (isAr ? "جاري الحفظ..." : "Creating Item...") : (isAr ? "حفظ بطاقة الصنف (Item Master)" : "Create Item Master Record")}</span>
           </button>
         </div>
       </form>

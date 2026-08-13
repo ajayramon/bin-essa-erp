@@ -7,6 +7,8 @@ import {
   getCurrentPosShiftRequest,
   openPosShiftRequest,
   closePosShiftRequest,
+  reopenPosShiftRequest,
+  adjustPosShiftRequest,
   listPosShiftsRequest,
   type PosShiftRecord,
 } from "@/lib/api";
@@ -24,6 +26,8 @@ import {
   FileSpreadsheet,
   Coins,
   Receipt,
+  RotateCcw,
+  Edit,
 } from "lucide-react";
 
 interface BanknoteCounter {
@@ -61,6 +65,14 @@ export default function PosCashClosingPage() {
   const [notesInput, setNotesInput] = useState("");
   const [closingInProcess, setClosingInProcess] = useState(false);
 
+  // Manager Override Modal State
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [selectedShiftForOverride, setSelectedShiftForOverride] = useState<PosShiftRecord | null>(null);
+  const [overrideAction, setOverrideAction] = useState<"reopen" | "adjust">("reopen");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideCashInput, setOverrideCashInput] = useState<number>(0);
+  const [overrideInProcess, setOverrideInProcess] = useState(false);
+
   // Calculate counted total from physical banknotes
   const countedCashTotal =
     denominations.d20 * 20.0 +
@@ -71,7 +83,7 @@ export default function PosCashClosingPage() {
     denominations.d025 * 0.25;
 
   const expectedCashTotal = currentShift
-    ? Number(currentShift.openingFloat) + Number(currentShift.cashSalesTotal)
+    ? Number(currentShift.openingFloat) + Number(currentShift.cashSalesTotal) - Number(currentShift.returnsTotal || 0)
     : 0;
 
   const cashVariance = countedCashTotal - expectedCashTotal;
@@ -132,6 +144,39 @@ export default function PosCashClosingPage() {
       setError(e.message || "Failed to close shift");
     } finally {
       setClosingInProcess(false);
+    }
+  }
+
+  async function handleOverrideSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !selectedShiftForOverride || !overrideReason.trim()) return;
+    setOverrideInProcess(true);
+    setError(null);
+    try {
+      if (overrideAction === "reopen") {
+        await reopenPosShiftRequest(selectedShiftForOverride.id, {
+          userId: user.id,
+          userRole: user.role,
+          reason: overrideReason,
+        });
+        setSuccessMsg(`Shift #${selectedShiftForOverride.shiftNumber} reopened successfully! Audit log created.`);
+      } else {
+        await adjustPosShiftRequest(selectedShiftForOverride.id, {
+          userId: user.id,
+          userRole: user.role,
+          closingCashActual: overrideCashInput,
+          reason: overrideReason,
+        });
+        setSuccessMsg(`Shift #${selectedShiftForOverride.shiftNumber} cash adjusted to ${overrideCashInput.toFixed(3)} KD! Audit log created.`);
+      }
+      setShowOverrideModal(false);
+      setSelectedShiftForOverride(null);
+      setOverrideReason("");
+      loadShiftData();
+    } catch (e: any) {
+      setError(e.message || "Override operation failed");
+    } finally {
+      setOverrideInProcess(false);
     }
   }
 
@@ -507,6 +552,7 @@ export default function PosCashClosingPage() {
                 <th className="p-4">Counted Cash</th>
                 <th className="p-4">Variance</th>
                 <th className="p-4">Status</th>
+                <th className="p-4 text-end">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300 font-mono">
@@ -533,11 +579,46 @@ export default function PosCashClosingPage() {
                       {s.status}
                     </span>
                   </td>
+                  <td className="p-4 text-end font-sans">
+                    {s.status === "CLOSED" && (
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedShiftForOverride(s);
+                            setOverrideAction("reopen");
+                            setOverrideReason("");
+                            setShowOverrideModal(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white text-[11px] font-semibold border border-indigo-500/30 transition flex items-center gap-1"
+                          title="Reopen Shift (Manager Override)"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Reopen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedShiftForOverride(s);
+                            setOverrideAction("adjust");
+                            setOverrideCashInput(Number(s.closingCashActual));
+                            setOverrideReason("");
+                            setShowOverrideModal(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white text-[11px] font-semibold border border-amber-500/30 transition flex items-center gap-1"
+                          title="Adjust Counted Cash (Manager Override)"
+                        >
+                          <Edit className="w-3 h-3" />
+                          Adjust
+                        </button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
               {shiftHistory.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-500 font-sans">
+                  <td colSpan={10} className="p-8 text-center text-slate-500 font-sans">
                     No closed shifts recorded yet.
                   </td>
                 </tr>
@@ -592,6 +673,88 @@ export default function PosCashClosingPage() {
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20"
                 >
                   Confirm & Open Shift
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manager Override Modal */}
+      {showOverrideModal && selectedShiftForOverride && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                {overrideAction === "reopen" ? (
+                  <>
+                    <RotateCcw className="w-5 h-5 text-indigo-400" />
+                    Reopen Shift #{selectedShiftForOverride.shiftNumber}
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-5 h-5 text-amber-400" />
+                    Adjust Cash for Shift #{selectedShiftForOverride.shiftNumber}
+                  </>
+                )}
+              </h3>
+              <button
+                onClick={() => setShowOverrideModal(false)}
+                className="text-slate-400 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleOverrideSubmit} className="space-y-4">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs">
+                ⚠️ All reopen and adjustment actions create an immutable audit trail entry recording your user ID and justification.
+              </div>
+
+              {overrideAction === "adjust" && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Revised Physical Cash Counted (KD)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    required
+                    value={overrideCashInput}
+                    onChange={(e) => setOverrideCashInput(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-mono outline-none focus:border-amber-500"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Manager Justification Reason (Mandatory)
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="Provide operational reason for reopening or adjusting..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowOverrideModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={overrideInProcess}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                >
+                  {overrideInProcess ? "Executing..." : "Confirm & Save Audit Log"}
                 </button>
               </div>
             </form>

@@ -10,7 +10,15 @@ import { salespersons, type Salesperson } from "@/lib/mock-data/salespersons";
 import { INITIAL_STOCK_REQUESTS, type StockRequestRecord } from "@/lib/mock-data/stock-transfers";
 import { isItemVisibleToBrand } from "@/lib/utils/visibility";
 import type { Item, Customer, ItemCategory } from "@/lib/types";
-import { createSalesInvoiceRequest } from "@/lib/api";
+import {
+  createSalesInvoiceRequest,
+  getCurrentPosShiftRequest,
+  openPosShiftRequest,
+  closePosShiftRequest,
+  reopenPosShiftRequest,
+  adjustPosShiftRequest,
+  type PosShiftRecord,
+} from "@/lib/api";
 import {
   getPersistentItemsCatalog,
   deductBranchStock,
@@ -50,6 +58,7 @@ export default function BranchPosPage() {
   const { locale, t } = useLocale();
   const {
     user,
+    isHeadOffice,
     currentBrand,
     currentBranch,
     branchesForCurrentBrand,
@@ -73,14 +82,92 @@ export default function BranchPosPage() {
     };
   }, []);
 
-  // 2. Navigation, Search, Filter & View Mode
+  const activeBranch = useMemo(() => {
+    return (
+      currentBranch ??
+      branches.find((b) => b.id === "br-01") ??
+      branches[0]
+    );
+  }, [currentBranch]);
+
+  // 2. Live POS Shift State
+  const [currentShift, setCurrentShift] = useState<PosShiftRecord | null>(null);
+  const [shiftLoading, setShiftLoading] = useState(true);
+
+  // Live Register Metrics
+  const [todaySalesKd, setTodaySalesKd] = useState<number>(0);
+  const [returnsKd, setReturnsKd] = useState<number>(0);
+  const [discountsKd, setDiscountsKd] = useState<number>(0);
+  const [giftItemsCount, setGiftItemsCount] = useState<number>(0);
+  const [giftItemsKd, setGiftItemsKd] = useState<number>(0);
+  const [transactionsCount, setTransactionsCount] = useState<number>(0);
+  const [cashInHandKd, setCashInHandKd] = useState<number>(0);
+  const [salesByMethod, setSalesByMethod] = useState<Record<PosPaymentMethod, number>>({
+    cash: 0,
+    knet: 0,
+    hesabi: 0,
+    tabby: 0,
+    credit: 0,
+    card: 0,
+  });
+
+  // Load Active Shift on Mount or Branch/User Change
+  const loadShift = useCallback(async () => {
+    if (!user || !activeBranch) return;
+    setShiftLoading(true);
+    try {
+      const shift = await getCurrentPosShiftRequest(user.id, activeBranch.id);
+      if (shift && shift.status === "OPEN") {
+        setCurrentShift(shift);
+        const openFloat = Number(shift.openingFloat) || 0;
+        const cashSales = Number(shift.cashSalesTotal) || 0;
+        const knetSales = Number(shift.knetSalesTotal) || 0;
+        const hesabiSales = Number(shift.hesabiSalesTotal) || 0;
+        const tabbySales = Number(shift.tabbySalesTotal) || 0;
+        const cardSales = Number(shift.cardSalesTotal) || 0;
+        const creditSales = Number(shift.creditSalesTotal) || 0;
+        const retTotal = Number(shift.returnsTotal) || 0;
+        const discTotal = Number(shift.discountsTotal) || 0;
+        const giftsCnt = Number(shift.giftsCount) || 0;
+        const giftsTot = Number(shift.giftsTotal) || 0;
+        const totalSales = Number(shift.totalSales) || (cashSales + knetSales + hesabiSales + tabbySales + cardSales + creditSales);
+
+        setTodaySalesKd(totalSales);
+        setReturnsKd(retTotal);
+        setDiscountsKd(discTotal);
+        setGiftItemsCount(giftsCnt);
+        setGiftItemsKd(giftsTot);
+        setCashInHandKd(openFloat + cashSales - retTotal);
+        setSalesByMethod({
+          cash: cashSales,
+          knet: knetSales,
+          hesabi: hesabiSales,
+          tabby: tabbySales,
+          credit: creditSales,
+          card: cardSales,
+        });
+      } else {
+        setCurrentShift(null);
+      }
+    } catch {
+      setCurrentShift(null);
+    } finally {
+      setShiftLoading(false);
+    }
+  }, [user, activeBranch]);
+
+  useEffect(() => {
+    loadShift();
+  }, [loadShift]);
+
+  // 3. Navigation, Search, Filter & View Mode
   const [mode, setMode] = useState<PosMode>("invoice");
   const [viewMode, setViewMode] = useState<PosViewMode>("grid");
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
 
-  // 3. Cart & Transaction State
+  // 4. Cart & Transaction State
   const [cartLines, setCartLines] = useState<CartItemLine[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedSalesperson, setSelectedSalesperson] = useState<Salesperson | null>(salespersons[0]);
@@ -93,7 +180,7 @@ export default function BranchPosPage() {
   const [orderNote, setOrderNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 4. Modals State
+  // 5. Modals State
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [completedSale, setCompletedSale] = useState<CompletedSaleRecord | null>(null);
   const [isHeldModalOpen, setIsHeldModalOpen] = useState(false);
@@ -110,27 +197,6 @@ export default function BranchPosPage() {
   // Stock Requests Data
   const [stockRequests, setStockRequests] = useState<StockRequestRecord[]>(INITIAL_STOCK_REQUESTS);
 
-  // 5. Shift & Register Metrics
-  const [todaySalesKd, setTodaySalesKd] = useState(224.5);
-  const [transactionsCount, setTransactionsCount] = useState(18);
-  const [cashInHandKd, setCashInHandKd] = useState(145.0);
-  const [salesByMethod, setSalesByMethod] = useState<Record<PosPaymentMethod, number>>({
-    cash: 145.0,
-    knet: 45.0,
-    hesabi: 20.0,
-    tabby: 10.0,
-    credit: 4.5,
-    card: 0,
-  });
-
-  const activeBranch = useMemo(() => {
-    return (
-      currentBranch ??
-      branches.find((b) => b.id === "br-01") ??
-      branches[0]
-    );
-  }, [currentBranch]);
-
   // Branch Stock helper
   const getStock = useCallback(
     (item: Item): number => {
@@ -143,6 +209,10 @@ export default function BranchPosPage() {
   // Filtered Items
   const filteredItems = useMemo(() => {
     return itemsCatalog.filter((item) => {
+      // 0. POS Visibility & Active status check
+      if (item.posVisibility === false || item.isActive === false) {
+        return false;
+      }
       // 1. Brand visibility
       if (selectedBrand !== "all" && !isItemVisibleToBrand(item, selectedBrand as any)) {
         return false;
@@ -154,9 +224,9 @@ export default function BranchPosPage() {
       // 3. Search query
       if (query.trim()) {
         const q = query.toLowerCase().trim();
-        const matchesNameEn = item.nameEn.toLowerCase().includes(q);
-        const matchesNameAr = item.nameAr.includes(q);
-        const matchesSku = item.sku.toLowerCase().includes(q);
+        const matchesNameEn = item.nameEn?.toLowerCase().includes(q) ?? false;
+        const matchesNameAr = item.nameAr?.includes(q) ?? false;
+        const matchesSku = item.sku?.toLowerCase().includes(q) ?? false;
         const matchesBarcode = item.barcode?.toLowerCase().includes(q) ?? false;
         if (!matchesNameEn && !matchesNameAr && !matchesSku && !matchesBarcode) {
           return false;
@@ -166,10 +236,11 @@ export default function BranchPosPage() {
     });
   }, [itemsCatalog, selectedBrand, activeCategory, query]);
 
-  // Categories with live product counts
+  // Categories with live product counts (active POS items only)
   const categoriesList = useMemo(() => {
-    const counts: Record<string, number> = { all: itemsCatalog.length };
-    itemsCatalog.forEach((item) => {
+    const posActiveCatalog = itemsCatalog.filter((i) => i.posVisibility !== false && i.isActive !== false);
+    const counts: Record<string, number> = { all: posActiveCatalog.length };
+    posActiveCatalog.forEach((item) => {
       counts[item.category] = (counts[item.category] || 0) + 1;
     });
 
@@ -208,9 +279,19 @@ export default function BranchPosPage() {
     }, 0);
   }, [cartLines]);
 
+  // Enforces allowDiscount and maxDiscountPercent per item in POS!
   const invoiceDiscountAmount = useMemo(() => {
-    return Number(((subtotal * discountPct) / 100).toFixed(3));
-  }, [subtotal, discountPct]);
+    if (discountPct <= 0) return 0;
+    const totalDiscount = cartLines.reduce((sum, line) => {
+      if (line.isGift) return sum;
+      if (line.item.allowDiscount === false || line.item.blockDiscount === true) return sum;
+      const lineBase = line.item.sellPriceKd * line.qty;
+      const maxAllowedPct = line.item.maxDiscountPercent !== undefined ? line.item.maxDiscountPercent : 100;
+      const effectivePct = Math.min(discountPct, maxAllowedPct);
+      return sum + (lineBase * effectivePct) / 100;
+    }, 0);
+    return Number(totalDiscount.toFixed(3));
+  }, [cartLines, discountPct]);
 
   const taxAmount = 0.0; // Kuwait 0% VAT
 
@@ -221,9 +302,29 @@ export default function BranchPosPage() {
   // Cart Actions
   const handleAddToCart = useCallback(
     (item: Item, isGift = false) => {
+      // 1. Check Allow Sale control
+      if (!isGift && (item.allowSale === false || item.blockSale === true)) {
+        alert(
+          locale === "ar"
+            ? `عذراً، هذا الصنف (${item.nameAr || item.nameEn}) غير مسموح ببيعه في نقطة البيع.`
+            : `Item "${item.nameEn || item.nameAr}" cannot be sold at POS (Allow Sale is disabled).`
+        );
+        return;
+      }
+
+      // 2. Check Allow Gift control
+      if (isGift && (item.allowGift === false || item.blockFreeGift === true)) {
+        alert(
+          locale === "ar"
+            ? `عذراً، هذا الصنف (${item.nameAr || item.nameEn}) غير مسموح بإضافته كهدية مجانية.`
+            : `Item "${item.nameEn || item.nameAr}" cannot be added as a gift (Allow Gift is disabled).`
+        );
+        return;
+      }
+
       const stock = getStock(item);
       const currentInCart = cartQuantities[item.id] ?? 0;
-      if (currentInCart >= stock) return;
+      if (mode !== "return" && currentInCart >= stock) return;
 
       setCartLines((prev) => {
         const existingIdx = prev.findIndex((l) => l.item.id === item.id && Boolean(l.isGift) === isGift);
@@ -235,7 +336,7 @@ export default function BranchPosPage() {
         return [...prev, { item, qty: 1, isGift }];
       });
     },
-    [getStock, cartQuantities]
+    [getStock, cartQuantities, mode, locale]
   );
 
   const handleUpdateQty = useCallback((itemId: string, newQty: number) => {
@@ -268,12 +369,28 @@ export default function BranchPosPage() {
           i.sku.toLowerCase() === code.toLowerCase()
       );
       if (item) {
+        if (item.posVisibility === false || item.isActive === false) {
+          alert(
+            locale === "ar"
+              ? `هذا الصنف (${item.nameAr || item.nameEn}) معطل أو غير مفعل في نقطة البيع.`
+              : `Item "${item.nameEn || item.nameAr}" is inactive or hidden from POS.`
+          );
+          return false;
+        }
+        if (item.allowSale === false || item.blockSale === true) {
+          alert(
+            locale === "ar"
+              ? `عذراً، هذا الصنف (${item.nameAr || item.nameEn}) غير مسموح ببيعه في نقطة البيع.`
+              : `Item "${item.nameEn || item.nameAr}" cannot be sold at POS (Allow Sale is disabled).`
+          );
+          return false;
+        }
         handleAddToCart(item);
         return true;
       }
       return false;
     },
-    [itemsCatalog, handleAddToCart]
+    [itemsCatalog, handleAddToCart, locale]
   );
 
   // Keyboard Shortcuts (F2, F4, F6, F9, F10, F11)
@@ -343,9 +460,23 @@ export default function BranchPosPage() {
   // Complete Sale & Checkout
   async function handleCheckout() {
     if (cartLines.length === 0 || !activeBranch || !user) return;
+
+    // Verify Active Shift
+    if (!currentShift || currentShift.status !== "OPEN") {
+      setIsShiftModalOpen(true);
+      alert(
+        locale === "ar"
+          ? "يجب فتح الوردية أولاً قبل تسجيل عمليات البيع أو الإرجاع"
+          : "Please open a cashier shift before processing transactions."
+      );
+      return;
+    }
+
     setIsProcessing(true);
 
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
+    const isReturnMode = mode === "return";
+    const invoicePrefix = isReturnMode ? "RET" : "INV";
+    const invoiceNumber = `${invoicePrefix}-${Date.now().toString().slice(-6)}`;
     const branchName = locale === "ar" ? activeBranch.nameAr : activeBranch.nameEn;
     const cashierName = locale === "ar" ? user.nameAr : user.nameEn;
     const salespersonName = selectedSalesperson
@@ -381,7 +512,7 @@ export default function BranchPosPage() {
       paymentMethod,
       cashReceived: paymentMethod === "cash" ? (cashReceived || total) : undefined,
       changeDue: paymentMethod === "cash" ? changeDue : undefined,
-      note: orderNote || undefined,
+      note: orderNote || (isReturnMode ? "Sales Return / Refund" : undefined),
     };
 
     // 1. Invoke backend sales invoice API
@@ -389,6 +520,12 @@ export default function BranchPosPage() {
       const backendPaymentMethod =
         paymentMethod === "cash"
           ? "CASH"
+          : paymentMethod === "knet"
+          ? "KNET"
+          : paymentMethod === "hesabi"
+          ? "HESABI"
+          : paymentMethod === "tabby"
+          ? "TABBY"
           : paymentMethod === "card"
           ? "CARD"
           : paymentMethod === "credit"
@@ -400,14 +537,14 @@ export default function BranchPosPage() {
         customerId: selectedCustomer?.id,
         branchId: activeBranch.id,
         userId: user.id,
-        paymentMethod: backendPaymentMethod,
+        paymentMethod: backendPaymentMethod as any,
         taxAmount: 0,
         lines: cartLines.map((l) => {
           const basePrice = l.isGift ? 0 : l.item.sellPriceKd;
           const linePrice = discountPct > 0 ? basePrice * (1 - discountPct / 100) : basePrice;
           return {
             itemId: l.item.id,
-            quantity: l.qty,
+            quantity: isReturnMode ? -l.qty : l.qty,
             unitPrice: Number(linePrice.toFixed(3)),
           };
         }),
@@ -416,29 +553,117 @@ export default function BranchPosPage() {
       // Graceful fallback to offline/in-memory update
     }
 
-    // 2. Decrement persistent branch stock immediately
+    // 2. Adjust persistent branch stock
     const updatedCatalog = deductBranchStock(
       activeBranch.id,
-      cartLines.map((l) => ({ itemId: l.item.id, quantity: l.qty }))
+      cartLines.map((l) => ({ itemId: l.item.id, quantity: isReturnMode ? -l.qty : l.qty }))
     );
     setItemsCatalog(updatedCatalog);
 
-    // 3. Update Register Metrics
-    setTodaySalesKd((prev) => prev + total);
-    setTransactionsCount((prev) => prev + 1);
-    if (paymentMethod === "cash") {
-      setCashInHandKd((prev) => prev + total);
+    // 3. Update Register Shift Metrics
+    if (isReturnMode) {
+      setReturnsKd((prev) => prev + total);
+      if (paymentMethod === "cash") {
+        setCashInHandKd((prev) => Math.max(0, prev - total));
+      }
+    } else {
+      setTodaySalesKd((prev) => prev + total);
+      setDiscountsKd((prev) => prev + invoiceDiscountAmount);
+
+      const giftsInCart = cartLines.filter((l) => l.isGift);
+      if (giftsInCart.length > 0) {
+        const giftQty = giftsInCart.reduce((s, l) => s + l.qty, 0);
+        const giftVal = giftsInCart.reduce((s, l) => s + l.qty * l.item.sellPriceKd, 0);
+        setGiftItemsCount((prev) => prev + giftQty);
+        setGiftItemsKd((prev) => prev + giftVal);
+      }
+
+      if (paymentMethod === "cash") {
+        setCashInHandKd((prev) => prev + total);
+      }
+      setSalesByMethod((prev) => ({
+        ...prev,
+        [paymentMethod]: (prev[paymentMethod] || 0) + total,
+      }));
     }
-    setSalesByMethod((prev) => ({
-      ...prev,
-      [paymentMethod]: (prev[paymentMethod] || 0) + total,
-    }));
+    setTransactionsCount((prev) => prev + 1);
 
     // 4. Show Receipt & Reset
     setCompletedSale(saleRecord);
     setIsReceiptOpen(true);
     handleClearCart();
     setIsProcessing(false);
+  }
+
+  // Shift Management Handlers
+  async function handleOpenShift(openingFloat: number) {
+    if (!user || !activeBranch) return;
+    const newShift = await openPosShiftRequest({
+      userId: user.id,
+      branchId: activeBranch.id,
+      openingFloat,
+    });
+    setCurrentShift(newShift);
+    setTodaySalesKd(0);
+    setReturnsKd(0);
+    setDiscountsKd(0);
+    setGiftItemsCount(0);
+    setGiftItemsKd(0);
+    setTransactionsCount(0);
+    setCashInHandKd(openingFloat);
+    setSalesByMethod({
+      cash: 0,
+      knet: 0,
+      hesabi: 0,
+      tabby: 0,
+      credit: 0,
+      card: 0,
+    });
+  }
+
+  async function handleCloseShift(closingCashActual: number, notes?: string) {
+    if (!currentShift) throw new Error("No active shift");
+    const closed = await closePosShiftRequest(currentShift.id, {
+      closingCashActual,
+      notes,
+      metrics: {
+        cashSalesTotal: salesByMethod.cash,
+        knetSalesTotal: salesByMethod.knet,
+        hesabiSalesTotal: salesByMethod.hesabi,
+        tabbySalesTotal: salesByMethod.tabby,
+        cardSalesTotal: salesByMethod.card,
+        creditSalesTotal: salesByMethod.credit,
+        otherSalesTotal: 0,
+        totalSales: todaySalesKd,
+        returnsTotal: returnsKd,
+        discountsTotal: discountsKd,
+        giftsTotal: giftItemsKd,
+        giftsCount: giftItemsCount,
+      },
+    });
+    setCurrentShift(closed);
+    return closed;
+  }
+
+  async function handleReopenShift(shiftId: string, reason: string) {
+    if (!user) return;
+    const reopened = await reopenPosShiftRequest(shiftId, {
+      userId: user.id,
+      userRole: user.role,
+      reason,
+    });
+    setCurrentShift(reopened);
+  }
+
+  async function handleAdjustShift(shiftId: string, closingCashActual: number, reason: string) {
+    if (!user) return;
+    const adjusted = await adjustPosShiftRequest(shiftId, {
+      userId: user.id,
+      userRole: user.role,
+      closingCashActual,
+      reason,
+    });
+    setCurrentShift(adjusted);
   }
 
   // Create Stock Request
@@ -472,6 +697,27 @@ export default function BranchPosPage() {
         onOpenSettingsModal={() => setIsDailyClosingModalOpen(true)}
         isOnline={true}
       />
+
+      {/* Mode Alert for Sales Returns */}
+      {mode === "return" && (
+        <div className="bg-rose-600 text-white px-4 py-1.5 flex items-center justify-between text-xs font-bold shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span>
+              {locale === "ar"
+                ? "وضع مرتجع المبيعات نشط - يتم إرجاع الأصناف للمخزون واسترداد النقدية للعميل"
+                : "Sales Return Mode Active - Items will be returned to inventory and refunded to customer"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMode("invoice")}
+            className="underline hover:text-rose-100 text-[11px]"
+          >
+            {locale === "ar" ? "العودة للبيع العادي" : "Switch to Normal Sale"}
+          </button>
+        </div>
+      )}
 
       {/* 2. MAIN WORKING AREA */}
       <div className="flex flex-1 overflow-hidden">
@@ -544,7 +790,13 @@ export default function BranchPosPage() {
         todaySalesKd={todaySalesKd}
         transactionsCount={transactionsCount}
         cashInHandKd={cashInHandKd}
-        shiftName={locale === "ar" ? "وردية المساء" : "Evening Shift"}
+        shiftName={
+          currentShift && currentShift.status === "OPEN"
+            ? `${currentShift.shiftNumber} (Open)`
+            : locale === "ar"
+            ? "الوردية مغلقة"
+            : "Shift Closed"
+        }
         drawerStatus="ready"
         onOpenShiftModal={() => setIsShiftModalOpen(true)}
       />
@@ -610,22 +862,32 @@ export default function BranchPosPage() {
       <PosCurrentShiftModal
         isOpen={isShiftModalOpen}
         onClose={() => setIsShiftModalOpen(false)}
-        cashierName={user?.nameEn ?? "Ahmed"}
-        salespersonName={selectedSalesperson?.nameEn ?? "Mohamed Ali"}
+        shift={currentShift}
+        cashierName={user ? (locale === "ar" ? user.nameAr : user.nameEn) : "Ahmed"}
+        salespersonName={selectedSalesperson ? (locale === "ar" ? selectedSalesperson.nameAr : selectedSalesperson.nameEn) : "Mohamed Ali"}
+        branchName={activeBranch ? (locale === "ar" ? activeBranch.nameAr : activeBranch.nameEn) : "Salmiya 5th"}
         todaySalesKd={todaySalesKd}
         salesByMethod={salesByMethod}
-        onCloseShift={() => {
-          alert(locale === "ar" ? "تم إغلاق الوردية بنجاح" : "Shift closed successfully");
-        }}
+        returnsKd={returnsKd}
+        discountsKd={discountsKd}
+        giftItemsCount={giftItemsCount}
+        giftItemsKd={giftItemsKd}
+        transactionsCount={transactionsCount}
+        onOpenShift={handleOpenShift}
+        onCloseShift={handleCloseShift}
+        onReopenShift={handleReopenShift}
+        onAdjustShift={handleAdjustShift}
+        userRole={user?.role}
+        isHeadOfficeOrManager={isHeadOffice || user?.role === "admin" || user?.role === "branch_manager"}
       />
 
       <PosDailyClosingModal
         isOpen={isDailyClosingModalOpen}
         onClose={() => setIsDailyClosingModalOpen(false)}
-        totalSalesKd={todaySalesKd + 288.25}
-        totalCashKd={cashInHandKd + 167.0}
-        totalKnetKd={105.0}
-        totalHesabiKd={60.0}
+        totalSalesKd={todaySalesKd}
+        totalCashKd={cashInHandKd}
+        totalKnetKd={salesByMethod.knet}
+        totalHesabiKd={salesByMethod.hesabi}
         onCloseDay={() => {
           alert(locale === "ar" ? "تم إقفال اليومية للفرع بنجاح" : "Daily closing completed successfully");
         }}

@@ -18,13 +18,14 @@ import {
   ClipboardList,
   LayoutGrid,
   List,
+  RotateCcw,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import Link from "next/link";
 
-export type PosMode = "invoice" | "order";
+export type PosMode = "invoice" | "order" | "return";
 export type PosViewMode = "grid" | "list";
 
 interface PosTopbarProps {
@@ -138,6 +139,19 @@ export function PosTopbar({
           >
             <ClipboardList className="h-3.5 w-3.5" />
             <span>{locale === "ar" ? "طلب بيع" : "Sales Order"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onModeChange("return")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              mode === "return"
+                ? "bg-rose-500 text-white shadow-xs font-black"
+                : "text-rose-400 hover:text-rose-300"
+            }`}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>{locale === "ar" ? "مرتجع" : "Return"}</span>
           </button>
         </div>
 

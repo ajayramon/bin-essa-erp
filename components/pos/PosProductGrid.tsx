@@ -93,7 +93,10 @@ export function PosProductGrid({
               const inCart = cartQuantities[item.id] ?? 0;
               const availableStock = Math.max(0, stock - inCart);
               const isOutOfStock = stock <= 0 || availableStock <= 0;
-              const itemName = locale === "ar" ? item.nameAr : item.nameEn;
+              const isSaleDisabled = item.allowSale === false || item.blockSale === true;
+              const isBlocked = isOutOfStock || isSaleDisabled;
+
+              const itemName = locale === "ar" ? (item.nameAr || item.nameEn) : (item.nameEn || item.nameAr);
               const catStyle = categoryColorMap[item.category] ?? {
                 bg: "bg-slate-100",
                 text: "text-slate-700",
@@ -104,26 +107,40 @@ export function PosProductGrid({
                   key={item.id}
                   type="button"
                   onClick={() => onAddToCart(item)}
-                  disabled={isOutOfStock}
+                  disabled={isBlocked}
                   className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border bg-white p-2.5 text-start transition-all ${
-                    isOutOfStock
+                    isSaleDisabled
+                      ? "border-red-200 bg-red-50/40 opacity-70 cursor-not-allowed"
+                      : isOutOfStock
                       ? "border-slate-200 opacity-50 cursor-not-allowed bg-slate-50/60"
                       : "border-slate-200 shadow-2xs hover:border-[#FDCE0C] hover:shadow-md active:scale-[0.98]"
                   }`}
                 >
                   {/* Thumbnail & In-Cart Badge */}
                   <div className="flex items-start justify-between gap-2">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${catStyle.bg} ${catStyle.text}`}
-                    >
-                      <Package className="h-5 w-5" />
-                    </div>
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={itemName}
+                        className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-200"
+                      />
+                    ) : (
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${catStyle.bg} ${catStyle.text}`}
+                      >
+                        <Package className="h-5 w-5" />
+                      </div>
+                    )}
 
-                    {inCart > 0 && (
+                    {isSaleDisabled ? (
+                      <span className="rounded-full bg-red-100 border border-red-200 px-1.5 py-0.2 text-[9px] font-black text-red-700">
+                        {locale === "ar" ? "ممنوع البيع" : "No Sale"}
+                      </span>
+                    ) : inCart > 0 ? (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#FDCE0C] px-1.5 text-[10px] font-black text-black shadow-xs numeric-ltr">
                         {inCart}
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Product Name */}
@@ -144,10 +161,16 @@ export function PosProductGrid({
                       </span>
                       <span
                         className={`numeric-ltr block text-[10px] font-semibold mt-0.5 ${
-                          stock > 0 ? "text-slate-500" : "text-red-500 font-bold"
+                          isSaleDisabled
+                            ? "text-red-500 font-bold"
+                            : stock > 0
+                            ? "text-slate-500"
+                            : "text-red-500 font-bold"
                         }`}
                       >
-                        {stock > 0
+                        {isSaleDisabled
+                          ? locale === "ar" ? "البيع غير مسموح" : "Sale Disabled"
+                          : stock > 0
                           ? `${t.posScreen.stockLevel}: ${stock}`
                           : t.posScreen.outOfStock}
                       </span>
@@ -155,7 +178,7 @@ export function PosProductGrid({
 
                     <div
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                        isOutOfStock
+                        isBlocked
                           ? "bg-slate-100 text-slate-400"
                           : "bg-slate-100 text-slate-700 group-hover:bg-[#FDCE0C] group-hover:text-black"
                       }`}
@@ -175,45 +198,42 @@ export function PosProductGrid({
             <table className="w-full text-xs text-start">
               <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-600">
                 <tr>
-                  <th className="py-2.5 px-3">{locale === "ar" ? "الصنف" : "Item"}</th>
-                  <th className="py-2.5 px-3">SKU</th>
-                  <th className="py-2.5 px-3">{locale === "ar" ? "السعر" : "Price"}</th>
-                  <th className="py-2.5 px-3">{locale === "ar" ? "المخزون" : "Stock"}</th>
-                  <th className="py-2.5 px-3 text-end">{locale === "ar" ? "إضافة" : "Action"}</th>
+                  <th className="py-2.5 px-3 text-start">{locale === "ar" ? "الصنف" : "Item"}</th>
+                  <th className="py-2.5 px-3 text-start">SKU</th>
+                  <th className="py-2.5 px-3 text-start">{locale === "ar" ? "السعر" : "Price"}</th>
+                  <th className="py-2.5 px-3 text-center">{locale === "ar" ? "المخزون" : "Stock"}</th>
+                  <th className="py-2.5 px-3 text-center">{locale === "ar" ? "إضافة" : "Action"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {items.map((item) => {
                   const stock = stockByItem(item);
-                  const isOutOfStock = stock <= 0;
+                  const inCart = cartQuantities[item.id] ?? 0;
+                  const isSaleDisabled = item.allowSale === false || item.blockSale === true;
+                  const isBlocked = stock <= 0 || isSaleDisabled;
+                  const itemName = locale === "ar" ? (item.nameAr || item.nameEn) : (item.nameEn || item.nameAr);
 
                   return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50/80 transition-colors"
-                    >
-                      <td className="py-2 px-3 font-semibold text-slate-900">
-                        {locale === "ar" ? item.nameAr : item.nameEn}
+                    <tr key={item.id} className="hover:bg-slate-50">
+                      <td className="py-2 px-3 font-bold text-slate-900">
+                        {itemName}
+                        {isSaleDisabled && (
+                          <span className="ms-2 rounded bg-red-100 text-red-700 px-1.5 py-0.2 text-[9px] font-black">
+                            {locale === "ar" ? "ممنوع البيع" : "No Sale"}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-2 px-3 text-slate-500 font-mono text-[11px]">
-                        {item.sku}
-                      </td>
-                      <td className="py-2 px-3 numeric-ltr font-black text-slate-950">
-                        {formatKD(item.sellPriceKd)} KD
-                      </td>
-                      <td className="py-2 px-3 numeric-ltr font-semibold">
-                        <span className={stock > 0 ? "text-slate-700" : "text-red-500"}>
-                          {stock}
-                        </span>
-                      </td>
-                      <td className="py-2 px-3 text-end">
+                      <td className="py-2 px-3 font-mono text-slate-500 text-[11px]">{item.sku}</td>
+                      <td className="py-2 px-3 numeric-ltr font-black text-slate-900">{formatKD(item.sellPriceKd)} KD</td>
+                      <td className="py-2 px-3 text-center font-bold">{stock}</td>
+                      <td className="py-2 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => onAddToCart(item)}
-                          disabled={isOutOfStock}
-                          className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-bold text-[#FDCE0C] hover:bg-black disabled:opacity-40"
+                          disabled={isBlocked}
+                          className="rounded-lg bg-black px-2.5 py-1 text-[11px] font-bold text-[#FDCE0C] disabled:opacity-30"
                         >
-                          {t.posScreen.addToCart}
+                          + Add
                         </button>
                       </td>
                     </tr>
@@ -227,3 +247,4 @@ export function PosProductGrid({
     </div>
   );
 }
+

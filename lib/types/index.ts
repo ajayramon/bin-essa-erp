@@ -37,6 +37,23 @@ export interface User {
   branchId: string | null; // null = head office / all-branch access
 }
 
+export interface SubCategory {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  isActive: boolean;
+}
+
+export interface Category {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  isActive: boolean;
+  subcategories: SubCategory[];
+}
+
 export type ItemCategory =
   | "disposable_vapes"
   | "pod_systems"
@@ -49,7 +66,8 @@ export type ItemCategory =
   | "general_smoking_accessories"
   | "marine_outdoor"
   | "custom_gifts_signage"
-  | "licensed_collectibles";
+  | "licensed_collectibles"
+  | string;
 
 // Visibility controls which company/companies an item or category appears in.
 // "inherit" = follow the category's default (see CategoryVisibilityMap).
@@ -63,24 +81,41 @@ export interface Item {
   id: string;
   sku: string;
   barcode: string;
+  additionalBarcodes?: string[];
   nameEn: string;
   nameAr: string;
   category: ItemCategory;
+  subCategory?: string;
+  brand?: string;
   brandId: BrandId;
+  countryOfOrigin?: string;
+  imageUrl?: string;
   costPriceKd: number;
   sellPriceKd: number;
   wholesalePriceKd: number;
+  retailPriceKd?: number;
+  semiWholesalePriceKd?: number;
   stockByBranch: Record<string, number>; // branchId -> quantity
   hasVariants: boolean;
   hasSerials: boolean;
   visibility: ItemVisibility;
+  isActive?: boolean;
+  allowSale?: boolean;
+  allowPurchase?: boolean;
+  allowDiscount?: boolean;
+  maxDiscountPercent?: number;
+  allowGift?: boolean;
+  expiryRequired?: boolean;
+  posVisibility?: boolean;
   blockDiscount?: boolean;
   blockFreeGift?: boolean;
   blockSale?: boolean;
+  unit?: string;
+  stockQuantity?: number;
 }
 
 // Default visibility per category. Every category must have an entry here.
-export type CategoryVisibilityMap = Record<ItemCategory, BrandId[]>;
+export type CategoryVisibilityMap = Record<string, BrandId[]>;
 
 export type PaymentMethod = "cash" | "card" | "knet" | "online";
 

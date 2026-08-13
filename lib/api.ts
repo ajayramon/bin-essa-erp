@@ -78,26 +78,282 @@ export async function loginRequest(
 
 
 export type ItemCategory =
-  | "TOBACCO"
-  | "ACCESSORIES"
-  | "ELECTRONICS"
-  | "ART_SUPPLIES"
-  | "OTHER";
+  | "disposable_vapes"
+  | "pod_systems"
+  | "nicotine_pouches"
+  | "dokha_medwakh"
+  | "cigarette_lighters"
+  | "rolling_papers"
+  | "rolling_tobacco_hbt"
+  | "pipe_accessories"
+  | "general_smoking_accessories"
+  | "marine_outdoor"
+  | "custom_gifts_signage"
+  | "licensed_collectibles"
+  | string;
 
 export type ItemVisibility = "ALL_BRANCHES" | "SPECIFIC_BRANCHES";
+
+export interface SubCategory {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  isActive: boolean;
+}
+
+export interface Category {
+  id: string;
+  code: string;
+  nameEn: string;
+  nameAr: string;
+  isActive: boolean;
+  subcategories: SubCategory[];
+}
+
+export const FALLBACK_CATEGORIES: Category[] = [
+  {
+    id: "cat-001",
+    code: "disposable_vapes",
+    nameEn: "Disposable Vapes",
+    nameAr: "سحبات جاهزة (فيب)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-101", code: "disp_5k_7k", nameEn: "5,000 - 7,000 Puffs", nameAr: "5000 - 7000 سحبة", isActive: true },
+      { id: "sub-102", code: "disp_8k_plus", nameEn: "8,000+ Puffs", nameAr: "8000+ سحبة", isActive: true },
+      { id: "sub-103", code: "disp_rechargeable", nameEn: "Rechargeable Disposables", nameAr: "سحبات قابلة لإعادة الشحن", isActive: true },
+      { id: "sub-104", code: "disp_nic_free", nameEn: "Zero Nicotine Disposables", nameAr: "سحبات خالية من النيكوتين", isActive: true },
+    ],
+  },
+  {
+    id: "cat-002",
+    code: "pod_systems",
+    nameEn: "Pod Systems & Liquids",
+    nameAr: "أجهزة بود ونكهات",
+    isActive: true,
+    subcategories: [
+      { id: "sub-201", code: "pod_starter_kits", nameEn: "Pod Starter Kits", nameAr: "أجهزة بود سيستم", isActive: true },
+      { id: "sub-202", code: "pod_replacement_coils", nameEn: "Replacement Pods & Coils", nameAr: "بودات وكويلات استبدال", isActive: true },
+      { id: "sub-203", code: "pod_salt_nic", nameEn: "Salt Nicotine (30ml)", nameAr: "نكهات سولت نيكوتين 30 مل", isActive: true },
+      { id: "sub-204", code: "pod_freebase", nameEn: "Freebase E-Liquids (60ml)", nameAr: "نكهات فري بيس 60 مل", isActive: true },
+    ],
+  },
+  {
+    id: "cat-003",
+    code: "nicotine_pouches",
+    nameEn: "Nicotine Pouches",
+    nameAr: "أكياس النيكوتين (سيبيريا/فوكس)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-301", code: "pouch_siberia", nameEn: "Siberia (Slim & White)", nameAr: "سيبيريا (سليم/وايت)", isActive: true },
+      { id: "sub-302", code: "pouch_white_fox", nameEn: "White Fox", nameAr: "وايت فوكس", isActive: true },
+      { id: "sub-303", code: "pouch_velo_lyft", nameEn: "Velo / Lyft", nameAr: "فيلو / ليفت", isActive: true },
+      { id: "sub-304", code: "pouch_killa_pablo", nameEn: "Killa / Pablo", nameAr: "كيلا / بابلو", isActive: true },
+    ],
+  },
+  {
+    id: "cat-004",
+    code: "dokha_medwakh",
+    nameEn: "Dokha & Medwakh",
+    nameAr: "دوخة ومدواخ",
+    isActive: true,
+    subcategories: [
+      { id: "sub-401", code: "dokha_bottles", nameEn: "Premium Dokha Bottles", nameAr: "عبوات دوخة فاخرة", isActive: true },
+      { id: "sub-402", code: "medwakh_pipes", nameEn: "Wooden & Brass Medwakh Pipes", nameAr: "مداويخ خشبية ومعدنية", isActive: true },
+      { id: "sub-403", code: "medwakh_filters", nameEn: "Medwakh Filters", nameAr: "فلاتر مدواخ", isActive: true },
+      { id: "sub-404", code: "medwakh_cleaning", nameEn: "Cleaning & Starter Kits", nameAr: "أدوات تنظيف ومستلزمات", isActive: true },
+    ],
+  },
+  {
+    id: "cat-005",
+    code: "cigarette_lighters",
+    nameEn: "Cigarette Lighters",
+    nameAr: "ولاعات (كريكيت/فويغو)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-501", code: "lighter_cricket", nameEn: "Cricket Disposable Lighters", nameAr: "ولاعات كريكيت عادية", isActive: true },
+      { id: "sub-502", code: "lighter_jet_torch", nameEn: "Jet Torch & Refillable Lighters", nameAr: "ولاعات جت تورش نفاثة", isActive: true },
+      { id: "sub-503", code: "lighter_clipper", nameEn: "Clipper Classic Lighters", nameAr: "ولاعات كليبر كلاسيك", isActive: true },
+      { id: "sub-504", code: "lighter_gas_flints", nameEn: "Refill Gas & Flints", nameAr: "غاز تعبئة وحجر ولاعة", isActive: true },
+    ],
+  },
+  {
+    id: "cat-006",
+    code: "rolling_papers",
+    nameEn: "Rolling Papers & Cones",
+    nameAr: "ورق لف ومخاريط (RAW)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-601", code: "papers_raw_classic", nameEn: "RAW Classic King Size Slim", nameAr: "ورق راو كلاسيك كينج سايز", isActive: true },
+      { id: "sub-602", code: "papers_organic_hemp", nameEn: "Organic Hemp Papers", nameAr: "ورق قنب عضوي", isActive: true },
+      { id: "sub-603", code: "papers_pre_rolled", nameEn: "Pre-Rolled Cones", nameAr: "مخاريط جاهزة للتعبئة", isActive: true },
+      { id: "sub-604", code: "papers_tips_filters", nameEn: "Filter Tips & Roaches", nameAr: "فلاتر وتبس ورقي", isActive: true },
+    ],
+  },
+  {
+    id: "cat-007",
+    code: "rolling_tobacco_hbt",
+    nameEn: "Rolling Tobacco (HBT)",
+    nameAr: "تبغ لف السجائر (HBT)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-701", code: "tobacco_amber_leaf", nameEn: "Amber Leaf", nameAr: "أمبر ليف", isActive: true },
+      { id: "sub-702", code: "tobacco_golden_virginia", nameEn: "Golden Virginia", nameAr: "جولدن فرجينيا", isActive: true },
+      { id: "sub-703", code: "tobacco_drum", nameEn: "Drum", nameAr: "درم", isActive: true },
+      { id: "sub-704", code: "tobacco_pueblo", nameEn: "Pueblo", nameAr: "بويبلو", isActive: true },
+    ],
+  },
+  {
+    id: "cat-008",
+    code: "pipe_accessories",
+    nameEn: "Pipe & Cigar Accessories",
+    nameAr: "مستلزمات الغليون والسيجار",
+    isActive: true,
+    subcategories: [
+      { id: "sub-801", code: "pipes_briar", nameEn: "Briar Wood Pipes", nameAr: "غليون خشب براير فاخر", isActive: true },
+      { id: "sub-802", code: "cigar_cutters", nameEn: "Cigar Cutters & Punches", nameAr: "قطاعات قواطع سيجار", isActive: true },
+      { id: "sub-803", code: "cigar_humidors", nameEn: "Humidors & Hygrometers", nameAr: "صناديق ترطيب هيمودور", isActive: true },
+      { id: "sub-804", code: "pipe_cleaners", nameEn: "Pipe Cleaners & Tampers", nameAr: "منظفات ومستلزمات الغليون", isActive: true },
+    ],
+  },
+  {
+    id: "cat-009",
+    code: "general_smoking_accessories",
+    nameEn: "Charcoal & Accessories",
+    nameAr: "مستلزمات تدخين وفحم كراون",
+    isActive: true,
+    subcategories: [
+      { id: "sub-901", code: "charcoal_crown", nameEn: "Crown Quick-Light Charcoal", nameAr: "فحم كراون سريع الاشتعال", isActive: true },
+      { id: "sub-902", code: "charcoal_coconut", nameEn: "Coconut Cube Charcoal", nameAr: "فحم جوز الهند مكعبات", isActive: true },
+      { id: "sub-903", code: "ashtrays", nameEn: "Ashtrays & Trays", nameAr: "طفايات سجائر وسيجار", isActive: true },
+      { id: "sub-904", code: "grinders", nameEn: "Herb Grinders & Crushers", nameAr: "مطاحن ومفرمات أعشاب", isActive: true },
+    ],
+  },
+  {
+    id: "cat-010",
+    code: "marine_outdoor",
+    nameEn: "Khiran Marine & Outdoor",
+    nameAr: "بن عيسى الخيران (بحري)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-1001", code: "marine_fishing", nameEn: "Fishing Rods & Reels", nameAr: "صنارات وبكرات صيد", isActive: true },
+      { id: "sub-1002", code: "marine_safety", nameEn: "Life Jackets & Safety", nameAr: "سترات نجاة ومعدات سلامة", isActive: true },
+      { id: "sub-1003", code: "marine_watersports", nameEn: "Watersports & Gym Boards", nameAr: "ألواح تزلج ورياضات مائية", isActive: true },
+      { id: "sub-1004", code: "outdoor_camping", nameEn: "Camping & Outdoor Gear", nameAr: "معدات رحلات وتخييم", isActive: true },
+    ],
+  },
+  {
+    id: "cat-011",
+    code: "custom_gifts_signage",
+    nameEn: "JM Art Zone Gifts",
+    nameAr: "جي إم آرت زون (هدايا/أكريليك)",
+    isActive: true,
+    subcategories: [
+      { id: "sub-1101", code: "acrylic_plaques", nameEn: "Custom Acrylic Plaques", nameAr: "دروع ولوحات أكريليك مخصصة", isActive: true },
+      { id: "sub-1102", code: "custom_mugs", nameEn: "Personalized Mugs & Tumblers", nameAr: "أكواب وطباعة حرارية", isActive: true },
+      { id: "sub-1103", code: "commercial_signage", nameEn: "Commercial Signage & Letters", nameAr: "لوحات إعلانية ومضيئة", isActive: true },
+      { id: "sub-1104", code: "custom_frames", nameEn: "Gift Frames & Engraving", nameAr: "إطارات وهدايا تذكارية", isActive: true },
+    ],
+  },
+  {
+    id: "cat-012",
+    code: "licensed_collectibles",
+    nameEn: "Licensed Collectibles",
+    nameAr: "مقتنيات ومجسمات مرخصة",
+    isActive: true,
+    subcategories: [
+      { id: "sub-1201", code: "statues_anime", nameEn: "Anime & Movie Statues", nameAr: "مجسمات أنمي وأفلام", isActive: true },
+      { id: "sub-1202", code: "diecast_models", nameEn: "Diecast Metal Models", nameAr: "سيارات ومجسمات معدنية", isActive: true },
+      { id: "sub-1203", code: "novelty_items", nameEn: "Exclusive Novelty Collectibles", nameAr: "تحف واكسسوارات حصرية", isActive: true },
+    ],
+  },
+];
+
+const CATEGORIES_STORAGE_KEY = "bin-essa-categories-v2";
+
+export function getStoredCategories(): Category[] {
+  if (typeof window === "undefined") return FALLBACK_CATEGORIES;
+  try {
+    const raw = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return FALLBACK_CATEGORIES;
+}
+
+export function saveStoredCategories(categories: Category[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(categories));
+  } catch {
+    // Ignore storage error
+  }
+}
+
+export async function listCategoriesRequest(): Promise<Category[]> {
+  return getStoredCategories();
+}
+
+export async function saveCategoryRequest(category: Omit<Category, "id"> & { id?: string }): Promise<Category> {
+  const current = getStoredCategories();
+  const id = category.id || `cat-${Date.now()}`;
+  const existingIdx = current.findIndex((c) => c.id === id || c.code === category.code);
+  const newCat: Category = {
+    id,
+    code: category.code,
+    nameEn: category.nameEn,
+    nameAr: category.nameAr,
+    isActive: category.isActive ?? true,
+    subcategories: category.subcategories || [],
+  };
+
+  let updated: Category[];
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = newCat;
+  } else {
+    updated = [...current, newCat];
+  }
+  saveStoredCategories(updated);
+  return newCat;
+}
+
+export async function toggleCategoryStatus(id: string): Promise<Category[]> {
+  const current = getStoredCategories();
+  const updated = current.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c));
+  saveStoredCategories(updated);
+  return updated;
+}
 
 export interface CreateItemPayload {
   sku: string;
   barcode?: string;
   name: string;
+  nameEn?: string;
+  nameAr?: string;
   category: ItemCategory;
-  mainCategory?: string;
+  subCategory?: string;
   brand?: string;
+  countryOfOrigin?: string;
+  imageUrl?: string;
   visibility?: ItemVisibility;
   price: number;
   cost: number;
   unit?: string;
   isActive?: boolean;
+  allowSale?: boolean;
+  allowPurchase?: boolean;
+  allowDiscount?: boolean;
+  maxDiscountPercent?: number;
+  allowGift?: boolean;
+  expiryRequired?: boolean;
+  posVisibility?: boolean;
   stockQuantity?: number;
   retailPrice?: number;
   semiWholesalePrice?: number;
@@ -105,7 +361,6 @@ export interface CreateItemPayload {
   trackExpiry?: boolean;
   blockFreeGift?: boolean;
   blockDiscount?: boolean;
-  maxDiscountPercent?: number;
   additionalBarcodes?: string[];
   uoms?: ItemUomPayload[];
 }
@@ -115,12 +370,25 @@ export interface CreateItemResponse {
   sku: string;
   barcode: string | null;
   name: string;
+  nameEn?: string;
+  nameAr?: string;
   category: ItemCategory;
+  subCategory?: string;
+  brand?: string;
+  countryOfOrigin?: string;
+  imageUrl?: string;
   visibility: ItemVisibility;
   price: string;
   cost: string;
   unit: string;
   isActive: boolean;
+  allowSale?: boolean;
+  allowPurchase?: boolean;
+  allowDiscount?: boolean;
+  maxDiscountPercent?: string | number;
+  allowGift?: boolean;
+  expiryRequired?: boolean;
+  posVisibility?: boolean;
   stockQuantity: number;
   createdAt: string;
   updatedAt: string;
@@ -150,27 +418,42 @@ export async function createItemRequest(
     console.warn("Backend unavailable, saving new item in local persistent store", e);
   }
 
+  const nameEn = payload.nameEn || payload.name;
+  const nameAr = payload.nameAr || payload.name;
+
   const newItem: ItemResponse = {
     id: `item-${Date.now()}`,
     sku: payload.sku,
     barcode: payload.barcode || null,
-    name: payload.name,
+    name: payload.name || nameEn,
+    nameEn,
+    nameAr,
     category: payload.category,
+    subCategory: payload.subCategory,
+    brand: payload.brand,
+    countryOfOrigin: payload.countryOfOrigin,
+    imageUrl: payload.imageUrl,
     visibility: payload.visibility || "ALL_BRANCHES",
     price: payload.price.toFixed(3),
     cost: payload.cost.toFixed(3),
     unit: payload.unit || "pcs",
     stockQuantity: payload.stockQuantity ?? 0,
     isActive: payload.isActive ?? true,
+    allowSale: payload.allowSale ?? true,
+    allowPurchase: payload.allowPurchase ?? true,
+    allowDiscount: payload.allowDiscount ?? !payload.blockDiscount,
+    maxDiscountPercent: payload.maxDiscountPercent !== undefined ? String(payload.maxDiscountPercent) : "10",
+    allowGift: payload.allowGift ?? !payload.blockFreeGift,
+    expiryRequired: payload.expiryRequired ?? payload.trackExpiry ?? false,
+    posVisibility: payload.posVisibility ?? true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     retailPrice: (payload.retailPrice || payload.price).toFixed(3),
     semiWholesalePrice: (payload.semiWholesalePrice || payload.price).toFixed(3),
     wholesalePrice: (payload.wholesalePrice || payload.price).toFixed(3),
-    trackExpiry: payload.trackExpiry ?? false,
-    blockFreeGift: payload.blockFreeGift ?? false,
-    blockDiscount: payload.blockDiscount ?? false,
-    maxDiscountPercent: payload.maxDiscountPercent !== undefined ? String(payload.maxDiscountPercent) : "10",
+    trackExpiry: payload.expiryRequired ?? payload.trackExpiry ?? false,
+    blockFreeGift: payload.allowGift !== undefined ? !payload.allowGift : (payload.blockFreeGift ?? false),
+    blockDiscount: payload.allowDiscount !== undefined ? !payload.allowDiscount : (payload.blockDiscount ?? false),
     additionalBarcodes: (payload.additionalBarcodes || []).map((b, i) => ({ id: `b-${i}`, barcode: b })),
     uoms: payload.uoms || [],
   };
@@ -609,15 +892,26 @@ export interface ItemResponse {
   sku: string;
   barcode: string | null;
   name: string;
+  nameEn?: string;
+  nameAr?: string;
   category: string;
-  mainCategory?: string;
+  subCategory?: string;
   brand?: string;
+  countryOfOrigin?: string;
+  imageUrl?: string;
   visibility: string;
   price: string | number;
   cost: string | number;
   unit: string;
   stockQuantity: number;
   isActive: boolean;
+  allowSale?: boolean;
+  allowPurchase?: boolean;
+  allowDiscount?: boolean;
+  maxDiscountPercent?: string | number;
+  allowGift?: boolean;
+  expiryRequired?: boolean;
+  posVisibility?: boolean;
   createdAt: string;
   updatedAt: string;
   retailPrice?: string | number;
@@ -626,7 +920,7 @@ export interface ItemResponse {
   trackExpiry?: boolean;
   blockFreeGift?: boolean;
   blockDiscount?: boolean;
-  maxDiscountPercent?: string | number;
+  blockSale?: boolean;
   additionalBarcodes?: Array<{ id: string; barcode: string; note?: string }>;
   uoms?: ItemUomPayload[];
 }
@@ -639,13 +933,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "VP-BECO-PRO-6K",
     barcode: "6281234500019",
     name: "Beco Pro 6000 Puffs - Tropical Mix",
+    nameEn: "Beco Pro 6000 Puffs - Tropical Mix",
+    nameAr: "بيكو برو 6000 سحبة - تروبيكال مكس",
     price: "5.500",
     cost: "2.800",
     unit: "pcs",
     stockQuantity: 485,
-    category: "DISPOSABLE_VAPES",
+    category: "disposable_vapes",
+    subCategory: "disp_5k_7k",
+    brand: "Beco",
+    countryOfOrigin: "China",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "15",
+    allowGift: true,
+    expiryRequired: false,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -654,13 +961,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "NP-FOX-WHT-16G",
     barcode: "6281234500064",
     name: "White Fox All White Nicotine Pouches 16mg",
+    nameEn: "White Fox All White Nicotine Pouches 16mg",
+    nameAr: "أكياس وايت فوكس أول وايت نيكوتين 16 ملغ",
     price: "1.750",
     cost: "0.950",
     unit: "can",
     stockQuantity: 600,
-    category: "NICOTINE_POUCHES",
+    category: "nicotine_pouches",
+    subCategory: "pouch_white_fox",
+    brand: "White Fox",
+    countryOfOrigin: "Sweden",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "10",
+    allowGift: true,
+    expiryRequired: true,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -669,13 +989,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "LT-CRK-ORIG-01",
     barcode: "6281234500095",
     name: "Cricket Original Lighter - Box of 50",
+    nameEn: "Cricket Original Lighter - Box of 50",
+    nameAr: "ولاعة كريكيت الأصلية - علبة 50 حبة",
     price: "7.500",
     cost: "4.500",
     unit: "box",
     stockQuantity: 200,
-    category: "CIGARETTE_LIGHTERS",
+    category: "cigarette_lighters",
+    subCategory: "lighter_cricket",
+    brand: "Cricket",
+    countryOfOrigin: "Netherlands",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "20",
+    allowGift: true,
+    expiryRequired: false,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -684,13 +1017,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "RP-RAW-KS-SLM",
     barcode: "6281234500118",
     name: "RAW Classic King Size Slim (Box of 50)",
+    nameEn: "RAW Classic King Size Slim (Box of 50)",
+    nameAr: "ورق راو كلاسيك كينج سايز سليم (علبة 50)",
     price: "12.000",
     cost: "6.500",
     unit: "box",
     stockQuantity: 220,
-    category: "ROLLING_PAPERS",
+    category: "rolling_papers",
+    subCategory: "papers_raw_classic",
+    brand: "RAW",
+    countryOfOrigin: "Spain",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "10",
+    allowGift: false,
+    expiryRequired: false,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -699,13 +1045,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "CH-CRW-40M-BOX",
     barcode: "6281234500149",
     name: "CHARCOAL CROWN 40 MM Quick-Light Coal",
+    nameEn: "CHARCOAL CROWN 40 MM Quick-Light Coal",
+    nameAr: "فحم كراون 40 ملم سريع الاشتعال (علبة)",
     price: "3.000",
     cost: "1.600",
     unit: "box",
     stockQuantity: 450,
-    category: "SMOKING_ACCESSORIES",
+    category: "general_smoking_accessories",
+    subCategory: "charcoal_crown",
+    brand: "Crown",
+    countryOfOrigin: "Kuwait",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "25",
+    allowGift: true,
+    expiryRequired: false,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -714,13 +1073,26 @@ const FALLBACK_ITEMS: ItemResponse[] = [
     sku: "DK-BAS-MED-01B",
     barcode: "6281234500156",
     name: "Al Basha Special Dokha Warm 50ml",
+    nameEn: "Al Basha Special Dokha Warm 50ml",
+    nameAr: "دوخة الباشا الخاصة دافئ 50 مل",
     price: "3.500",
     cost: "1.800",
     unit: "bottle",
     stockQuantity: 300,
-    category: "DOKHA_MEDWAKH",
+    category: "dokha_medwakh",
+    subCategory: "dokha_bottles",
+    brand: "Al Basha",
+    countryOfOrigin: "United Arab Emirates",
+    imageUrl: "",
     visibility: "ALL_BRANCHES",
     isActive: true,
+    allowSale: true,
+    allowPurchase: true,
+    allowDiscount: true,
+    maxDiscountPercent: "10",
+    allowGift: true,
+    expiryRequired: true,
+    posVisibility: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -822,14 +1194,57 @@ export async function updateItemRequest(
   const item = currentItems.find((i) => i.id === id) || FALLBACK_ITEMS.find((i) => i.id === id);
   if (item) {
     if (payload.name) item.name = payload.name;
+    if (payload.nameEn) item.nameEn = payload.nameEn;
+    if (payload.nameAr) item.nameAr = payload.nameAr;
+    if (payload.sku) item.sku = payload.sku;
+    if (payload.barcode !== undefined) item.barcode = payload.barcode || null;
+    if (payload.category) item.category = payload.category;
+    if (payload.subCategory !== undefined) item.subCategory = payload.subCategory;
+    if (payload.brand !== undefined) item.brand = payload.brand;
+    if (payload.countryOfOrigin !== undefined) item.countryOfOrigin = payload.countryOfOrigin;
+    if (payload.imageUrl !== undefined) item.imageUrl = payload.imageUrl;
     if (payload.price !== undefined) item.price = String(payload.price);
     if (payload.cost !== undefined) item.cost = String(payload.cost);
+    if (payload.retailPrice !== undefined) item.retailPrice = String(payload.retailPrice);
+    if (payload.semiWholesalePrice !== undefined) item.semiWholesalePrice = String(payload.semiWholesalePrice);
+    if (payload.wholesalePrice !== undefined) item.wholesalePrice = String(payload.wholesalePrice);
+    if (payload.unit) item.unit = payload.unit;
     if (payload.stockQuantity !== undefined) item.stockQuantity = payload.stockQuantity;
+    if (payload.isActive !== undefined) item.isActive = payload.isActive;
+    if (payload.allowSale !== undefined) item.allowSale = payload.allowSale;
+    if (payload.allowPurchase !== undefined) item.allowPurchase = payload.allowPurchase;
+    if (payload.allowDiscount !== undefined) {
+      item.allowDiscount = payload.allowDiscount;
+      item.blockDiscount = !payload.allowDiscount;
+    }
+    if (payload.maxDiscountPercent !== undefined) item.maxDiscountPercent = String(payload.maxDiscountPercent);
+    if (payload.allowGift !== undefined) {
+      item.allowGift = payload.allowGift;
+      item.blockFreeGift = !payload.allowGift;
+    }
+    if (payload.expiryRequired !== undefined) {
+      item.expiryRequired = payload.expiryRequired;
+      item.trackExpiry = payload.expiryRequired;
+    }
+    if (payload.posVisibility !== undefined) item.posVisibility = payload.posVisibility;
+    if (payload.additionalBarcodes !== undefined) {
+      item.additionalBarcodes = payload.additionalBarcodes.map((b, i) => ({ id: `b-${i}`, barcode: b }));
+    }
+    item.updatedAt = new Date().toISOString();
+
     saveStoredItems(currentItems);
     clearApiCache();
     return item;
   }
   throw new Error("Item not found");
+}
+
+export async function toggleItemActiveRequest(id: string): Promise<ItemResponse> {
+  const currentItems = getStoredItems();
+  const item = currentItems.find((i) => i.id === id);
+  if (!item) throw new Error("Item not found");
+  const newActive = !item.isActive;
+  return updateItemRequest(id, { isActive: newActive });
 }
 
 export async function deleteItemRequest(id: string): Promise<void> {
@@ -2173,9 +2588,31 @@ export interface DiscountAuditLogRecord {
   createdAt: string;
 }
 
+export interface PdcCheckRecord {
+  id: string;
+  checkNumber: string;
+  bankName: string;
+  dueDate: string;
+  amount: number;
+  customerId: string;
+  status: "RECEIVED" | "CLEARED" | "BOUNCED" | "CANCELLED";
+  notes?: string;
+  customer?: { id: string; name: string };
+  createdAt: string;
+}
+
 export interface SystemAuditLogRecord {
   id: string;
-  action: "PRODUCT_CREATED" | "PURCHASE_RECEIVED" | "POS_SALE" | "STOCK_ADJUSTMENT";
+  action:
+    | "PRODUCT_CREATED"
+    | "PURCHASE_RECEIVED"
+    | "POS_SALE"
+    | "STOCK_ADJUSTMENT"
+    | "SHIFT_OPEN"
+    | "SHIFT_CLOSE"
+    | "SHIFT_REOPEN"
+    | "SHIFT_ADJUSTMENT"
+    | string;
   entityId: string;
   referenceNumber: string;
   branchId: string | null;
@@ -2528,8 +2965,17 @@ export interface PosShiftRecord {
   branchId: string;
   openingFloat: number;
   cashSalesTotal: number;
+  knetSalesTotal?: number;
+  hesabiSalesTotal?: number;
+  tabbySalesTotal?: number;
   cardSalesTotal: number;
   creditSalesTotal: number;
+  otherSalesTotal?: number;
+  totalSales?: number;
+  returnsTotal?: number;
+  discountsTotal?: number;
+  giftsTotal?: number;
+  giftsCount?: number;
   closingCashExpected: number;
   closingCashActual: number;
   cashVariance: number;
@@ -2537,28 +2983,43 @@ export interface PosShiftRecord {
   notes?: string;
   openedAt: string;
   closedAt?: string;
+  reopenedAt?: string;
+  reopenedByUserId?: string;
+  adjustedAt?: string;
+  adjustedByUserId?: string;
+  adjustmentReason?: string;
   user?: { id: string; fullName: string; username: string };
   branch?: { id: string; name: string; code: string };
 }
 
-export interface PdcCheckRecord {
-  id: string;
-  checkNumber: string;
-  bankName: string;
-  dueDate: string;
-  amount: number;
-  status: "RECEIVED" | "DEPOSITED" | "CLEARED" | "BOUNCED";
-  customerId: string;
-  customer?: { id: string; name: string; code: string };
-  notes?: string;
-  depositedAt?: string;
-  clearedAt?: string;
-  bouncedAt?: string;
-  createdAt: string;
+export function getLocalPosShifts(): PosShiftRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-pos-shifts");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalPosShift(shift: PosShiftRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getLocalPosShifts();
+    const idx = existing.findIndex((s) => s.id === shift.id);
+    if (idx >= 0) {
+      existing[idx] = shift;
+    } else {
+      existing.unshift(shift);
+    }
+    localStorage.setItem("bin-essa-pos-shifts", JSON.stringify(existing));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 export async function getCurrentPosShiftRequest(userId?: string, branchId?: string): Promise<PosShiftRecord | null> {
-  const token = localStorage.getItem("bin-essa-access-token");
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const query = new URLSearchParams();
   if (userId) query.set("userId", userId);
   if (branchId) query.set("branchId", branchId);
@@ -2576,7 +3037,17 @@ export async function getCurrentPosShiftRequest(userId?: string, branchId?: stri
   } catch (e) {
     console.warn("Backend unavailable for getCurrentPosShift", e);
   }
-  return null;
+
+  // Local storage fallback
+  const local = getLocalPosShifts();
+  return (
+    local.find(
+      (s) =>
+        s.status === "OPEN" &&
+        (!userId || s.userId === userId) &&
+        (!branchId || s.branchId === branchId)
+    ) || null
+  );
 }
 
 export async function openPosShiftRequest(payload: {
@@ -2584,46 +3055,270 @@ export async function openPosShiftRequest(payload: {
   branchId: string;
   openingFloat: number;
 }): Promise<PosShiftRecord> {
-  const token = localStorage.getItem("bin-essa-access-token");
-  const res = await fetch(`${API_BASE}/pos-shifts/open`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to open POS Shift");
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  
+  const fallbackShift: PosShiftRecord = {
+    id: `shift-local-${Date.now()}`,
+    shiftNumber: `SHIFT-${String(getLocalPosShifts().length + 1).padStart(4, "0")}`,
+    userId: payload.userId,
+    branchId: payload.branchId,
+    openingFloat: payload.openingFloat,
+    cashSalesTotal: 0,
+    knetSalesTotal: 0,
+    hesabiSalesTotal: 0,
+    tabbySalesTotal: 0,
+    cardSalesTotal: 0,
+    creditSalesTotal: 0,
+    otherSalesTotal: 0,
+    totalSales: 0,
+    returnsTotal: 0,
+    discountsTotal: 0,
+    giftsTotal: 0,
+    giftsCount: 0,
+    closingCashExpected: payload.openingFloat,
+    closingCashActual: 0,
+    cashVariance: 0,
+    status: "OPEN",
+    openedAt: new Date().toISOString(),
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts/open`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalPosShift(data);
+      clearApiCache();
+      return data;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for openPosShift, using local fallback", e);
   }
+
+  saveLocalPosShift(fallbackShift);
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "SHIFT_OPEN",
+    entityId: fallbackShift.id,
+    referenceNumber: fallbackShift.shiftNumber,
+    branchId: payload.branchId,
+    userId: payload.userId,
+    description: `POS Shift #${fallbackShift.shiftNumber} opened with float ${payload.openingFloat.toFixed(3)} KWD`,
+    createdAt: new Date().toISOString(),
+  });
   clearApiCache();
-  return res.json();
+  return fallbackShift;
 }
 
 export async function closePosShiftRequest(
   id: string,
-  payload: { closingCashActual: number; notes?: string }
-): Promise<PosShiftRecord> {
-  const token = localStorage.getItem("bin-essa-access-token");
-  const res = await fetch(`${API_BASE}/pos-shifts/${id}/close`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to close POS Shift");
+  payload: {
+    closingCashActual: number;
+    notes?: string;
+    metrics?: {
+      cashSalesTotal?: number;
+      knetSalesTotal?: number;
+      hesabiSalesTotal?: number;
+      tabbySalesTotal?: number;
+      cardSalesTotal?: number;
+      creditSalesTotal?: number;
+      otherSalesTotal?: number;
+      totalSales?: number;
+      returnsTotal?: number;
+      discountsTotal?: number;
+      giftsTotal?: number;
+      giftsCount?: number;
+    };
   }
+): Promise<PosShiftRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts/${id}/close`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        closingCashActual: payload.closingCashActual,
+        notes: payload.notes,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalPosShift(data);
+      clearApiCache();
+      return data;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for closePosShift, using local fallback", e);
+  }
+
+  // Local fallback
+  const local = getLocalPosShifts();
+  const existing = local.find((s) => s.id === id);
+  const openingFloat = existing ? Number(existing.openingFloat) : 0;
+  const cashSales = payload.metrics?.cashSalesTotal ?? (existing ? Number(existing.cashSalesTotal) : 0);
+  const returns = payload.metrics?.returnsTotal ?? (existing ? Number(existing.returnsTotal || 0) : 0);
+  const expected = openingFloat + cashSales;
+  const variance = payload.closingCashActual - expected;
+
+  const closedShift: PosShiftRecord = {
+    ...(existing || {
+      id,
+      shiftNumber: "SHIFT-0001",
+      userId: "user-1",
+      branchId: "br-01",
+      openingFloat,
+      openedAt: new Date().toISOString(),
+    }),
+    cashSalesTotal: cashSales,
+    knetSalesTotal: payload.metrics?.knetSalesTotal ?? Number(existing?.knetSalesTotal || 0),
+    hesabiSalesTotal: payload.metrics?.hesabiSalesTotal ?? Number(existing?.hesabiSalesTotal || 0),
+    tabbySalesTotal: payload.metrics?.tabbySalesTotal ?? Number(existing?.tabbySalesTotal || 0),
+    cardSalesTotal: payload.metrics?.cardSalesTotal ?? Number(existing?.cardSalesTotal || 0),
+    creditSalesTotal: payload.metrics?.creditSalesTotal ?? Number(existing?.creditSalesTotal || 0),
+    otherSalesTotal: payload.metrics?.otherSalesTotal ?? Number(existing?.otherSalesTotal || 0),
+    totalSales: payload.metrics?.totalSales ?? Number(existing?.totalSales || 0),
+    returnsTotal: returns,
+    discountsTotal: payload.metrics?.discountsTotal ?? Number(existing?.discountsTotal || 0),
+    giftsTotal: payload.metrics?.giftsTotal ?? Number(existing?.giftsTotal || 0),
+    giftsCount: payload.metrics?.giftsCount ?? Number(existing?.giftsCount || 0),
+    closingCashExpected: expected,
+    closingCashActual: payload.closingCashActual,
+    cashVariance: variance,
+    status: "CLOSED",
+    notes: payload.notes,
+    closedAt: new Date().toISOString(),
+  };
+
+  saveLocalPosShift(closedShift);
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "SHIFT_CLOSE",
+    entityId: closedShift.id,
+    referenceNumber: closedShift.shiftNumber,
+    branchId: closedShift.branchId,
+    userId: closedShift.userId,
+    description: `POS Shift #${closedShift.shiftNumber} closed. Expected: ${expected.toFixed(3)} KWD, Counted: ${payload.closingCashActual.toFixed(3)} KWD, Variance: ${variance.toFixed(3)} KWD`,
+    createdAt: new Date().toISOString(),
+  });
   clearApiCache();
-  return res.json();
+  return closedShift;
+}
+
+export async function reopenPosShiftRequest(
+  id: string,
+  payload: { userId: string; userRole: string; reason: string }
+): Promise<PosShiftRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts/${id}/reopen`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalPosShift(data);
+      clearApiCache();
+      return data;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for reopenPosShift, using local fallback", e);
+  }
+
+  // Local fallback
+  const local = getLocalPosShifts();
+  const existing = local.find((s) => s.id === id);
+  if (!existing) throw new Error("Shift not found");
+
+  const reopened: PosShiftRecord = {
+    ...existing,
+    status: "OPEN",
+    reopenedAt: new Date().toISOString(),
+    reopenedByUserId: payload.userId,
+    adjustmentReason: payload.reason,
+  };
+  saveLocalPosShift(reopened);
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "SHIFT_REOPEN",
+    entityId: id,
+    referenceNumber: existing.shiftNumber,
+    branchId: existing.branchId,
+    userId: payload.userId,
+    description: `POS Shift #${existing.shiftNumber} reopened by ${payload.userRole} (${payload.userId}). Reason: ${payload.reason}`,
+    createdAt: new Date().toISOString(),
+  });
+  clearApiCache();
+  return reopened;
+}
+
+export async function adjustPosShiftRequest(
+  id: string,
+  payload: { userId: string; userRole: string; closingCashActual: number; reason: string }
+): Promise<PosShiftRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/pos-shifts/${id}/adjust`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      saveLocalPosShift(data);
+      clearApiCache();
+      return data;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for adjustPosShift, using local fallback", e);
+  }
+
+  // Local fallback
+  const local = getLocalPosShifts();
+  const existing = local.find((s) => s.id === id);
+  if (!existing) throw new Error("Shift not found");
+
+  const newVariance = payload.closingCashActual - Number(existing.closingCashExpected);
+  const adjusted: PosShiftRecord = {
+    ...existing,
+    closingCashActual: payload.closingCashActual,
+    cashVariance: newVariance,
+    adjustedAt: new Date().toISOString(),
+    adjustedByUserId: payload.userId,
+    adjustmentReason: payload.reason,
+  };
+  saveLocalPosShift(adjusted);
+  saveSystemAuditLog({
+    id: `audit-${Date.now()}`,
+    action: "SHIFT_ADJUSTMENT",
+    entityId: id,
+    referenceNumber: existing.shiftNumber,
+    branchId: existing.branchId,
+    userId: payload.userId,
+    description: `POS Shift #${existing.shiftNumber} cash adjusted from ${Number(existing.closingCashActual).toFixed(3)} to ${payload.closingCashActual.toFixed(3)} KWD by ${payload.userRole}. Reason: ${payload.reason}`,
+    createdAt: new Date().toISOString(),
+  });
+  clearApiCache();
+  return adjusted;
 }
 
 export async function listPosShiftsRequest(branchId?: string): Promise<PosShiftRecord[]> {
-  const token = localStorage.getItem("bin-essa-access-token");
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
   try {
     const res = await fetch(`${API_BASE}/pos-shifts${query}`, {
@@ -2632,11 +3327,15 @@ export async function listPosShiftsRequest(branchId?: string): Promise<PosShiftR
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (res.ok) return res.json();
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
   } catch (e) {
     console.warn("Backend unavailable for listPosShifts", e);
   }
-  return [];
+  const local = getLocalPosShifts();
+  return branchId ? local.filter((s) => s.branchId === branchId) : local;
 }
 
 export async function listPdcChecksRequest(): Promise<PdcCheckRecord[]> {

@@ -156,18 +156,53 @@ export function getPersistentItemsCatalog(): Item[] {
     catalogMap.set(item.id, {
       ...item,
       stockByBranch: { ...branchStock },
+      isActive: item.isActive ?? true,
+      allowSale: item.allowSale ?? !item.blockSale,
+      allowPurchase: item.allowPurchase ?? true,
+      allowDiscount: item.allowDiscount ?? !item.blockDiscount,
+      maxDiscountPercent: item.maxDiscountPercent ?? 100,
+      allowGift: item.allowGift ?? !item.blockFreeGift,
+      expiryRequired: item.expiryRequired ?? item.hasSerials ?? false,
+      posVisibility: item.posVisibility ?? true,
     });
   });
 
-  // 2. Merge user-created items from getStoredItems()
+  // 2. Merge items from getStoredItems() (both updated mock items and newly added records)
   storedApiItems.forEach((apiItem) => {
+    const nameEn = apiItem.nameEn || apiItem.name;
+    const nameAr = apiItem.nameAr || apiItem.name;
+    const allowSale = apiItem.allowSale !== undefined ? apiItem.allowSale : true;
+    const allowDiscount = apiItem.allowDiscount !== undefined ? apiItem.allowDiscount : !apiItem.blockDiscount;
+    const allowGift = apiItem.allowGift !== undefined ? apiItem.allowGift : !apiItem.blockFreeGift;
+    const maxDiscountPercent = apiItem.maxDiscountPercent !== undefined ? Number(apiItem.maxDiscountPercent) : 100;
+    const posVisibility = apiItem.posVisibility !== undefined ? apiItem.posVisibility : true;
+    const isActive = apiItem.isActive !== undefined ? apiItem.isActive : true;
+
     if (catalogMap.has(apiItem.id)) {
-      // Update price / cost if edited
       const existing = catalogMap.get(apiItem.id)!;
+      existing.nameEn = nameEn;
+      existing.nameAr = nameAr;
       existing.sellPriceKd = Number(apiItem.price || existing.sellPriceKd);
       existing.costPriceKd = Number(apiItem.cost || existing.costPriceKd);
+      existing.wholesalePriceKd = Number(apiItem.wholesalePrice || existing.wholesalePriceKd);
+      existing.retailPriceKd = Number(apiItem.retailPrice || existing.sellPriceKd);
+      existing.semiWholesalePriceKd = Number(apiItem.semiWholesalePrice || existing.sellPriceKd);
+      existing.subCategory = apiItem.subCategory ?? existing.subCategory;
+      existing.brand = apiItem.brand ?? existing.brand;
+      existing.countryOfOrigin = apiItem.countryOfOrigin ?? existing.countryOfOrigin;
+      existing.imageUrl = apiItem.imageUrl ?? existing.imageUrl;
+      existing.isActive = isActive;
+      existing.allowSale = allowSale;
+      existing.allowPurchase = apiItem.allowPurchase !== undefined ? apiItem.allowPurchase : true;
+      existing.allowDiscount = allowDiscount;
+      existing.maxDiscountPercent = maxDiscountPercent;
+      existing.allowGift = allowGift;
+      existing.expiryRequired = apiItem.expiryRequired ?? apiItem.trackExpiry ?? false;
+      existing.posVisibility = posVisibility;
+      existing.blockDiscount = !allowDiscount;
+      existing.blockFreeGift = !allowGift;
+      existing.blockSale = !allowSale;
     } else {
-      // Add new item to catalog
       const branchStock = currentStockMap[apiItem.id] ?? {
         "br-01": Math.round(Number(apiItem.stockQuantity || 10)),
         "br-02": 5,
@@ -177,21 +212,38 @@ export function getPersistentItemsCatalog(): Item[] {
       const newItem: Item = {
         id: apiItem.id,
         sku: apiItem.sku,
-        nameEn: apiItem.name,
-        nameAr: apiItem.name,
+        nameEn,
+        nameAr,
         category: (apiItem.category.toLowerCase() as ItemCategory) || "general_smoking_accessories",
+        subCategory: apiItem.subCategory,
+        brand: apiItem.brand,
         brandId: "smoking",
+        countryOfOrigin: apiItem.countryOfOrigin,
+        imageUrl: apiItem.imageUrl,
         sellPriceKd: Number(apiItem.price || 0),
         costPriceKd: Number(apiItem.cost || 0),
         wholesalePriceKd: Number(apiItem.wholesalePrice || apiItem.price || 0),
+        retailPriceKd: Number(apiItem.retailPrice || apiItem.price || 0),
+        semiWholesalePriceKd: Number(apiItem.semiWholesalePrice || apiItem.price || 0),
         barcode: apiItem.barcode || apiItem.sku,
+        additionalBarcodes: apiItem.additionalBarcodes?.map((b) => b.barcode) || [],
         stockByBranch: branchStock,
         hasVariants: false,
         hasSerials: false,
         visibility: { mode: "inherit", companies: ["smoking"] },
-        blockDiscount: Boolean(apiItem.blockDiscount),
-        blockFreeGift: Boolean(apiItem.blockFreeGift),
-        blockSale: false,
+        isActive,
+        allowSale,
+        allowPurchase: apiItem.allowPurchase !== undefined ? apiItem.allowPurchase : true,
+        allowDiscount,
+        maxDiscountPercent,
+        allowGift,
+        expiryRequired: apiItem.expiryRequired ?? apiItem.trackExpiry ?? false,
+        posVisibility,
+        blockDiscount: !allowDiscount,
+        blockFreeGift: !allowGift,
+        blockSale: !allowSale,
+        unit: apiItem.unit || "pcs",
+        stockQuantity: Number(apiItem.stockQuantity || 0),
       };
 
       catalogMap.set(apiItem.id, newItem);

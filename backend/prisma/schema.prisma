@@ -50,6 +50,9 @@ enum ItemVisibility {
 enum PaymentMethod {
   CASH
   CARD
+  KNET
+  HESABI
+  TABBY
   CREDIT
   BANK_TRANSFER
 }
@@ -171,17 +174,29 @@ model User {
 }
 
 model Item {
-  id         String         @id @default(uuid())
-  sku        String         @unique
-  barcode    String?        @unique
-  name       String
-  category   ItemCategory
-  visibility ItemVisibility @default(ALL_BRANCHES)
-  price      Decimal        @db.Decimal(10, 3) // Base KWD Retail Price
-  cost       Decimal        @db.Decimal(10, 3)
-  unit       String         @default("pcs")
-  isActive   Boolean        @default(true)
-  stockQuantity Int          @default(0)
+  id                 String         @id @default(uuid())
+  sku                String         @unique
+  barcode            String?        @unique
+  name               String
+  nameEn             String?
+  nameAr             String?
+  category           ItemCategory
+  subCategory        String?
+  brand              String?
+  countryOfOrigin    String?
+  imageUrl           String?
+  visibility         ItemVisibility @default(ALL_BRANCHES)
+  price              Decimal        @db.Decimal(10, 3) // Base KWD Retail Price
+  cost               Decimal        @db.Decimal(10, 3)
+  unit               String         @default("pcs")
+  isActive           Boolean        @default(true)
+  allowSale          Boolean        @default(true)
+  allowPurchase      Boolean        @default(true)
+  allowDiscount      Boolean        @default(true)
+  allowGift          Boolean        @default(true)
+  expiryRequired     Boolean        @default(false)
+  posVisibility      Boolean        @default(true)
+  stockQuantity      Int            @default(0)
 
   // Multi-Tier Selling Prices
   retailPrice        Decimal? @db.Decimal(10, 3)
@@ -358,7 +373,10 @@ model SalesInvoice {
   totalAmount          Decimal       @db.Decimal(10, 3)
   manualDiscountReason String?
   promotionId          String?
+  posShiftId           String?
+  isReturn             Boolean       @default(false)
 
+  posShift     PosShift?     @relation(fields: [posShiftId], references: [id])
   lines        SalesInvoiceLine[]
   journalEntry JournalEntry?
 
@@ -495,8 +513,17 @@ model PosShift {
   branchId            String
   openingFloat        Decimal     @default(0) @db.Decimal(10, 3)
   cashSalesTotal      Decimal     @default(0) @db.Decimal(10, 3)
+  knetSalesTotal      Decimal     @default(0) @db.Decimal(10, 3)
+  hesabiSalesTotal    Decimal     @default(0) @db.Decimal(10, 3)
+  tabbySalesTotal     Decimal     @default(0) @db.Decimal(10, 3)
   cardSalesTotal      Decimal     @default(0) @db.Decimal(10, 3)
   creditSalesTotal    Decimal     @default(0) @db.Decimal(10, 3)
+  otherSalesTotal     Decimal     @default(0) @db.Decimal(10, 3)
+  totalSales          Decimal     @default(0) @db.Decimal(10, 3)
+  returnsTotal        Decimal     @default(0) @db.Decimal(10, 3)
+  discountsTotal      Decimal     @default(0) @db.Decimal(10, 3)
+  giftsTotal          Decimal     @default(0) @db.Decimal(10, 3)
+  giftsCount          Int         @default(0)
   closingCashExpected Decimal     @default(0) @db.Decimal(10, 3)
   closingCashActual   Decimal     @default(0) @db.Decimal(10, 3)
   cashVariance        Decimal     @default(0) @db.Decimal(10, 3)
@@ -504,9 +531,15 @@ model PosShift {
   notes               String?
   openedAt            DateTime    @default(now())
   closedAt            DateTime?
+  reopenedAt          DateTime?
+  reopenedByUserId    String?
+  adjustedAt          DateTime?
+  adjustedByUserId    String?
+  adjustmentReason    String?
 
-  user   User   @relation(fields: [userId], references: [id])
-  branch Branch @relation(fields: [branchId], references: [id])
+  user          User           @relation(fields: [userId], references: [id])
+  branch        Branch         @relation(fields: [branchId], references: [id])
+  salesInvoices SalesInvoice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

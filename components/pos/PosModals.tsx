@@ -21,12 +21,21 @@ import {
   ShieldAlert,
   Gift,
   Lock,
+  Unlock,
+  AlertTriangle,
+  Coins,
+  Calculator,
+  RotateCcw,
+  Edit,
+  DollarSign,
+  Check,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import type { Item, Customer, Branch } from "@/lib/types";
 import type { Salesperson } from "@/lib/mock-data/salespersons";
 import type { StockRequestRecord } from "@/lib/mock-data/stock-transfers";
 import type { CartItemLine, PosPaymentMethod } from "./PosCartPanel";
+import type { PosShiftRecord } from "@/lib/api";
 import { formatKuwaitDateTime } from "@/lib/utils/kuwait-time";
 
 function formatKD(amount: number) {
@@ -687,6 +696,10 @@ export function PosAddGiftModal({
   if (!isOpen) return null;
 
   const filtered = items.filter((i) => {
+    // Exclude items blocked from being a gift or inactive or not for sale
+    if (i.allowGift === false || i.blockFreeGift === true || i.isActive === false || i.allowSale === false) {
+      return false;
+    }
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -886,41 +899,216 @@ export function PosStockRequestsModal({
 export function PosCurrentShiftModal({
   isOpen,
   onClose,
+  shift,
   cashierName,
   salespersonName,
+  branchName,
   todaySalesKd,
   salesByMethod,
+  returnsKd = 0,
+  discountsKd = 0,
+  giftItemsCount = 0,
+  giftItemsKd = 0,
+  transactionsCount = 0,
+  onOpenShift,
   onCloseShift,
+  onReopenShift,
+  onAdjustShift,
+  userRole = "CASHIER",
+  isHeadOfficeOrManager = false,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  shift: PosShiftRecord | null;
   cashierName: string;
   salespersonName: string;
+  branchName: string;
   todaySalesKd: number;
-  salesByMethod: Record<PosPaymentMethod, number>;
-  onCloseShift: () => void;
+  salesByMethod: {
+    cash: number;
+    knet: number;
+    hesabi: number;
+    tabby: number;
+    credit: number;
+    card: number;
+    other?: number;
+  };
+  returnsKd?: number;
+  discountsKd?: number;
+  giftItemsCount?: number;
+  giftItemsKd?: number;
+  transactionsCount?: number;
+  onOpenShift?: (openingFloat: number) => Promise<void>;
+  onCloseShift: (actualCash: number, notes?: string) => Promise<PosShiftRecord>;
+  onReopenShift?: (shiftId: string, reason: string) => Promise<void>;
+  onAdjustShift?: (shiftId: string, actualCash: number, reason: string) => Promise<void>;
+  userRole?: string;
+  isHeadOfficeOrManager?: boolean;
 }) {
   const { locale } = useLocale();
 
+  // Internal Modal Tabs: 'summary' | 'open' | 'close_input' | 'report' | 'admin_override'
+  const [modalView, setModalView] = useState<
+    "summary" | "open" | "close_input" | "report" | "admin_override"
+  >("summary");
+
+  const [openingFloatInput, setOpeningFloatInput] = useState<number>(50.0);
+  const [actualCashInput, setActualCashInput] = useState<string>("");
+  const [closingNotes, setClosingNotes] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [closedShiftReport, setClosedShiftReport] = useState<PosShiftRecord | null>(null);
+
+  // Banknote denominations tally
+  const [denominations, setDenominations] = useState({
+    d20: 0,
+    d10: 0,
+    d5: 0,
+    d1: 0,
+    d05: 0,
+    d025: 0,
+  });
+  const [showDenomCounter, setShowDenomCounter] = useState(false);
+
+  // Admin Override Inputs
+  const [adminAction, setAdminAction] = useState<"reopen" | "adjust">("reopen");
+  const [adminReason, setAdminReason] = useState<string>("");
+  const [adminAdjustCash, setAdminAdjustCash] = useState<number>(0);
+
   if (!isOpen) return null;
 
-  const cashSales = salesByMethod.cash ?? 0;
-  const knetSales = salesByMethod.knet ?? 0;
-  const hesabiSales = salesByMethod.hesabi ?? 0;
-  const tabbySales = salesByMethod.tabby ?? 0;
-  const creditSales = salesByMethod.credit ?? 0;
-  const openingCash = 100.0;
-  const expectedCash = openingCash + cashSales;
+  const isShiftOpen = shift && shift.status === "OPEN";
+  const openingCash = shift ? Number(shift.openingFloat) : 0;
+  const cashSales = salesByMethod.cash ?? (shift ? Number(shift.cashSalesTotal) : 0);
+  const knetSales = salesByMethod.knet ?? (shift ? Number(shift.knetSalesTotal || 0) : 0);
+  const hesabiSales = salesByMethod.hesabi ?? (shift ? Number(shift.hesabiSalesTotal || 0) : 0);
+  const tabbySales = salesByMethod.tabby ?? (shift ? Number(shift.tabbySalesTotal || 0) : 0);
+  const cardSales = salesByMethod.card ?? (shift ? Number(shift.cardSalesTotal || 0) : 0);
+  const creditSales = salesByMethod.credit ?? (shift ? Number(shift.creditSalesTotal || 0) : 0);
+  const otherSales = salesByMethod.other ?? (shift ? Number(shift.otherSalesTotal || 0) : 0);
+
+  const totalSales =
+    todaySalesKd ||
+    (shift ? Number(shift.totalSales || 0) : 0) ||
+    cashSales + knetSales + hesabiSales + tabbySales + cardSales + creditSales + otherSales;
+
+  const totalReturns = returnsKd || (shift ? Number(shift.returnsTotal || 0) : 0);
+  const totalDiscounts = discountsKd || (shift ? Number(shift.discountsTotal || 0) : 0);
+  const giftsCount = giftItemsCount || (shift ? Number(shift.giftsCount || 0) : 0);
+  const giftsTotalKd = giftItemsKd || (shift ? Number(shift.giftsTotal || 0) : 0);
+
+  // Expected Cash in Drawer = Opening Float + Cash Sales - Cash Returns
+  const expectedCash = Math.max(0, openingCash + cashSales - totalReturns);
+
+  // Calculated actual cash from denominations or direct input
+  const talliedCash =
+    denominations.d20 * 20.0 +
+    denominations.d10 * 10.0 +
+    denominations.d5 * 5.0 +
+    denominations.d1 * 1.0 +
+    denominations.d05 * 0.5 +
+    denominations.d025 * 0.25;
+
+  const actualCashValue = showDenomCounter
+    ? talliedCash
+    : actualCashInput !== ""
+    ? parseFloat(actualCashInput) || 0
+    : 0;
+
+  const difference = Number((actualCashValue - expectedCash).toFixed(3));
+  const isBalanced = Math.abs(difference) < 0.001;
+  const isShortage = difference < -0.001;
+  const isExcess = difference > 0.001;
+
+  async function handleOpenShiftSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!onOpenShift) return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await onOpenShift(openingFloatInput);
+      setModalView("summary");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to open shift");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleCloseShiftSubmit() {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const closed = await onCloseShift(actualCashValue, closingNotes);
+      setClosedShiftReport(closed);
+      setModalView("report");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to close shift");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleAdminSubmit() {
+    if (!adminReason.trim()) {
+      setErrorMessage(
+        locale === "ar"
+          ? "يجب إدخال سبب الإجراء لتوثيق سجل التدقيق"
+          : "Reason is mandatory for audit trail logging"
+      );
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      if (adminAction === "reopen" && onReopenShift && shift) {
+        await onReopenShift(shift.id, adminReason);
+        setModalView("summary");
+      } else if (adminAction === "adjust" && onAdjustShift && shift) {
+        await onAdjustShift(shift.id, adminAdjustCash, adminReason);
+        setModalView("summary");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Admin override failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-      <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto font-sans">
+      <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs my-8 animate-in fade-in zoom-in-95 duration-150">
+        {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-black/20 bg-[#0B0F17] p-4 text-white">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-[#FDCE0C]" />
-            <h3 className="text-base font-bold text-white">
-              {locale === "ar" ? "الوردية الحالية (مسائي) - مفتوح" : "Current Shift (Evening) - OPEN"}
-            </h3>
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                {modalView === "open"
+                  ? locale === "ar"
+                    ? "فتح وردية كاشير جديدة"
+                    : "Open New Cashier Shift"
+                  : modalView === "close_input"
+                  ? locale === "ar"
+                    ? "إقفال الوردية وتصفية النقدية (F10)"
+                    : "Close Shift & Drawer Reconciliation (F10)"
+                  : modalView === "report"
+                  ? locale === "ar"
+                    ? "تقرير إقفال الوردية النهائي"
+                    : "Official Shift Closing Report"
+                  : modalView === "admin_override"
+                  ? locale === "ar"
+                    ? "تعديل الوردية / إعادة الفتح (صلاحية إدارية)"
+                    : "Manager Shift Override / Adjustment"
+                  : isShiftOpen
+                  ? locale === "ar"
+                    ? `الوردية الحالية (${shift.shiftNumber}) - مفتوحة`
+                    : `Current Shift (${shift.shiftNumber}) - OPEN`
+                  : locale === "ar"
+                  ? "إدارة ورديات الكاشير"
+                  : "Cashier Shift Management"}
+              </h3>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -930,77 +1118,801 @@ export function PosCurrentShiftModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4 border border-slate-200">
-            <div>
-              <p className="text-slate-500">Shift:</p>
-              <p className="font-bold text-slate-900 text-sm">Evening Shift</p>
-              <p className="text-slate-500 mt-2">Cashier (User):</p>
-              <p className="font-bold text-slate-900">{cashierName || "Ahmed"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">Salesperson (Seller):</p>
-              <p className="font-bold text-slate-900">{salespersonName || "Mohamed Ali"}</p>
-              <p className="text-slate-500 mt-2">Start Time / Opening Float:</p>
-              <p className="font-bold text-slate-900">100.000 KD Opening Cash</p>
-            </div>
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="mx-6 mt-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2 text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{errorMessage}</span>
           </div>
+        )}
 
-          <div className="rounded-2xl border border-slate-200 p-4 space-y-2">
-            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-              {locale === "ar" ? "ملخص مبيعات الوردية" : "Sales Summary (This Shift)"}
-            </h4>
-            <div className="grid grid-cols-2 gap-2 text-slate-600">
-              <div className="flex justify-between">
-                <span>Total Sales:</span>
-                <span className="font-bold text-slate-900">{formatKD(todaySalesKd)} KD</span>
+        <div className="p-6 space-y-5">
+          {/* ================= VIEW 1: OPEN SHIFT VIEW ================= */}
+          {(modalView === "open" || (!isShiftOpen && modalView === "summary")) && (
+            <div className="space-y-4">
+              <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+                  <Unlock className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  {locale === "ar" ? "لا توجد وردية نشطة حالياً" : "No Active Register Shift"}
+                </h4>
+                <p className="text-slate-500 text-xs max-w-md mx-auto">
+                  {locale === "ar"
+                    ? "الرجاء تسجيل العهدة النقدية الافتتاحية لبدء تسجيل مبيعات الكاشير والدرج."
+                    : "Please record the opening cash float to begin recording sales and register drawer transactions."}
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span>Cash Sales:</span>
-                <span className="font-bold text-slate-900">{formatKD(cashSales)} KD</span>
+
+              <form onSubmit={handleOpenShiftSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {locale === "ar" ? "العهدة الافتتاحية (د.ك)" : "Opening Cash Float (KD)"}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.050"
+                      min="0"
+                      required
+                      value={openingFloatInput}
+                      onChange={(e) => setOpeningFloatInput(parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-mono text-sm font-bold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <span className="absolute end-3 top-2.5 font-bold text-slate-400 text-xs">
+                      KD
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    {locale === "ar" ? "إلغاء" : "Cancel"}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white hover:bg-emerald-500 shadow-md disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <Unlock className="w-4 h-4" />
+                    {isSubmitting
+                      ? locale === "ar"
+                        ? "جاري الفتح..."
+                        : "Opening..."
+                      : locale === "ar"
+                      ? "فتح الوردية والبدء"
+                      : "Confirm & Open Shift"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ================= VIEW 2: ACTIVE SHIFT SUMMARY ================= */}
+          {modalView === "summary" && isShiftOpen && (
+            <div className="space-y-4">
+              {/* Cashier & Branch Metadata Banner */}
+              <div className="grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 border border-slate-200">
+                <div>
+                  <p className="text-slate-500 text-[11px]">{locale === "ar" ? "الوردية:" : "Shift:"}</p>
+                  <p className="font-bold text-slate-900 text-sm">{shift.shiftNumber}</p>
+                  <p className="text-slate-500 text-[11px] mt-2">
+                    {locale === "ar" ? "الكاشير المسجل:" : "Cashier (User):"}
+                  </p>
+                  <p className="font-bold text-slate-900">{cashierName || "Ahmed"}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500 text-[11px]">{locale === "ar" ? "الفرع:" : "Branch:"}</p>
+                  <p className="font-bold text-slate-900 text-sm">{branchName || "Salmiya 5th"}</p>
+                  <p className="text-slate-500 text-[11px] mt-2">
+                    {locale === "ar" ? "العهدة الافتتاحية:" : "Opening Float:"}
+                  </p>
+                  <p className="font-bold text-emerald-700">{formatKD(openingCash)} KD</p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>KNET:</span>
-                <span className="font-bold text-slate-900">{formatKD(knetSales)} KD</span>
+
+              {/* Comprehensive Financial Sales Breakdown */}
+              <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                    {locale === "ar" ? "ملخص مبيعات الوردية الحالية" : "Live Shift Financial Breakdown"}
+                  </h4>
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {transactionsCount} {locale === "ar" ? "عمليات" : "Transactions"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-slate-600">
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "إجمالي المبيعات:" : "Total Sales:"}</span>
+                    <span className="font-black text-slate-950 font-mono">{formatKD(totalSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-emerald-700 font-semibold">
+                      {locale === "ar" ? "مبيعات الكاش (نقدي):" : "Cash Sales:"}
+                    </span>
+                    <span className="font-bold text-emerald-700 font-mono">{formatKD(cashSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "كي نت (K-NET):" : "K-NET:"}</span>
+                    <span className="font-bold text-slate-900 font-mono">{formatKD(knetSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "حسابي (Hesabi):" : "Hesabi:"}</span>
+                    <span className="font-bold text-slate-900 font-mono">{formatKD(hesabiSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "تابي (Tabby):" : "Tabby:"}</span>
+                    <span className="font-bold text-slate-900 font-mono">{formatKD(tabbySales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "بطاقة ائتمان (Card):" : "Credit Card:"}</span>
+                    <span className="font-bold text-slate-900 font-mono">{formatKD(cardSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "مبيعات آجلة (Credit):" : "B2B Credit:"}</span>
+                    <span className="font-bold text-amber-700 font-mono">{formatKD(creditSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-rose-700">
+                      {locale === "ar" ? "مرتجعات المبيعات:" : "Sales Returns:"}
+                    </span>
+                    <span className="font-bold text-rose-700 font-mono">-{formatKD(totalReturns)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "إجمالي الخصومات:" : "Discounts Given:"}</span>
+                    <span className="font-bold text-indigo-700 font-mono">{formatKD(totalDiscounts)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>{locale === "ar" ? "هدايا مجانية:" : "Gift / Free Items:"}</span>
+                    <span className="font-bold text-purple-700 font-mono">
+                      {giftsCount} {locale === "ar" ? "قطعة" : "pcs"} ({formatKD(giftsTotalKd)} KD)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Expected Cash in Drawer */}
+                <div className="flex justify-between items-center bg-slate-900 text-white rounded-xl p-3 mt-2">
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-xs text-slate-200">
+                      {locale === "ar" ? "النقدية المتوقعة بالدرج:" : "Expected Cash in Drawer:"}
+                    </span>
+                    <p className="text-[10px] text-slate-400">
+                      {locale === "ar"
+                        ? "العهدة الافتتاحية + مبيعات الكاش - المرتجعات النقدية"
+                        : "Opening Float + Cash Sales - Cash Returns"}
+                    </p>
+                  </div>
+                  <span className="font-black text-base text-[#FDCE0C] font-mono">
+                    {formatKD(expectedCash)} KD
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Hesabi:</span>
-                <span className="font-bold text-slate-900">{formatKD(hesabiSales)} KD</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tabby:</span>
-                <span className="font-bold text-slate-900">{formatKD(tabbySales)} KD</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Credit (آجل):</span>
-                <span className="font-bold text-slate-900">{formatKD(creditSales)} KD</span>
-              </div>
-              <div className="flex justify-between col-span-2 border-t border-slate-200 pt-2 font-black text-slate-950 text-sm">
-                <span>Expected Cash in Drawer:</span>
-                <span>{formatKD(expectedCash)} KD</span>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                {(isHeadOfficeOrManager || userRole === "ADMIN" || userRole === "MANAGER") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAdminAction("adjust");
+                      setModalView("admin_override");
+                    }}
+                    className="text-slate-500 hover:text-slate-800 text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                    {locale === "ar" ? "خيارات المدير" : "Manager Tools"}
+                  </button>
+                )}
+
+                <div className="flex gap-2 ms-auto">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    {locale === "ar" ? "إغلاق النافذة" : "Close Window"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActualCashInput(expectedCash.toFixed(3));
+                      setModalView("close_input");
+                    }}
+                    className="rounded-xl bg-[#FDCE0C] px-5 py-2 font-black text-black hover:bg-[#E5B80B] shadow-md flex items-center gap-1.5"
+                  >
+                    <Lock className="w-4 h-4" />
+                    {locale === "ar" ? "إقفال الوردية (F10)" : "Close Shift (F10)"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex gap-2 justify-end pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onCloseShift();
-                onClose();
-              }}
-              className="rounded-xl bg-[#FDCE0C] px-5 py-2 font-black text-black hover:bg-[#E5B80B] shadow-md"
-            >
-              {locale === "ar" ? "إغلاق الوردية (F10)" : "Close Shift (F10)"}
-            </button>
-          </div>
+          {/* ================= VIEW 3: CLOSE SHIFT CASH RECONCILIATION ================= */}
+          {modalView === "close_input" && (
+            <div className="space-y-4">
+              {/* Expected vs Actual Comparison Banner */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                  <span className="text-slate-500 text-xs font-medium">
+                    {locale === "ar" ? "النقدية المتوقعة بالدرج" : "Expected Cash in Drawer"}
+                  </span>
+                  <div className="text-lg font-black font-mono text-slate-900 mt-1">
+                    {formatKD(expectedCash)} <span className="text-xs font-sans text-slate-500">KD</span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200">
+                  <span className="text-indigo-950 text-xs font-bold">
+                    {locale === "ar" ? "النقدية الفعلية المسلمة" : "Actual Cash Handed Over"}
+                  </span>
+                  <div className="text-lg font-black font-mono text-indigo-900 mt-1">
+                    {formatKD(actualCashValue)} <span className="text-xs font-sans text-indigo-600">KD</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Classification Badge: Balanced / Shortage / Excess */}
+              <div
+                className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  isBalanced
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                    : isExcess
+                    ? "bg-cyan-50 border-cyan-200 text-cyan-900"
+                    : "bg-rose-50 border-rose-200 text-rose-900"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {isBalanced ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle
+                      className={`w-5 h-5 shrink-0 ${isExcess ? "text-cyan-600" : "text-rose-600"}`}
+                    />
+                  )}
+                  <div>
+                    <span className="font-black text-xs uppercase tracking-wide">
+                      {isBalanced
+                        ? locale === "ar"
+                          ? "مطابقة تامة ومضبوطة (BALANCED)"
+                          : "Balanced (Exact Match)"
+                        : isExcess
+                        ? locale === "ar"
+                          ? "زيادة نقدية في الصندوق (EXCESS)"
+                          : "Cash Excess / Overage Detected"
+                        : locale === "ar"
+                        ? "عجز نقدي في الصندوق (SHORTAGE)"
+                        : "Cash Shortage / Deficit Detected"}
+                    </span>
+                    <p className="text-[11px] opacity-80 mt-0.5">
+                      {isBalanced
+                        ? locale === "ar"
+                          ? "الرصيد الفعلي يطابق النقدية المتوقعة بدقة 3 منازل عشرية."
+                          : "Physical cash matches system expected register drawer total exactly."
+                        : isExcess
+                        ? locale === "ar"
+                          ? "المبلغ الفعلي أكبر من المتوقع بمقدار الفارق أدناه."
+                          : "Actual cash counted exceeds expected system drawer total."
+                        : locale === "ar"
+                        ? "المبلغ الفعلي أقل من المتوقع بمقدار العجز أدناه."
+                        : "Actual cash counted is less than expected system drawer total."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-end shrink-0">
+                  <div className="text-base font-black font-mono">
+                    {isExcess ? `+${formatKD(difference)}` : formatKD(difference)} KD
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-75">
+                    {locale === "ar" ? "الفارق" : "Variance"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Physical Cash Input & Banknote Denomination Toggle */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800">
+                    {locale === "ar" ? "أدخل النقدية الفعلية (د.ك):" : "Enter Actual Cash Handed Over (KD):"}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDenomCounter(!showDenomCounter)}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                  >
+                    <Coins className="w-3.5 h-3.5" />
+                    {showDenomCounter
+                      ? locale === "ar"
+                        ? "إدخال مباشر للمبلغ"
+                        : "Use Direct Input"
+                      : locale === "ar"
+                      ? "تعداد الفئات النقدية (20/10/5 د.ك)"
+                      : "Use Banknote Counter"}
+                  </button>
+                </div>
+
+                {!showDenomCounter ? (
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      value={actualCashInput}
+                      onChange={(e) => setActualCashInput(e.target.value)}
+                      placeholder="0.000"
+                      className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 font-mono text-base font-black text-slate-950 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                    />
+                    <span className="absolute end-4 top-3.5 font-bold text-slate-400 text-xs">
+                      KD
+                    </span>
+                  </div>
+                ) : (
+                  /* Banknote denominations tally grid */
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      {/* 20 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>20 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d20 * 20).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d20 || ""}
+                          onChange={(e) =>
+                            setDenominations({ ...denominations, d20: parseInt(e.target.value) || 0 })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                      {/* 10 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>10 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d10 * 10).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d10 || ""}
+                          onChange={(e) =>
+                            setDenominations({ ...denominations, d10: parseInt(e.target.value) || 0 })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                      {/* 5 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>5 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d5 * 5).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d5 || ""}
+                          onChange={(e) =>
+                            setDenominations({ ...denominations, d5: parseInt(e.target.value) || 0 })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                      {/* 1 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>1 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d1 * 1).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d1 || ""}
+                          onChange={(e) =>
+                            setDenominations({ ...denominations, d1: parseInt(e.target.value) || 0 })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                      {/* 0.500 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>0.500 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d05 * 0.5).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d05 || ""}
+                          onChange={(e) =>
+                            setDenominations({ ...denominations, d05: parseInt(e.target.value) || 0 })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                      {/* 0.250 KD */}
+                      <div className="p-2 bg-white rounded-xl border border-slate-200">
+                        <div className="flex justify-between font-bold text-slate-600">
+                          <span>0.250 KD</span>
+                          <span className="font-mono text-emerald-700">
+                            {(denominations.d025 * 0.25).toFixed(3)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={denominations.d025 || ""}
+                          onChange={(e) =>
+                            setDenominations({
+                              ...denominations,
+                              d025: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="Qty"
+                          className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-lg p-1 text-center font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Closing Notes */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {locale === "ar" ? "ملاحظات إقفال الوردية (اختياري):" : "Shift Closing Notes (Optional):"}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={closingNotes}
+                    onChange={(e) => setClosingNotes(e.target.value)}
+                    placeholder={
+                      locale === "ar"
+                        ? "أدخل ملاحظات حول تسليم العهدة أو أسباب الفروقات..."
+                        : "Enter handover notes or reason for variance..."
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs text-slate-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Confirm Shift Closing Actions */}
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalView("summary")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  {locale === "ar" ? "رجوع" : "Back"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleCloseShiftSubmit}
+                  className="rounded-xl bg-rose-600 px-6 py-2.5 font-bold text-white hover:bg-rose-500 shadow-md flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Lock className="w-4 h-4" />
+                  {isSubmitting
+                    ? locale === "ar"
+                      ? "جاري الحفظ والإقفال..."
+                      : "Saving & Closing..."
+                    : locale === "ar"
+                    ? "تأكيد الإقفال وترحيل الفروقات"
+                    : "Confirm & Finalize Shift Close"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ================= VIEW 4: OFFICIAL PRINTABLE SHIFT CLOSING REPORT ================= */}
+          {modalView === "report" && (
+            <div className="space-y-4">
+              <div
+                id="printable-shift-report"
+                className="p-6 rounded-2xl bg-white border border-slate-300 shadow-xs space-y-4 text-slate-900 font-mono"
+              >
+                {/* Official Report Header */}
+                <div className="text-center border-b border-dashed border-slate-400 pb-4 space-y-1 font-sans">
+                  <h2 className="text-base font-black text-slate-950 uppercase tracking-wide">
+                    BIN ESSA GROUP (EST. 2010)
+                  </h2>
+                  <p className="text-xs font-bold text-slate-700">
+                    {locale === "ar"
+                      ? "مجموعة بن عيسى - تقرير إقفال الوردية الرسمي"
+                      : "Official POS Shift Closing & Reconciliation Report"}
+                  </p>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    {branchName} • {formatKuwaitDateTime(new Date(), locale)}
+                  </p>
+                </div>
+
+                {/* Metadata */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] border-b border-dashed border-slate-400 pb-3">
+                  <div>
+                    <span className="text-slate-500 font-sans">Shift #:</span>{" "}
+                    <span className="font-bold">{closedShiftReport?.shiftNumber || shift?.shiftNumber || "SHIFT-0001"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-sans">Status:</span>{" "}
+                    <span className="font-bold text-rose-700">CLOSED (مغلقة)</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-sans">Cashier:</span>{" "}
+                    <span className="font-bold">{cashierName || "Ahmed"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-sans">Branch:</span>{" "}
+                    <span className="font-bold">{branchName}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-sans">Opened:</span>{" "}
+                    <span>
+                      {shift?.openedAt
+                        ? new Date(shift.openedAt).toLocaleTimeString()
+                        : "09:00:00"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-sans">Closed:</span>{" "}
+                    <span>{new Date().toLocaleTimeString()}</span>
+                  </div>
+                </div>
+
+                {/* Financial Summary Table */}
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">Opening Cash Float:</span>
+                    <span className="font-bold">{formatKD(openingCash)} KD</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200 pt-1">
+                    <span className="font-sans text-slate-600">Cash Sales (نقدي):</span>
+                    <span className="font-bold text-emerald-700">+{formatKD(cashSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">K-NET Sales:</span>
+                    <span className="font-bold">+{formatKD(knetSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">Hesabi Sales:</span>
+                    <span className="font-bold">+{formatKD(hesabiSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">Tabby Sales:</span>
+                    <span className="font-bold">+{formatKD(tabbySales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">Credit Card Sales:</span>
+                    <span className="font-bold">+{formatKD(cardSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-sans text-slate-600">B2B Credit Sales:</span>
+                    <span className="font-bold">+{formatKD(creditSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between border-t border-slate-200 pt-1 font-bold">
+                    <span className="font-sans">Total Gross Sales:</span>
+                    <span className="font-black">{formatKD(totalSales)} KD</span>
+                  </div>
+                  <div className="flex justify-between text-rose-700">
+                    <span className="font-sans">Sales Returns:</span>
+                    <span>-{formatKD(totalReturns)} KD</span>
+                  </div>
+                  <div className="flex justify-between text-indigo-700">
+                    <span className="font-sans">Discounts Granted:</span>
+                    <span>{formatKD(totalDiscounts)} KD</span>
+                  </div>
+                  <div className="flex justify-between text-purple-700">
+                    <span className="font-sans">Gift / Free Items:</span>
+                    <span>{giftsCount} pcs ({formatKD(giftsTotalKd)} KD)</span>
+                  </div>
+
+                  {/* Expected vs Actual Cash */}
+                  <div className="border-t-2 border-slate-900 pt-2 space-y-1">
+                    <div className="flex justify-between font-bold text-slate-900">
+                      <span className="font-sans">Expected Drawer Cash:</span>
+                      <span>{formatKD(expectedCash)} KD</span>
+                    </div>
+                    <div className="flex justify-between font-black text-indigo-950">
+                      <span className="font-sans">Actual Cash Handed Over:</span>
+                      <span>{formatKD(actualCashValue)} KD</span>
+                    </div>
+                    <div
+                      className={`flex justify-between font-black text-sm p-1.5 rounded ${
+                        isBalanced
+                          ? "bg-emerald-100 text-emerald-900"
+                          : isExcess
+                          ? "bg-cyan-100 text-cyan-900"
+                          : "bg-rose-100 text-rose-900"
+                      }`}
+                    >
+                      <span className="font-sans">
+                        {isBalanced
+                          ? "Variance (BALANCED):"
+                          : isExcess
+                          ? "Variance (EXCESS):"
+                          : "Variance (SHORTAGE):"}
+                      </span>
+                      <span>
+                        {isExcess ? `+${formatKD(difference)}` : formatKD(difference)} KD
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sign-off signatures */}
+                <div className="pt-6 grid grid-cols-2 gap-8 text-[10px] font-sans border-t border-dashed border-slate-400 mt-4 text-center">
+                  <div>
+                    <div className="border-b border-slate-400 h-6 mb-1" />
+                    <p className="font-bold">Cashier Signature (توقيع الكاشير)</p>
+                  </div>
+                  <div>
+                    <div className="border-b border-slate-400 h-6 mb-1" />
+                    <p className="font-bold">Manager Approval (اعتماد المدير)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  {locale === "ar" ? "طباعة التقرير" : "Print Shift Report"}
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalView("open");
+                      setOpeningFloatInput(50.0);
+                    }}
+                    className="rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white hover:bg-emerald-500 shadow-md flex items-center gap-1.5"
+                  >
+                    <Unlock className="w-4 h-4" />
+                    {locale === "ar" ? "فتح وردية جديدة" : "Open Next Shift"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-xl bg-slate-900 px-4 py-2 font-bold text-white hover:bg-slate-800"
+                  >
+                    {locale === "ar" ? "إغلاق" : "Done"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= VIEW 5: MANAGER REOPEN / ADJUST OVERRIDE ================= */}
+          {modalView === "admin_override" && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
+                <ShieldAlert className="w-5 h-5 shrink-0 text-amber-600" />
+                <div className="text-xs">
+                  <p className="font-bold">
+                    {locale === "ar" ? "منطقة صلاحيات الإدارة" : "Manager Override Area"}
+                  </p>
+                  <p className="opacity-90">
+                    {locale === "ar"
+                      ? "كل تعديل أو إعادة فتح للوردية يتم تسجيله فوراً في سجل التدقيق الأمني غير القابل للتعديل."
+                      : "Every shift adjustment or reopen is logged to the immutable system audit trail."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAdminAction("reopen")}
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-xs border transition ${
+                      adminAction === "reopen"
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    {locale === "ar" ? "إعادة فتح الوردية (Reopen)" : "Reopen Closed Shift"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminAction("adjust")}
+                    className={`flex-1 py-2.5 rounded-xl font-bold text-xs border transition ${
+                      adminAction === "adjust"
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    {locale === "ar" ? "تعديل النقدية المحصية (Adjust)" : "Adjust Counted Cash"}
+                  </button>
+                </div>
+
+                {adminAction === "adjust" && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {locale === "ar" ? "النقدية الفعلية المعدلة (د.ك):" : "Revised Actual Cash (KD):"}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      min="0"
+                      required
+                      value={adminAdjustCash}
+                      onChange={(e) => setAdminAdjustCash(parseFloat(e.target.value) || 0)}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 font-mono text-sm font-bold outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {locale === "ar"
+                      ? "سبب التعديل / إعادة الفتح (إلزامي للتدقيق):"
+                      : "Reason for Adjustment / Reopen (Mandatory Audit Requirement):"}
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={adminReason}
+                    onChange={(e) => setAdminReason(e.target.value)}
+                    placeholder={
+                      locale === "ar"
+                        ? "أدخل السبب التشغيلي المفصل..."
+                        : "Provide detailed business justification..."
+                    }
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 text-xs text-slate-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalView("summary")}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-700 hover:bg-slate-50"
+                >
+                  {locale === "ar" ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleAdminSubmit}
+                  className="rounded-xl bg-indigo-600 px-5 py-2 font-bold text-white hover:bg-indigo-500 shadow-md disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  {isSubmitting
+                    ? locale === "ar"
+                      ? "جاري التنفيذ..."
+                      : "Executing..."
+                    : locale === "ar"
+                    ? "تنفيذ وتوثيق التدقيق"
+                    : "Confirm & Log Audit"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
