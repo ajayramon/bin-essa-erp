@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# backend directory (has own Dockerfile)
+/backend
+/backups
+*.sql
+*.sql.gz
+*.dump
+
 # vercel
 .vercel
 

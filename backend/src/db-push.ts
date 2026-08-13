@@ -1,8 +1,9 @@
 import { execSync } from 'child_process';
 
 async function runDbPushWithRetry() {
-  console.log('Attempting Prisma DB Push to Supabase PostgreSQL...');
+  console.log('Attempting Prisma DB Push to Enterprise PostgreSQL...');
   for (let attempt = 1; attempt <= 5; attempt++) {
+
     try {
       console.log(`[Attempt ${attempt}/5] Syncing database schema...`);
       execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit', env: { ...process.env, PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION: '(Recommended) Yes, proceed with syncing database schema (prisma db push) to apply Purchasing, Inventory & Stock Transfer tables' } });
