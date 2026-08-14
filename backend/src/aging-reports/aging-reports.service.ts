@@ -13,6 +13,10 @@ export class AgingReportsService {
             paymentMethod: 'CREDIT',
             status: 'POSTED',
           },
+          orderBy: { date: 'asc' },
+        },
+        payments: {
+          orderBy: { date: 'asc' },
         },
       },
     });
@@ -26,7 +30,7 @@ export class AgingReportsService {
       let days90Plus = 0;
 
       for (const inv of c.salesInvoices) {
-        const amount = Number(inv.totalAmount);
+        const amount = inv.isReturn ? -Number(inv.totalAmount) : Number(inv.totalAmount);
         const ageDays = Math.floor((now.getTime() - new Date(inv.date).getTime()) / (1000 * 60 * 60 * 24));
 
         if (ageDays <= 30) {
@@ -40,17 +44,41 @@ export class AgingReportsService {
         }
       }
 
-      const totalOutstanding = current + days31to60 + days61to90 + days90Plus;
+      // Net payments chronologically against oldest debt (FIFO)
+      let unallocatedPayment = c.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+      if (unallocatedPayment > 0) {
+        const deduct90 = Math.min(Math.max(days90Plus, 0), unallocatedPayment);
+        days90Plus = Math.max(0, days90Plus - deduct90);
+        unallocatedPayment -= deduct90;
+      }
+      if (unallocatedPayment > 0) {
+        const deduct61 = Math.min(Math.max(days61to90, 0), unallocatedPayment);
+        days61to90 = Math.max(0, days61to90 - deduct61);
+        unallocatedPayment -= deduct61;
+      }
+      if (unallocatedPayment > 0) {
+        const deduct31 = Math.min(Math.max(days31to60, 0), unallocatedPayment);
+        days31to60 = Math.max(0, days31to60 - deduct31);
+        unallocatedPayment -= deduct31;
+      }
+      if (unallocatedPayment > 0) {
+        const deductCurr = Math.min(Math.max(current, 0), unallocatedPayment);
+        current = Math.max(0, current - deductCurr);
+        unallocatedPayment -= deductCurr;
+      }
+
+      const totalOutstanding = Math.round((current + days31to60 + days61to90 + days90Plus) * 1000) / 1000;
 
       return {
         customerId: c.id,
         customerCode: c.code,
         customerName: c.name,
         creditLimit: Number(c.creditLimit),
-        current,
-        days31to60,
-        days61to90,
-        days90Plus,
+        current: Math.round(current * 1000) / 1000,
+        days31to60: Math.round(days31to60 * 1000) / 1000,
+        days61to90: Math.round(days61to90 * 1000) / 1000,
+        days90Plus: Math.round(days90Plus * 1000) / 1000,
         totalOutstanding,
       };
     });

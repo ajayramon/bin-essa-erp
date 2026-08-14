@@ -77,97 +77,28 @@ export class PurchaseOrdersService {
     const totalAmount = subtotal + taxAmount;
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        // Parallelize account lookups
-        const [inventoryAccount, apAccount] = await Promise.all([
-          tx.account.findUnique({ where: { code: '1200' } }).then(async (acc) => {
-            return acc ?? tx.account.create({ data: { code: '1200', name: 'Inventory', type: 'ASSET' } });
-          }),
-          tx.account.findUnique({ where: { code: '2000' } }).then(async (acc) => {
-            return acc ?? tx.account.create({ data: { code: '2000', name: 'Accounts Payable', type: 'LIABILITY' } });
-          }),
-        ]);
-
-        // 1. Create the Purchase Order
-        const purchaseOrder = await tx.purchaseOrder.create({
-          data: {
-            poNumber: dto.poNumber,
-            supplierId: dto.supplierId,
-            branchId: dto.branchId,
-            status: dto.status ?? 'POSTED',
-            subtotal,
-            taxAmount,
-            totalAmount,
-            lines: {
-              create: lineData,
+      return await this.prisma.purchaseOrder.create({
+        data: {
+          poNumber: dto.poNumber,
+          supplierId: dto.supplierId,
+          branchId: dto.branchId,
+          status: dto.status ?? 'POSTED',
+          subtotal,
+          taxAmount,
+          totalAmount,
+          lines: {
+            create: lineData,
+          },
+        },
+        include: {
+          lines: {
+            include: {
+              item: true,
             },
           },
-          include: {
-            lines: true,
-            supplier: true,
-          },
-        });
-
-        // 2. Increase stock & update Weighted Average Cost (WAC) for each purchased item
-        for (const line of dto.lines) {
-          const currentItem = await tx.item.findUnique({ where: { id: line.itemId } });
-          if (currentItem) {
-            const currentQty = currentItem.stockQuantity ?? 0;
-            const currentCost = Number(currentItem.cost) || 0;
-            const newQty = currentQty + Math.round(line.quantity);
-
-            // Weighted Average Cost formula
-            const newWacCost = newQty > 0
-              ? ((currentQty * currentCost) + (line.quantity * line.unitCost)) / newQty
-              : line.unitCost;
-
-            await tx.item.update({
-              where: { id: line.itemId },
-              data: {
-                stockQuantity: newQty,
-                cost: newWacCost,
-              },
-            });
-          }
-
-          await tx.itemStock.upsert({
-            where: {
-              itemId_branchId: { itemId: line.itemId, branchId: dto.branchId },
-            },
-            update: { quantity: { increment: line.quantity } },
-            create: { itemId: line.itemId, branchId: dto.branchId, quantity: line.quantity },
-          });
-        }
-
-        // 3. Auto-post journal entry: DEBIT Inventory, CREDIT Accounts Payable
-        const journalEntry = await tx.journalEntry.create({
-          data: {
-            reference: `JE-${dto.poNumber}`,
-            description: `Auto-posted from purchase order ${dto.poNumber}`,
-            status: 'POSTED',
-            branchId: dto.branchId,
-            purchaseOrderId: purchaseOrder.id,
-            lines: {
-              create: [
-                {
-                  accountId: inventoryAccount.id,
-                  debit: totalAmount,
-                  credit: 0,
-                },
-                {
-                  accountId: apAccount.id,
-                  debit: 0,
-                  credit: totalAmount,
-                },
-              ],
-            },
-          },
-          include: {
-            lines: true,
-          },
-        });
-
-        return { ...purchaseOrder, journalEntry };
+          supplier: true,
+          branch: true,
+        },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto';
 
@@ -61,6 +61,10 @@ export class SalesInvoicesService {
   }
 
   async create(dto: CreateSalesInvoiceDto) {
+    if (dto.paymentMethod === 'CREDIT' && !dto.customerId) {
+      throw new BadRequestException('Customer profile is required for credit transactions.');
+    }
+
     const lineData = dto.lines.map((line) => {
       const lineTotal = Number((line.quantity * line.unitPrice).toFixed(3));
       const lineDiscount = line.discountAmount ?? 0;
@@ -84,6 +88,43 @@ export class SalesInvoicesService {
     const totalAmount = Number((subtotal + taxAmount - headerDiscount).toFixed(3));
 
     return this.prisma.$transaction(async (tx) => {
+      // Validate customer credit limit if credit sale
+      if (dto.paymentMethod === 'CREDIT' && dto.customerId) {
+        const customer = await tx.customer.findUnique({ where: { id: dto.customerId } });
+        if (!customer) {
+          throw new NotFoundException(`Customer with ID "${dto.customerId}" not found.`);
+        }
+        const creditLimit = Number(customer.creditLimit) || 0;
+        if (creditLimit > 0) {
+          const [totalInvoiced, totalReturned, totalPaid] = await Promise.all([
+            tx.salesInvoice.aggregate({
+              where: { customerId: dto.customerId, status: 'POSTED', paymentMethod: 'CREDIT', isReturn: false },
+              _sum: { totalAmount: true },
+            }),
+            tx.salesInvoice.aggregate({
+              where: { customerId: dto.customerId, status: 'POSTED', paymentMethod: 'CREDIT', isReturn: true },
+              _sum: { totalAmount: true },
+            }),
+            tx.customerPayment.aggregate({
+              where: { customerId: dto.customerId },
+              _sum: { amount: true },
+            }),
+          ]);
+
+          const currentBalance = Math.max(
+            0,
+            (Number(totalInvoiced._sum.totalAmount) || 0) -
+            (Number(totalReturned._sum.totalAmount) || 0) -
+            (Number(totalPaid._sum.amount) || 0)
+          );
+
+          if (currentBalance + totalAmount > creditLimit) {
+            throw new BadRequestException(
+              `Credit limit exceeded. Customer limit: ${creditLimit.toFixed(3)} KD, Outstanding balance: ${currentBalance.toFixed(3)} KD, Invoice amount: ${totalAmount.toFixed(3)} KD`
+            );
+          }
+        }
+      }
       // Fetch user details for audit trail
       const user = await tx.user.findUnique({
         where: { id: dto.userId },

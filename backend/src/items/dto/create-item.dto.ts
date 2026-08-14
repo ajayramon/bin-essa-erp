@@ -120,6 +120,10 @@ export class CreateItemDto {
   additionalBarcodes?: string[];
 
   @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
   uoms?: Array<{
     unitName: string;
     conversionRatio: number;

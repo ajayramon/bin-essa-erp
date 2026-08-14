@@ -64,17 +64,20 @@ export class ItemsService {
     });
 
     try {
-      const branches = await this.prisma.branch.findMany();
+      const branches = await this.prisma.branch.findMany({ select: { id: true, code: true } });
       if (branches.length > 0) {
-        await Promise.all(
-          branches.map((b) =>
-            this.prisma.itemStock.upsert({
-              where: { itemId_branchId: { itemId: item.id, branchId: b.id } },
-              update: { quantity: stockQty },
-              create: { itemId: item.id, branchId: b.id, quantity: stockQty },
-            })
-          )
-        );
+        // Find designated branch (or default central warehouse / first branch)
+        const targetBranch = dto.branchId 
+          ? branches.find(b => b.id === dto.branchId) 
+          : (branches.find(b => b.code === 'br-01') || branches[0]);
+
+        if (targetBranch) {
+          await this.prisma.itemStock.upsert({
+            where: { itemId_branchId: { itemId: item.id, branchId: targetBranch.id } },
+            update: { quantity: stockQty },
+            create: { itemId: item.id, branchId: targetBranch.id, quantity: stockQty },
+          });
+        }
       }
     } catch {
       // Non-blocking branch sync fallback
@@ -114,20 +117,13 @@ export class ItemsService {
       data: dto,
     });
 
-    if (dto.stockQuantity !== undefined) {
+    if (dto.stockQuantity !== undefined && dto.branchId) {
       try {
-        const branches = await this.prisma.branch.findMany();
-        if (branches.length > 0) {
-          await Promise.all(
-            branches.map((b) =>
-              this.prisma.itemStock.upsert({
-                where: { itemId_branchId: { itemId: id, branchId: b.id } },
-                update: { quantity: dto.stockQuantity },
-                create: { itemId: id, branchId: b.id, quantity: dto.stockQuantity },
-              })
-            )
-          );
-        }
+        await this.prisma.itemStock.upsert({
+          where: { itemId_branchId: { itemId: id, branchId: dto.branchId } },
+          update: { quantity: dto.stockQuantity },
+          create: { itemId: id, branchId: dto.branchId, quantity: dto.stockQuantity },
+        });
       } catch {
         // Non-blocking branch sync fallback
       }

@@ -30,18 +30,28 @@ export class SalesOrdersService {
     const taxAmount = 0;
     const totalAmount = subtotal + taxAmount;
 
-    // Calculate current open AR balance for customer
-    const totalInvoiced = await this.prisma.salesInvoice.aggregate({
-      where: { customerId: dto.customerId, status: 'POSTED' },
-      _sum: { totalAmount: true },
-    });
+    // Calculate current open AR balance for customer (Credit invoices - Credit returns - Payments)
+    const [totalCreditInvoiced, totalCreditReturned, totalPaid] = await Promise.all([
+      this.prisma.salesInvoice.aggregate({
+        where: { customerId: dto.customerId, status: 'POSTED', paymentMethod: 'CREDIT', isReturn: false },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.salesInvoice.aggregate({
+        where: { customerId: dto.customerId, status: 'POSTED', paymentMethod: 'CREDIT', isReturn: true },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.customerPayment.aggregate({
+        where: { customerId: dto.customerId },
+        _sum: { amount: true },
+      }),
+    ]);
 
-    const totalPaid = await this.prisma.customerPayment.aggregate({
-      where: { customerId: dto.customerId },
-      _sum: { amount: true },
-    });
-
-    const currentBalance = (Number(totalInvoiced._sum.totalAmount) || 0) - (Number(totalPaid._sum.amount) || 0);
+    const currentBalance = Math.max(
+      0,
+      (Number(totalCreditInvoiced._sum.totalAmount) || 0) -
+      (Number(totalCreditReturned._sum.totalAmount) || 0) -
+      (Number(totalPaid._sum.amount) || 0)
+    );
     const creditLimit = Number(customer.creditLimit) || 0;
     const projectedBalance = currentBalance + totalAmount;
 

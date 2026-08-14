@@ -94,7 +94,11 @@ export class CustomerPaymentsService {
 
     const [invoices, payments] = await Promise.all([
       this.prisma.salesInvoice.findMany({
-        where: { customerId, status: 'POSTED' },
+        where: {
+          customerId,
+          status: 'POSTED',
+          paymentMethod: 'CREDIT',
+        },
         orderBy: { date: 'asc' },
       }),
       this.prisma.customerPayment.findMany({
@@ -107,10 +111,10 @@ export class CustomerPaymentsService {
     const transactions = [
       ...invoices.map((inv) => ({
         date: inv.date,
-        type: 'INVOICE',
+        type: inv.isReturn ? 'RETURN' : 'INVOICE',
         reference: inv.invoiceNumber,
-        debit: Number(inv.totalAmount),
-        credit: 0,
+        debit: inv.isReturn ? 0 : Number(inv.totalAmount),
+        credit: inv.isReturn ? Number(inv.totalAmount) : 0,
       })),
       ...payments.map((p) => ({
         date: p.date,
@@ -130,9 +134,10 @@ export class CustomerPaymentsService {
       };
     });
 
-    const totalInvoiced = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+    const totalCreditInvoices = invoices.filter(i => !i.isReturn).reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+    const totalCreditReturns = invoices.filter(i => i.isReturn).reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
     const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    const netBalance = totalInvoiced - totalPaid;
+    const netBalance = Math.round((totalCreditInvoices - totalCreditReturns - totalPaid) * 1000) / 1000;
     const creditLimit = Number(customer.creditLimit) || 0;
     const availableCredit = creditLimit > 0 ? Math.max(creditLimit - netBalance, 0) : 0;
 
@@ -145,7 +150,8 @@ export class CustomerPaymentsService {
         paymentTerms: customer.paymentTerms,
       },
       summary: {
-        totalInvoiced,
+        totalInvoiced: totalCreditInvoices,
+        totalReturns: totalCreditReturns,
         totalPaid,
         netBalance,
         availableCredit,
