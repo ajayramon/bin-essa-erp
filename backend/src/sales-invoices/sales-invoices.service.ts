@@ -6,8 +6,9 @@ import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto';
 export class SalesInvoicesService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.salesInvoice.findMany({
+      where: branchId ? { branchId } : undefined,
       include: {
         customer: true,
         branch: true,

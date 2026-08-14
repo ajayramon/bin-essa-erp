@@ -86,9 +86,10 @@ export class ItemsService {
     return item;
   }
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.item.findMany({
       include: {
+        stocks: branchId ? { where: { branchId } } : true,
         uoms: true,
         additionalBarcodes: true,
       },
@@ -100,6 +101,7 @@ export class ItemsService {
     const item = await this.prisma.item.findUnique({
       where: { id },
       include: {
+        stocks: true,
         uoms: true,
         additionalBarcodes: true,
       },

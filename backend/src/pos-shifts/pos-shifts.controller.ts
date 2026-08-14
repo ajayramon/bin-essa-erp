@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { PosShiftsService } from './pos-shifts.service';
@@ -29,8 +30,11 @@ export class PosShiftsController {
   }
 
   @Get()
-  findAllShifts(@Query('branchId') branchId?: string) {
-    return this.posShiftsService.findAllShifts(branchId);
+  findAllShifts(@Req() req: any, @Query('branchId') queryBranchId?: string) {
+    const user = req?.user;
+    const isGlobalRole = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    const effectiveBranchId = !isGlobalRole && user?.branchId ? user.branchId : queryBranchId;
+    return this.posShiftsService.findAllShifts(effectiveBranchId);
   }
 
   @Post('open')

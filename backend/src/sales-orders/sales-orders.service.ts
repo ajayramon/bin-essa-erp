@@ -60,11 +60,14 @@ export class SalesOrdersService {
       status = 'CREDIT_HOLD';
     }
 
+    const defaultBranch = await this.prisma.branch.findFirst();
+    const effectiveBranchId = dto.branchId || customer.branchId || defaultBranch?.id || '';
+
     const order = await this.prisma.salesOrder.create({
       data: {
         orderNumber: dto.orderNumber,
         customerId: dto.customerId,
-        branchId: dto.branchId,
+        branchId: effectiveBranchId,
         status,
         subtotal,
         taxAmount,
@@ -94,8 +97,9 @@ export class SalesOrdersService {
     };
   }
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.salesOrder.findMany({
+      where: branchId ? { branchId } : undefined,
       include: {
         customer: true,
         branch: true,

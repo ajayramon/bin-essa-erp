@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const response = NextResponse.json(responseData);
+    const response = NextResponse.json(responseData, {
+      headers: { "x-auth-source": "NEXT_DEMO_FALLBACK" },
+    });
     response.cookies.set("bin_essa_session", "1", {
       path: "/",
       maxAge: 86400 * 7,

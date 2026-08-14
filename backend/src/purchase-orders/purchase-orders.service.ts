@@ -7,23 +7,15 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.purchaseOrder.findMany({
+      where: branchId ? { branchId } : undefined,
       include: {
         supplier: true,
         branch: true,
         lines: {
           include: {
             item: true,
-          },
-        },
-        journalEntry: {
-          include: {
-            lines: {
-              include: {
-                account: true,
-              },
-            },
           },
         },
       },

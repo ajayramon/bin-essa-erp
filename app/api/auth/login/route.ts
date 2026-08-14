@@ -157,9 +157,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. If an external backend URL is explicitly configured, try proxying to it
+    // 1. If an external backend URL is configured, proxy to NestJS
     const backendUrl = process.env.INTERNAL_API_URL || process.env.BACKEND_API_URL;
-    if (backendUrl && backendUrl !== "/api" && !backendUrl.includes("localhost")) {
+    if (backendUrl && backendUrl !== "/api") {
       try {
         const backendRes = await fetch(`${backendUrl}/auth/login`, {
           method: "POST",
@@ -167,9 +167,12 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ username, password }),
         });
 
-        if (backendRes.ok) {
-          const data = await backendRes.json();
-          const response = NextResponse.json(data);
+        const data = await backendRes.json().catch(() => null);
+
+        if (backendRes.ok && data?.access_token) {
+          const response = NextResponse.json(data, {
+            headers: { "x-auth-source": "NESTJS" },
+          });
           response.cookies.set("bin_essa_session", "1", {
             path: "/",
             maxAge: 86400 * 7,
@@ -182,12 +185,28 @@ export async function POST(request: NextRequest) {
           });
           return response;
         }
+
+        // If backend explicitly rejected the credentials (401/400), return the rejection directly!
+        if (backendRes.status === 401 || backendRes.status === 400) {
+          return NextResponse.json(
+            { message: data?.message || "Invalid username or password" },
+            { status: backendRes.status, headers: { "x-auth-source": "NESTJS" } }
+          );
+        }
       } catch {
-        // Fall through to resilient built-in auth if backend is unreachable
+        // Backend connection timeout / unreachable
       }
     }
 
-    // 2. Built-in Authentication for Vercel Deployments & Serverless Mode
+    // 2. Isolated Demo / Fallback Authentication (Only active in development or preview demo mode)
+    const isDemoAllowed = process.env.ALLOW_DEMO_AUTH === "true" || process.env.NODE_ENV !== "production" || !backendUrl;
+    if (!isDemoAllowed) {
+      return NextResponse.json(
+        { message: "ERP Backend server is unavailable. Real database authentication required in production." },
+        { status: 503, headers: { "x-auth-source": "DISALLOWED_IN_PRODUCTION" } }
+      );
+    }
+
     const lowerUser = username.toLowerCase();
     let user = PRESET_USERS[lowerUser];
 
@@ -254,7 +273,9 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const response = NextResponse.json(responseData);
+    const response = NextResponse.json(responseData, {
+      headers: { "x-auth-source": "NEXT_DEMO_FALLBACK" },
+    });
     response.cookies.set("bin_essa_session", "1", {
       path: "/",
       maxAge: 86400 * 7,

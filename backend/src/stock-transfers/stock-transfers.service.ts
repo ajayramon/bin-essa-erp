@@ -92,8 +92,9 @@ export class StockTransfersService {
     });
   }
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.stockTransfer.findMany({
+      where: branchId ? { OR: [{ fromBranchId: branchId }, { toBranchId: branchId }] } : undefined,
       include: {
         lines: {
           include: { item: true },

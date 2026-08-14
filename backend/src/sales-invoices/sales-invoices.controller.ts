@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { SalesInvoicesService } from './sales-invoices.service';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -19,8 +19,11 @@ export class SalesInvoicesController {
   }
 
   @Get()
-  findAll() {
-    return this.salesInvoicesService.findAll();
+  findAll(@Req() req: any, @Query('branchId') queryBranchId?: string) {
+    const user = req?.user;
+    const isGlobalRole = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    const effectiveBranchId = !isGlobalRole && user?.branchId ? user.branchId : queryBranchId;
+    return this.salesInvoicesService.findAll(effectiveBranchId);
   }
 
   @Get(':id')

@@ -160,8 +160,16 @@ export class CustomerPaymentsService {
     };
   }
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.customerPayment.findMany({
+      where: branchId
+        ? {
+            OR: [
+              { customer: { branchId } },
+              { journalEntry: { branchId } },
+            ],
+          }
+        : undefined,
       include: {
         customer: true,
         journalEntry: { include: { lines: true } },

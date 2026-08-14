@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 
@@ -17,5 +17,22 @@ export class CustomersService {
         branchId: dto.branchId,
       },
     });
+  }
+
+  async findAll(branchId?: string) {
+    return this.prisma.customer.findMany({
+      where: branchId ? { branchId } : undefined,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+    });
+    if (!customer) {
+      throw new NotFoundException(`Customer with ID "${id}" not found.`);
+    }
+    return customer;
   }
 }

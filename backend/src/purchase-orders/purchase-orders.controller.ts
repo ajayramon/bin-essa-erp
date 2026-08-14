@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -14,8 +14,11 @@ export class PurchaseOrdersController {
   }
 
   @Get()
-  findAll() {
-    return this.purchaseOrdersService.findAll();
+  findAll(@Req() req: any, @Query('branchId') queryBranchId?: string) {
+    const user = req?.user;
+    const isGlobalRole = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    const effectiveBranchId = !isGlobalRole && user?.branchId ? user.branchId : queryBranchId;
+    return this.purchaseOrdersService.findAll(effectiveBranchId);
   }
 
   @Get(':id')

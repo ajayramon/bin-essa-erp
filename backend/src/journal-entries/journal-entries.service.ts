@@ -45,9 +45,10 @@ export class JournalEntriesService {
     });
   }
 
-  async findAll() {
+  async findAll(branchId?: string) {
     return this.prisma.journalEntry.findMany({
-      include: { lines: true },
+      where: branchId ? { branchId } : undefined,
+      include: { lines: { include: { account: true } } },
       orderBy: { date: 'desc' },
     });
   }

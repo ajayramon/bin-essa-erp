@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
@@ -15,8 +15,11 @@ export class ItemsController {
   }
 
   @Get()
-  findAll() {
-    return this.itemsService.findAll();
+  findAll(@Req() req: any, @Query('branchId') queryBranchId?: string) {
+    const user = req?.user;
+    const isGlobalRole = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    const effectiveBranchId = !isGlobalRole && user?.branchId ? user.branchId : queryBranchId;
+    return this.itemsService.findAll(effectiveBranchId);
   }
 
   @Get(':id')

@@ -144,7 +144,7 @@ export class PosShiftsService {
     const openingFloat = Number(shift.openingFloat);
     // Expected Cash = Opening Cash + Cash Sales - Cash Returns
     const closingCashExpected = openingFloat + cashSalesTotal - cashReturnsTotal;
-    const closingCashActual = Number(dto.closingCashActual);
+    const closingCashActual = dto.closingCashActual !== undefined ? Number(dto.closingCashActual) : Number(dto.actualCash ?? 0);
     const cashVariance = closingCashActual - closingCashExpected;
 
     return this.prisma.$transaction(async (tx) => {

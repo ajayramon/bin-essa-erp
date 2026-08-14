@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StockTransfersService } from './stock-transfers.service';
 import { CreateStockTransferDto } from './dto/create-stock-transfer.dto';
@@ -14,8 +14,11 @@ export class StockTransfersController {
   }
 
   @Get()
-  findAll() {
-    return this.stockTransfersService.findAll();
+  findAll(@Req() req: any, @Query('branchId') queryBranchId?: string) {
+    const user = req?.user;
+    const isGlobalRole = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    const effectiveBranchId = !isGlobalRole && user?.branchId ? user.branchId : queryBranchId;
+    return this.stockTransfersService.findAll(effectiveBranchId);
   }
 
   @Get(':id')
