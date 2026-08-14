@@ -1,9 +1,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined"
-    ? (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-        ? "http://localhost:4000"
-        : "/api")
+    ? "/api"
     : (process.env.INTERNAL_API_URL || "http://backend:4000"));
 
 
@@ -61,7 +59,7 @@ export async function loginRequest(
 ): Promise<LoginResponse> {
   let res: Response | null = null;
 
-  // 1. Try configured external/internal API endpoint first
+  // 1. Try configured API endpoint
   try {
     res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
@@ -71,25 +69,36 @@ export async function loginRequest(
       body: JSON.stringify({ username, password }),
     });
   } catch {
-    // If backend connection refused (e.g. localhost:4000 is down or cross-origin blocked), proceed to local fallback
+    // If backend connection fails, proceed to local Next.js API handler
   }
 
-  // 2. If primary fetch failed to connect or returned 404/502/503, fallback to local Next.js /api/auth/login route
-  if (!res || res.status === 404 || res.status === 502 || res.status === 503) {
+  // 2. If primary fetch failed to connect or returned an error, fallback to local Next.js /api/auth/login
+  if (!res || !res.ok) {
     try {
-      res = await fetch("/api/auth/login", {
+      const fallbackRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
       });
-    } catch {
-      throw new Error("Unable to connect to authentication server. Please check your network or server connection.");
+
+      if (fallbackRes.ok) {
+        return fallbackRes.json();
+      }
+
+      if (!res) {
+        const body = await fallbackRes.json().catch(() => null);
+        throw new Error(body?.message ?? "Authentication failed");
+      }
+    } catch (err: any) {
+      if (!res) {
+        throw new Error(err?.message || "Unable to connect to authentication server. Please check your network connection.");
+      }
     }
   }
 
-  if (!res.ok) {
+  if (res && !res.ok) {
     const body = await res.json().catch(() => null);
     const errorMsg =
       typeof body?.message === "string"
@@ -98,6 +107,10 @@ export async function loginRequest(
         ? body.message.join(", ")
         : "Invalid username or password";
     throw new Error(errorMsg);
+  }
+
+  if (!res) {
+    throw new Error("Unable to connect to authentication service.");
   }
 
   return res.json();
