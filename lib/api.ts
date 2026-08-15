@@ -401,6 +401,7 @@ export interface CreateItemPayload {
   trackExpiry?: boolean;
   blockFreeGift?: boolean;
   blockDiscount?: boolean;
+  blockSale?: boolean;
   additionalBarcodes?: string[];
   uoms?: ItemUomPayload[];
 }

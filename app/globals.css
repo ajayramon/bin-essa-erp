@@ -37,6 +37,31 @@ html {
   color: var(--color-ink);
 }
 
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Ensure all form inputs, selects, and textareas default to crisp dark text on light backgrounds */
+input,
+select,
+textarea,
+button {
+  color: inherit;
+}
+
+input:not([class*="text-"]):not([class*="bg-slate-9"]):not([class*="bg-neutral-9"]):not([class*="bg-black"]):not([class*="bg-zinc-9"]),
+select:not([class*="text-"]):not([class*="bg-slate-9"]):not([class*="bg-neutral-9"]):not([class*="bg-black"]):not([class*="bg-zinc-9"]),
+textarea:not([class*="text-"]):not([class*="bg-slate-9"]):not([class*="bg-neutral-9"]):not([class*="bg-black"]):not([class*="bg-zinc-9"]) {
+  color: #0f172a;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
 [dir="rtl"] body {
   font-family: var(--font-ar-body);
 }

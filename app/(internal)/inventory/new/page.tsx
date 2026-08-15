@@ -19,6 +19,9 @@ import {
   Tag,
   DollarSign,
   Image as ImageIcon,
+  UploadCloud,
+  Trash2,
+  Link2,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import {
@@ -49,6 +52,8 @@ export default function NewItemMasterPage() {
 
   const [categoriesList, setCategoriesList] = useState<Category[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
+  const [imageUploadMode, setImageUploadMode] = useState<"file" | "url">("file");
+  const [imageFileName, setImageFileName] = useState<string>("");
 
   const [form, setForm] = useState({
     nameEn: "",
@@ -105,6 +110,26 @@ export default function NewItemMasterPage() {
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+
+  // Handle local image file selection
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        update("imageUrl", event.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleClearImage = () => {
+    update("imageUrl", "");
+    setImageFileName("");
+  };
 
   // Handle Category Change (auto-update subcategory cascade)
   const handleCategoryChange = (catCode: string) => {
@@ -194,19 +219,19 @@ export default function NewItemMasterPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6" dir={dir}>
+    <div className="max-w-4xl mx-auto p-6 space-y-6 text-slate-900" dir={dir}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-ink/15 pb-4 gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-4 gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-ink">
+            <h1 className="text-2xl font-bold text-slate-900">
               {isAr ? "إضافة بطاقة صنف جديدة (Item Master Record)" : "Add New Item Master Record"}
             </h1>
             <span className="rounded-full bg-[#FDCE0C] text-black px-2.5 py-0.5 text-xs font-black">
               17 Requirements Standard
             </span>
           </div>
-          <p className="text-xs font-medium text-ink/70 mt-1">
+          <p className="text-xs font-semibold text-slate-600 mt-1">
             {isAr
               ? "إنشاء بطاقة صنف جديدة مع ضبط الفئات والأسعار وضوابط نقاط البيع (POS) والتسليم"
               : "Register official product master record with dual language names, category hierarchy, and POS operational controls."}
@@ -215,7 +240,7 @@ export default function NewItemMasterPage() {
 
         <Link
           href="/inventory"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-ink/20 bg-white px-4 py-2 text-xs font-bold text-ink hover:bg-slate-100 transition-colors shadow-2xs"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors shadow-2xs"
         >
           {isAr ? (
             <>
@@ -247,7 +272,7 @@ export default function NewItemMasterPage() {
       )}
 
       {/* Item Master Form */}
-      <form onSubmit={handleSubmit} className="space-y-6 text-xs">
+      <form onSubmit={handleSubmit} className="space-y-6 text-xs text-slate-900">
         {/* Section 1: Identification & Names */}
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -255,12 +280,12 @@ export default function NewItemMasterPage() {
               <Tag className="h-4 w-4 text-amber-500" />
               <span>{isAr ? "1. التعريف والتسمية الثنائية (English / العربية)" : "1. Product Identification & Bilingual Names"}</span>
             </h2>
-            <span className="text-[11px] font-bold text-slate-400">Required Attributes 1 - 9</span>
+            <span className="text-[11px] font-bold text-slate-500">Required Attributes 1 - 9</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "اسم الصنف بالإنجليزية *" : "Item Name (English) *"}
               </label>
               <input
@@ -269,12 +294,12 @@ export default function NewItemMasterPage() {
                 placeholder="e.g. Beco Pro 6000 Puffs - Tropical Mix"
                 value={form.nameEn}
                 onChange={(e) => update("nameEn", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 text-end">
+              <label className="block text-xs font-bold text-slate-800 mb-1 text-end">
                 {isAr ? "* اسم الصنف بالعربية" : "Item Name (Arabic) *"}
               </label>
               <input
@@ -283,14 +308,14 @@ export default function NewItemMasterPage() {
                 placeholder="مثال: بيكو برو 6000 سحبة - تروبيكال مكس"
                 value={form.nameAr}
                 onChange={(e) => update("nameAr", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500 text-end"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "رمز الصنف (Item Code / SKU) *" : "Item Code / SKU *"}
               </label>
               <input
@@ -299,12 +324,12 @@ export default function NewItemMasterPage() {
                 placeholder="e.g. VP-BECO-PRO-6K"
                 value={form.sku}
                 onChange={(e) => update("sku", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "الباركود الأساسي (Barcode)" : "Barcode"}
               </label>
               <input
@@ -312,12 +337,12 @@ export default function NewItemMasterPage() {
                 placeholder="e.g. 6281234500019"
                 value={form.barcode}
                 onChange={(e) => update("barcode", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-mono text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "العلامة التجارية (Brand)" : "Brand"}
               </label>
               <input
@@ -325,51 +350,128 @@ export default function NewItemMasterPage() {
                 placeholder="e.g. Beco, RAW, Cricket, Siberia"
                 value={form.brand}
                 onChange={(e) => update("brand", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "بلد المنشأ (Country of Origin)" : "Country of Origin"}
               </label>
-              <div className="flex gap-2">
-                <select
-                  value={form.countryOfOrigin}
-                  onChange={(e) => update("countryOfOrigin", e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
-                >
-                  {PRESET_ORIGINS.map((orig) => (
-                    <option key={orig} value={orig}>
-                      {orig}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={form.countryOfOrigin}
+                onChange={(e) => update("countryOfOrigin", e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              >
+                {PRESET_ORIGINS.map((orig) => (
+                  <option key={orig} value={orig}>
+                    {orig}
+                  </option>
+                ))}
+              </select>
             </div>
 
+            {/* Product Image Uploader */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {isAr ? "رابط صورة الصنف (Product Image URL)" : "Product Image URL"}
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="https://images.example.com/product.jpg"
-                  value={form.imageUrl}
-                  onChange={(e) => update("imageUrl", e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs outline-none focus:border-amber-500"
-                />
-                {form.imageUrl && (
-                  <img
-                    src={form.imageUrl}
-                    alt="Preview"
-                    className="h-9 w-9 rounded-xl object-cover border border-slate-200 shrink-0"
-                  />
-                )}
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-800">
+                  {isAr ? "صورة الصنف (Product Image)" : "Product Image"}
+                </label>
+                <div className="flex items-center gap-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setImageUploadMode("file")}
+                    className={`px-2 py-0.5 rounded-md font-bold transition-colors ${
+                      imageUploadMode === "file"
+                        ? "bg-amber-100 text-amber-900 border border-amber-300"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {isAr ? "رفع ملف" : "Upload File"}
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setImageUploadMode("url")}
+                    className={`px-2 py-0.5 rounded-md font-bold transition-colors ${
+                      imageUploadMode === "url"
+                        ? "bg-amber-100 text-amber-900 border border-amber-300"
+                        : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {isAr ? "رابط URL" : "Image URL"}
+                  </button>
+                </div>
               </div>
+
+              {imageUploadMode === "file" ? (
+                <div className="space-y-2">
+                  <label className="flex flex-col items-center justify-center p-3 rounded-2xl border-2 border-dashed border-slate-300 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/20 cursor-pointer transition-all">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFileChange}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <UploadCloud className="h-5 w-5 text-amber-500" />
+                      <span className="text-xs font-bold text-slate-800">
+                        {isAr ? "اختر صورة أو اسحبها هنا" : "Choose image or drag & drop"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      PNG, JPG, WEBP, GIF (Max 5MB)
+                    </p>
+                  </label>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="https://images.example.com/product.jpg"
+                      value={form.imageUrl}
+                      onChange={(e) => update("imageUrl", e.target.value)}
+                      className="w-full rounded-xl border border-slate-300 bg-white ps-9 pe-3.5 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Image Preview & Actions */}
+              {form.imageUrl && (
+                <div className="mt-2.5 flex items-center justify-between p-2 rounded-xl border border-slate-200 bg-slate-50">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={form.imageUrl}
+                      alt="Product Preview"
+                      className="h-10 w-10 rounded-lg object-cover border border-slate-300 shrink-0 bg-white"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold text-slate-800 truncate">
+                        {imageFileName || (isAr ? "صورة محددة" : "Selected Image")}
+                      </p>
+                      <p className="text-[10px] text-emerald-600 font-semibold">
+                        {isAr ? "تم تحميل الصورة بنجاح" : "Ready for Item Master"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                    title={isAr ? "إزالة الصورة" : "Remove image"}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -381,21 +483,21 @@ export default function NewItemMasterPage() {
               <FolderTree className="h-4 w-4 text-amber-500" />
               <span>{isAr ? "2. التصنيف الهيكلي (الفئة والفئة الفرعية)" : "2. Category & Subcategory Hierarchy"}</span>
             </h2>
-            <span className="text-[11px] font-bold text-slate-400">Structured Reporting Base</span>
+            <span className="text-[11px] font-bold text-slate-500">Structured Reporting Base</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "الفئة الرئيسية (Category) *" : "Category *"}
               </label>
               <select
                 value={form.category}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               >
                 {categoriesList.map((c) => (
-                  <option key={c.id} value={c.code}>
+                  <option key={c.id} value={c.code} className="text-slate-900 bg-white">
                     {isAr ? c.nameAr : c.nameEn}
                   </option>
                 ))}
@@ -403,17 +505,17 @@ export default function NewItemMasterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "الفئة الفرعية (Sub Category)" : "Sub Category"}
               </label>
               <select
                 value={form.subCategory}
                 onChange={(e) => update("subCategory", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               >
-                <option value="">{isAr ? "بدون فئة فرعية" : "None / Unassigned"}</option>
+                <option value="" className="text-slate-900 bg-white">{isAr ? "بدون فئة فرعية" : "None / Unassigned"}</option>
                 {(currentCategoryObj?.subcategories || []).map((s) => (
-                  <option key={s.id} value={s.code}>
+                  <option key={s.id} value={s.code} className="text-slate-900 bg-white">
                     {isAr ? s.nameAr : s.nameEn}
                   </option>
                 ))}
@@ -574,7 +676,7 @@ export default function NewItemMasterPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "سعر البيع الأساسي (د.ك) *" : "Sell Price (KD) *"}
               </label>
               <input
@@ -585,12 +687,12 @@ export default function NewItemMasterPage() {
                 placeholder="0.000"
                 value={form.price}
                 onChange={(e) => update("price", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "سعر التكلفة (د.ك) *" : "Cost Price (KD) *"}
               </label>
               <input
@@ -601,12 +703,12 @@ export default function NewItemMasterPage() {
                 placeholder="0.000"
                 value={form.cost}
                 onChange={(e) => update("cost", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "سعر الجملة (د.ك)" : "Wholesale Price (KD)"}
               </label>
               <input
@@ -616,12 +718,12 @@ export default function NewItemMasterPage() {
                 placeholder="0.000"
                 value={form.wholesalePrice}
                 onChange={(e) => update("wholesalePrice", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "الوحدة الأساسية" : "Base Unit"}
               </label>
               <input
@@ -629,12 +731,12 @@ export default function NewItemMasterPage() {
                 placeholder="pcs, box, pack, can"
                 value={form.unit}
                 onChange={(e) => update("unit", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-800 mb-1">
                 {isAr ? "رصيد المخزن الافتتاحي" : "Opening Stock Qty"}
               </label>
               <input
@@ -642,7 +744,7 @@ export default function NewItemMasterPage() {
                 min={0}
                 value={form.stockQuantity}
                 onChange={(e) => update("stockQuantity", e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 outline-none focus:border-amber-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
             </div>
           </div>

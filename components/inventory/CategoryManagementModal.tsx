@@ -270,7 +270,7 @@ export function CategoryManagementModal({
                     value={catNameEn}
                     onChange={(e) => setCatNameEn(e.target.value)}
                     placeholder="e.g. Disposable Vapes"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-amber-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
@@ -281,7 +281,7 @@ export function CategoryManagementModal({
                     value={catNameAr}
                     onChange={(e) => setCatNameAr(e.target.value)}
                     placeholder="مثال: سحبات جاهزة"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-amber-500 text-end"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
@@ -315,13 +315,13 @@ export function CategoryManagementModal({
                         type="text"
                         value={editCatNameEn}
                         onChange={(e) => setEditCatNameEn(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                       />
                       <input
                         type="text"
                         value={editCatNameAr}
                         onChange={(e) => setEditCatNameAr(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-end"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
                       />
                       <div className="flex justify-end gap-1.5">
                         <button
@@ -438,7 +438,7 @@ export function CategoryManagementModal({
                           value={subNameEn}
                           onChange={(e) => setSubNameEn(e.target.value)}
                           placeholder="e.g. 5,000 - 7,000 Puffs"
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-amber-500"
+                          className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                       </div>
                       <div>
@@ -449,7 +449,7 @@ export function CategoryManagementModal({
                           value={subNameAr}
                           onChange={(e) => setSubNameAr(e.target.value)}
                           placeholder="مثال: 5000 - 7000 سحبة"
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-amber-500 text-end"
+                          className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
                         />
                       </div>
                     </div>

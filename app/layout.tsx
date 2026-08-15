@@ -97,7 +97,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="h-full bg-slate-900 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+      <body className="h-full bg-paper text-ink antialiased selection:bg-[#FDCE0C] selection:text-black">
         <LocaleProvider>
           <SessionProvider>{children}</SessionProvider>
         </LocaleProvider>

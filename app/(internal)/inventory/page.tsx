@@ -397,7 +397,7 @@ export default function InventoryItemMasterPage() {
                   ? "بحث بالاسم العربي/الإنجليزي، رمز SKU، الباركود، العلامة التجارية..."
                   : "Search SKU, barcode, English/Arabic name, brand..."
               }
-              className="w-full rounded-xl border border-slate-200 ps-9 pe-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+              className="w-full rounded-xl border border-slate-300 bg-white ps-9 pe-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
             />
           </div>
 
@@ -823,7 +823,7 @@ export default function InventoryItemMasterPage() {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "اسم الصنف بالإنجليزية *" : "Item Name (English) *"}
                     </label>
                     <input
@@ -831,11 +831,11 @@ export default function InventoryItemMasterPage() {
                       required
                       value={editFormData.nameEn}
                       onChange={(e) => setEditFormData({ ...editFormData, nameEn: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1 text-end">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 text-end">
                       {isAr ? "* اسم الصنف بالعربية" : "Item Name (Arabic) *"}
                     </label>
                     <input
@@ -843,14 +843,14 @@ export default function InventoryItemMasterPage() {
                       required
                       value={editFormData.nameAr}
                       onChange={(e) => setEditFormData({ ...editFormData, nameAr: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500 text-end"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "رمز SKU *" : "SKU Code *"}
                     </label>
                     <input
@@ -858,22 +858,22 @@ export default function InventoryItemMasterPage() {
                       required
                       value={editFormData.sku}
                       onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono font-bold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "الباركود الأساسي" : "Primary Barcode"}
                     </label>
                     <input
                       type="text"
                       value={editFormData.barcode}
                       onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "العلامة التجارية" : "Brand Name"}
                     </label>
                     <input
@@ -881,14 +881,14 @@ export default function InventoryItemMasterPage() {
                       value={editFormData.brand}
                       onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
                       placeholder="e.g. Beco, RAW, Cricket"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "بلد المنشأ" : "Country of Origin"}
                     </label>
                     <input
@@ -896,11 +896,11 @@ export default function InventoryItemMasterPage() {
                       value={editFormData.countryOfOrigin}
                       onChange={(e) => setEditFormData({ ...editFormData, countryOfOrigin: e.target.value })}
                       placeholder="e.g. Kuwait, Sweden, China, USA"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "رابط صورة الصنف (URL)" : "Product Image URL"}
                     </label>
                     <input
@@ -908,7 +908,7 @@ export default function InventoryItemMasterPage() {
                       value={editFormData.imageUrl}
                       onChange={(e) => setEditFormData({ ...editFormData, imageUrl: e.target.value })}
                       placeholder="https://..."
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -1071,7 +1071,7 @@ export default function InventoryItemMasterPage() {
 
                   {/* Max Discount % */}
                   <div className="p-2 rounded-xl border border-slate-200 bg-white">
-                    <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                    <label className="block text-[10px] font-bold text-slate-700 mb-0.5">
                       {isAr ? "أقصى خصم %" : "Max Disc %"}
                     </label>
                     <input
@@ -1080,7 +1080,7 @@ export default function InventoryItemMasterPage() {
                       max={100}
                       value={editFormData.maxDiscountPercent}
                       onChange={(e) => setEditFormData({ ...editFormData, maxDiscountPercent: e.target.value })}
-                      className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-black outline-none focus:border-amber-500"
+                      className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -1093,7 +1093,7 @@ export default function InventoryItemMasterPage() {
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "سعر البيع (د.ك) *" : "Retail Sell Price (KD) *"}
                     </label>
                     <input
@@ -1103,11 +1103,11 @@ export default function InventoryItemMasterPage() {
                       required
                       value={editFormData.price}
                       onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-black outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "سعر التكلفة (د.ك) *" : "Cost Price (KD) *"}
                     </label>
                     <input
@@ -1117,11 +1117,11 @@ export default function InventoryItemMasterPage() {
                       required
                       value={editFormData.cost}
                       onChange={(e) => setEditFormData({ ...editFormData, cost: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "سعر الجملة (د.ك)" : "Wholesale Price (KD)"}
                     </label>
                     <input
@@ -1130,11 +1130,11 @@ export default function InventoryItemMasterPage() {
                       min={0}
                       value={editFormData.wholesalePrice}
                       onChange={(e) => setEditFormData({ ...editFormData, wholesalePrice: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       {isAr ? "الوحدة الأساسية" : "Base Unit"}
                     </label>
                     <input
@@ -1142,7 +1142,7 @@ export default function InventoryItemMasterPage() {
                       value={editFormData.unit}
                       onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
                       placeholder="pcs, box, pack"
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-amber-500"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>

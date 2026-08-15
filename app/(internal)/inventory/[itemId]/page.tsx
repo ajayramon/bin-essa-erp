@@ -19,6 +19,9 @@ import {
   Power,
   Globe,
   Building2,
+  UploadCloud,
+  Trash2,
+  Link2,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import {
@@ -83,6 +86,22 @@ export default function ItemDetailPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [editImageMode, setEditImageMode] = useState<"file" | "url">("file");
+  const [editImageFileName, setEditImageFileName] = useState<string>("");
+
+  const handleEditImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setEditImageFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setEditFormData((prev) => ({ ...prev, imageUrl: event.target?.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const fetchItem = async () => {
     setIsLoading(true);
@@ -114,6 +133,7 @@ export default function ItemDetailPage() {
   const openEditModal = () => {
     if (!item) return;
     setEditError(null);
+    setEditImageFileName("");
     setEditFormData({
       name: item.name,
       nameEn: item.nameEn || item.name,
@@ -149,11 +169,26 @@ export default function ItemDetailPage() {
     if (!item) return;
     setIsSaving(true);
     setEditError(null);
+
+    const price = Number(editFormData.price);
+    const cost = Number(editFormData.cost);
+
+    if (Number.isNaN(price) || price < 0) {
+      setEditError(isAr ? "سعر البيع غير صحيح" : "Sell price is invalid.");
+      setIsSaving(false);
+      return;
+    }
+    if (Number.isNaN(cost) || cost < 0) {
+      setEditError(isAr ? "سعر التكلفة غير صحيح" : "Cost price is invalid.");
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      const updated = await updateItemRequest(item.id, {
-        name: editFormData.nameEn || editFormData.name,
-        nameEn: editFormData.nameEn,
-        nameAr: editFormData.nameAr,
+      await updateItemRequest(item.id, {
+        name: editFormData.nameEn.trim() || editFormData.nameAr.trim(),
+        nameEn: editFormData.nameEn.trim() || editFormData.nameAr.trim(),
+        nameAr: editFormData.nameAr.trim() || editFormData.nameEn.trim(),
         sku: editFormData.sku.trim(),
         barcode: editFormData.barcode.trim() || undefined,
         category: editFormData.category,
@@ -161,26 +196,29 @@ export default function ItemDetailPage() {
         brand: editFormData.brand.trim() || undefined,
         countryOfOrigin: editFormData.countryOfOrigin.trim() || undefined,
         imageUrl: editFormData.imageUrl.trim() || undefined,
-        price: parseFloat(editFormData.price) || 0,
-        retailPrice: parseFloat(editFormData.retailPrice) || parseFloat(editFormData.price) || 0,
-        semiWholesalePrice: parseFloat(editFormData.semiWholesalePrice) || parseFloat(editFormData.price) || 0,
-        wholesalePrice: parseFloat(editFormData.wholesalePrice) || parseFloat(editFormData.price) || 0,
-        cost: parseFloat(editFormData.cost) || 0,
-        stockQuantity: parseInt(editFormData.stockQuantity, 10) || 0,
+        price,
+        cost,
         unit: editFormData.unit.trim() || "pcs",
+        retailPrice: Number(editFormData.retailPrice) || price,
+        semiWholesalePrice: Number(editFormData.semiWholesalePrice) || price,
+        wholesalePrice: Number(editFormData.wholesalePrice) || price,
         isActive: editFormData.isActive,
         allowSale: editFormData.allowSale,
         allowPurchase: editFormData.allowPurchase,
         allowDiscount: editFormData.allowDiscount,
-        maxDiscountPercent: parseFloat(editFormData.maxDiscountPercent) || 10,
+        maxDiscountPercent: Number(editFormData.maxDiscountPercent) || 10,
         allowGift: editFormData.allowGift,
         expiryRequired: editFormData.expiryRequired,
         posVisibility: editFormData.posVisibility,
+        blockDiscount: !editFormData.allowDiscount,
+        blockFreeGift: !editFormData.allowGift,
+        blockSale: !editFormData.allowSale,
+        trackExpiry: editFormData.expiryRequired,
       });
-      setItem(updated);
       setIsEditing(false);
+      await fetchItem();
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Failed to update item master record");
+      setEditError(err instanceof Error ? err.message : "Failed to update item record");
     } finally {
       setIsSaving(false);
     }
@@ -189,91 +227,115 @@ export default function ItemDetailPage() {
   const handleToggleActive = async () => {
     if (!item) return;
     try {
-      const updated = await toggleItemActiveRequest(item.id);
-      setItem(updated);
+      await toggleItemActiveRequest(item.id);
+      await fetchItem();
     } catch (err) {
-      alert("Failed to toggle status");
+      setError("Failed to toggle item status");
     }
   };
 
   if (isLoading) {
     return (
-      <div className="p-12 text-center text-xs font-bold text-slate-400">
-        Loading Item Master Record...
+      <div className="flex h-96 items-center justify-center p-6 text-slate-800">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+          <p className="text-xs font-bold text-slate-600">
+            {isAr ? "جاري تحميل بطاقة الصنف..." : "Loading Item Master Record..."}
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (error || notFound || !item) {
+  if (notFound || !item) {
     return (
-      <div className="p-8 space-y-4 max-w-xl mx-auto text-center" dir={dir}>
-        <AlertCircle className="h-10 w-10 text-red-500 mx-auto" />
-        <h2 className="text-base font-bold text-slate-900">
-          {error || (isAr ? "الصنف غير موجود أو تم حذفه" : "Item not found")}
-        </h2>
-        <Link
-          href="/inventory"
-          className="inline-flex items-center gap-1.5 rounded-xl bg-black px-4 py-2 text-xs font-bold text-[#FDCE0C]"
-        >
-          {isAr ? "← الرجوع لسجل المخزون" : "← Back to Inventory"}
-        </Link>
+      <div className="max-w-2xl mx-auto p-12 text-center text-slate-900" dir={dir}>
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+          <Package className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-slate-900 mb-1">
+            {isAr ? "لم يتم العثور على بطاقة الصنف" : "Item Master Record Not Found"}
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            {isAr
+              ? "الصنف المطلوب غير مسجل في قاعدة البيانات المركزية أو تم حذفه."
+              : "The requested item code does not exist in the centralized product catalog."}
+          </p>
+          <Link
+            href="/inventory"
+            className="inline-flex items-center gap-2 rounded-xl bg-black text-[#FDCE0C] px-5 py-2.5 text-xs font-bold hover:bg-slate-900 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>{isAr ? "العودة لسجل المخزون" : "Return to Inventory"}</span>
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const isInactive = item.isActive === false;
-  const saleDisabled = item.allowSale === false || item.blockSale === true;
+  const categoryObj = categoriesList.find((c) => c.code === item.category || c.id === item.category);
+  const categoryName = isAr ? (categoryObj?.nameAr || item.category) : (categoryObj?.nameEn || item.category);
+  const subCategoryObj = categoryObj?.subcategories?.find((s) => s.code === item.subCategory || s.id === item.subCategory);
+  const subCategoryName = isAr ? (subCategoryObj?.nameAr || item.subCategory) : (subCategoryObj?.nameEn || item.subCategory);
+
+  const discountBlocked = item.blockDiscount || item.allowDiscount === false;
+  const giftBlocked = item.blockFreeGift || item.allowGift === false;
+  const saleDisabled = item.blockSale || item.allowSale === false;
   const purchaseDisabled = item.allowPurchase === false;
-  const discountBlocked = item.allowDiscount === false || item.blockDiscount === true;
-  const giftBlocked = item.allowGift === false || item.blockFreeGift === true;
   const posHidden = item.posVisibility === false;
   const expiryReq = item.expiryRequired || item.trackExpiry;
 
-  const currentCategoryObj = categoriesList.find((c) => c.code === item.category || c.id === item.category);
-
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6" dir={dir}>
-      {/* 1. Header with Breadcrumbs & Action Buttons */}
+    <div className="max-w-5xl mx-auto p-6 space-y-6 text-slate-900" dir={dir}>
+      {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-200 pb-4 gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/inventory"
-              className="text-xs font-bold text-slate-500 hover:text-slate-900"
-            >
-              {isAr ? "المخزون" : "Inventory"}
-            </Link>
-            <span className="text-slate-300">/</span>
-            <span className="text-xs font-mono font-bold text-amber-600">{item.sku}</span>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inventory"
+            className="rounded-xl border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-100 transition-colors"
+            title="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-black text-slate-900">
+                {isAr ? (item.nameAr || item.name) : (item.nameEn || item.name)}
+              </h1>
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-black ${
+                  item.isActive !== false
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {item.isActive !== false ? (isAr ? "نشط" : "Active") : (isAr ? "معطل" : "Inactive")}
+              </span>
+            </div>
+            <p className="text-xs font-mono text-slate-500 mt-0.5">
+              SKU: <span className="font-bold text-slate-800">{item.sku}</span> | Barcode:{" "}
+              <span className="font-bold text-slate-800">{item.barcode || "N/A"}</span>
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {item.nameEn || item.name}
-          </h1>
-          <p className="text-sm font-semibold text-slate-500">
-            {item.nameAr || item.name}
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Soft Active / Inactive Toggle */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleToggleActive}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              isInactive
-                ? "bg-red-100 text-red-700 hover:bg-red-200"
-                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-colors ${
+              item.isActive !== false
+                ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
             }`}
           >
-            <Power className="h-4 w-4" />
-            <span>{isInactive ? (isAr ? "صنف معطل (تفعيل)" : "Inactive (Activate)") : (isAr ? "صنف نشط (تعطيل)" : "Active (Deactivate)")}</span>
+            <Power className="h-3.5 w-3.5" />
+            <span>{item.isActive !== false ? (isAr ? "تعطيل الصنف" : "Deactivate") : (isAr ? "تفعيل الصنف" : "Activate")}</span>
           </button>
 
-          {/* Edit Button */}
           <button
             type="button"
             onClick={openEditModal}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-black text-[#FDCE0C] px-5 py-2 text-xs font-bold shadow-sm hover:bg-slate-900"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-black text-[#FDCE0C] px-4 py-2 text-xs font-bold hover:bg-slate-900 transition-colors shadow-2xs"
           >
             <Edit2 className="h-3.5 w-3.5" />
             <span>{isAr ? "تعديل بطاقة الصنف" : "Edit Item Master"}</span>
@@ -281,196 +343,176 @@ export default function ItemDetailPage() {
         </div>
       </div>
 
-      {/* 2. Grid Overview: Product Specs & Governance Status */}
+      {/* Main Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Column: Product Thumbnail & Core IDs */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-          <div className="aspect-square w-full rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-            {item.imageUrl ? (
-              <img
-                src={item.imageUrl}
-                alt={item.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <Package className="h-16 w-16 text-slate-300" />
-            )}
-          </div>
+        {/* Left Column: Product Card & Hierarchy (1 col) */}
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+            <div className="aspect-square rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center p-2">
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="h-full w-full object-contain rounded-xl"
+                />
+              ) : (
+                <Package className="h-16 w-16 text-slate-300" />
+              )}
+            </div>
 
-          <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-            <div className="flex justify-between py-1 border-b border-slate-50">
-              <span className="font-semibold text-slate-500">{isAr ? "رمز الصنف (SKU)" : "SKU Code"}</span>
-              <span className="font-mono font-bold text-slate-900">{item.sku}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-50">
-              <span className="font-semibold text-slate-500">{isAr ? "الباركود" : "Barcode"}</span>
-              <span className="font-mono font-bold text-slate-900">{item.barcode || "-"}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-50">
-              <span className="font-semibold text-slate-500">{isAr ? "العلامة التجارية" : "Brand"}</span>
-              <span className="font-bold text-slate-900">{item.brand || "Bin Essa"}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="font-semibold text-slate-500">{isAr ? "بلد المنشأ" : "Country of Origin"}</span>
-              <span className="font-bold text-slate-900">{item.countryOfOrigin || "Kuwait"}</span>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-slate-500">{isAr ? "العلامة التجارية" : "Brand"}</span>
+                <span className="font-bold text-slate-900">{item.brand || "Bin Essa"}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-slate-500">{isAr ? "بلد المنشأ" : "Origin"}</span>
+                <span className="font-bold text-slate-900">{item.countryOfOrigin || "Kuwait"}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-slate-500">{isAr ? "الفئة الرئيسية" : "Category"}</span>
+                <span className="font-bold text-amber-600">{categoryName}</span>
+              </div>
+              {subCategoryName && (
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-500">{isAr ? "الفئة الفرعية" : "Sub Category"}</span>
+                  <span className="font-bold text-slate-800">{subCategoryName}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1">
+                <span className="text-slate-500">{isAr ? "الوحدة الأساسية" : "Base Unit"}</span>
+                <span className="font-bold text-slate-900">{item.unit || "pcs"}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Middle Column: Pricing, Costs & Stock */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-          <h3 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100">
-            {isAr ? "الأسعار والتكاليف ورصيد المخزون" : "Pricing, Cost & Stock Levels"}
-          </h3>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-200">
-              <p className="text-[10px] font-bold uppercase text-amber-800">{isAr ? "سعر البيع الأساسي" : "Retail Sell Price"}</p>
-              <p className="numeric-ltr text-lg font-black text-slate-950 mt-1">
-                {formatKD(item.price)} <span className="text-xs text-amber-700">KD</span>
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <p className="text-[10px] font-bold uppercase text-slate-500">{isAr ? "سعر التكلفة" : "Unit Cost"}</p>
-              <p className="numeric-ltr text-lg font-bold text-slate-800 mt-1">
-                {formatKD(item.cost)} <span className="text-xs text-slate-400">KD</span>
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-              <p className="text-[10px] font-bold uppercase text-slate-500">{isAr ? "سعر الجملة" : "Wholesale Price"}</p>
-              <p className="numeric-ltr text-base font-bold text-slate-800 mt-1">
-                {formatKD(item.wholesalePrice || item.price)} <span className="text-xs text-slate-400">KD</span>
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200">
-              <p className="text-[10px] font-bold uppercase text-emerald-800">{isAr ? "إجمالي المخزون" : "Total Stock"}</p>
-              <p className="numeric-ltr text-lg font-black text-emerald-900 mt-1">
-                {item.stockQuantity ?? 0} <span className="text-xs text-emerald-700">{item.unit || "pcs"}</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50 space-y-1.5 text-xs">
-            <p className="font-bold text-slate-800">{isAr ? "الفئة والتصنيف الهيكلي:" : "Category Hierarchy:"}</p>
-            <p className="text-slate-600">
-              <span className="font-semibold">{isAr ? "الفئة الرئيسية: " : "Main Category: "}</span>
-              {isAr ? currentCategoryObj?.nameAr : currentCategoryObj?.nameEn || item.category}
-            </p>
-            <p className="text-slate-600">
-              <span className="font-semibold">{isAr ? "الفئة الفرعية: " : "Subcategory: "}</span>
-              {item.subCategory || "-"}
-            </p>
-          </div>
-        </div>
-
-        {/* Right Column: 17 Operational Controls Matrix */}
-        <div className="rounded-3xl border border-amber-300 bg-amber-50/30 p-5 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-amber-200 pb-2">
-            <h3 className="font-black text-sm text-slate-900 flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-amber-600" />
-              <span>{isAr ? "مصفوفة ضوابط التشغيل" : "Operational Controls"}</span>
+        {/* Right Column: Pricing & Master Operational Controls (2 cols) */}
+        <div className="md:col-span-2 space-y-4">
+          {/* Pricing Grid */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
+            <h3 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <Tag className="h-4 w-4 text-amber-500" />
+              <span>{isAr ? "هيكل الأسعار والتكاليف (د.ك)" : "Price & Cost Structure (KD)"}</span>
             </h3>
-            <span className="text-[10px] font-bold text-amber-800">17 Governance Attributes</span>
-          </div>
 
-          <div className="space-y-2 text-xs">
-            {/* Allow Sale */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "السماح بالبيع في POS" : "Allow Sale at POS"}</p>
-                <p className="text-[10px] text-slate-400">{isAr ? "السماح للكاشير بإتمام البيع" : "Cashier sale authorization"}</p>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${saleDisabled ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`}>
-                {saleDisabled ? (isAr ? "ممنوع البيع" : "Disabled") : (isAr ? "مسموح" : "Allowed")}
-              </span>
-            </div>
-
-            {/* Allow Purchase */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "السماح بالشراء (POs)" : "Allow Purchase in POs"}</p>
-                <p className="text-[10px] text-slate-400">{isAr ? "إصدار أوامر شراء للموردين" : "Vendor bill / PO selection"}</p>
-              </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${purchaseDisabled ? "bg-red-100 text-red-700" : "bg-sky-100 text-sky-800"}`}>
-                {purchaseDisabled ? (isAr ? "ممنوع الشراء" : "Disabled") : (isAr ? "مسموح" : "Allowed")}
-              </span>
-            </div>
-
-            {/* Allow Discount & Max Discount % */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "السماح بالخصم" : "Allow Discount"}</p>
-                <p className="text-[10px] text-slate-400">
-                  {discountBlocked ? (isAr ? "ممنوع الخصم" : "Blocked") : `${isAr ? "الحد الأقصى:" : "Max Disc:"} ${item.maxDiscountPercent || 10}%`}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+                  {isAr ? "سعر البيع (مفرق)" : "Retail Price"}
+                </p>
+                <p className="numeric-ltr text-lg font-black text-slate-900 mt-1">
+                  {formatKD(item.price)} <span className="text-[10px] text-slate-500">KD</span>
                 </p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${discountBlocked ? "bg-stone-100 text-stone-600" : "bg-amber-100 text-amber-800"}`}>
-                {discountBlocked ? (isAr ? "ممنوع" : "Blocked") : `${item.maxDiscountPercent || 10}% Cap`}
-              </span>
-            </div>
 
-            {/* Allow Gift */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "السماح كهدية ترويجية" : "Allow Gift (100% Free)"}</p>
-                <p className="text-[10px] text-slate-400">{isAr ? "إمكانية إضافته كهدية في POS" : "Free promotional gift line"}</p>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                  {isAr ? "سعر التكلفة" : "Cost Price"}
+                </p>
+                <p className="numeric-ltr text-lg font-black text-slate-900 mt-1">
+                  {formatKD(item.cost)} <span className="text-[10px] text-slate-500">KD</span>
+                </p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${giftBlocked ? "bg-stone-100 text-stone-600" : "bg-yellow-100 text-yellow-900"}`}>
-                {giftBlocked ? (isAr ? "ممنوع كهدية" : "Blocked") : (isAr ? "مسموح كهدية" : "Allowed")}
-              </span>
-            </div>
 
-            {/* POS Visibility */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "الظهور في كاشير POS" : "POS Visibility"}</p>
-                <p className="text-[10px] text-slate-400">{isAr ? "الظهور في واجهة البيع السريع" : "Visibility on cashier product grid"}</p>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                  {isAr ? "سعر الجملة" : "Wholesale Price"}
+                </p>
+                <p className="numeric-ltr text-lg font-black text-slate-900 mt-1">
+                  {formatKD(item.wholesalePrice || item.price)} <span className="text-[10px] text-slate-500">KD</span>
+                </p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${posHidden ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-800"}`}>
-                {posHidden ? (isAr ? "مخفي من POS" : "Hidden") : (isAr ? "ظاهر في POS" : "Visible")}
-              </span>
-            </div>
 
-            {/* Expiry Required */}
-            <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
-              <div>
-                <p className="font-bold text-slate-900">{isAr ? "مطلوب تاريخ الصلاحية" : "Expiry Tracking"}</p>
-                <p className="text-[10px] text-slate-400">{isAr ? "تتبع الباتشات والصلاحية" : "Batch/Expiry verification"}</p>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                  {isAr ? "نصف الجملة" : "Semi-Wholesale"}
+                </p>
+                <p className="numeric-ltr text-lg font-black text-slate-900 mt-1">
+                  {formatKD(item.semiWholesalePrice || item.price)} <span className="text-[10px] text-slate-500">KD</span>
+                </p>
               </div>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${expiryReq ? "bg-purple-100 text-purple-800" : "bg-slate-100 text-slate-600"}`}>
-                {expiryReq ? (isAr ? "إلزامي" : "Required") : (isAr ? "غير إلزامي" : "Optional")}
-              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* 3. Branch Stock Allocation (14 Branches Overview) */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
-        <h3 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-          <Building2 className="h-4 w-4 text-amber-500" />
-          <span>{isAr ? "توزيع المخزون عبر الفروع الـ 14 والمستودع الرئيسي" : "Branch Stock Distribution Across 14 Branches"}</span>
-        </h3>
+          {/* Operational Governance Summary */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-2xs space-y-3">
+            <h3 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              <span>{isAr ? "ضوابط التشغيل والحوكمة في POS والعمليات" : "Operational Governance & Rules"}</span>
+            </h3>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
-          {branches.map((b) => (
-            <div key={b.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50/70 text-center">
-              <p className="text-[10px] font-bold text-slate-500 truncate">{isAr ? b.nameAr : b.nameEn}</p>
-              <p className="numeric-ltr text-sm font-black text-slate-900 mt-1">
-                {b.id === "br-01" ? (item.stockQuantity ?? 10) : 0} <span className="text-[9px] text-slate-400">{item.unit || "pcs"}</span>
-              </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "السماح بالبيع في POS" : "Allow Sale at POS"}</p>
+                  <p className="text-[10px] text-slate-500">{isAr ? "السماح للكاشير بإتمام البيع" : "Cashier sale authorization"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${saleDisabled ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-800"}`}>
+                  {saleDisabled ? (isAr ? "ممنوع البيع" : "Disabled") : (isAr ? "مسموح" : "Allowed")}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "السماح بالشراء (POs)" : "Allow Purchase in POs"}</p>
+                  <p className="text-[10px] text-slate-500">{isAr ? "إصدار أوامر شراء للموردين" : "Vendor bill / PO selection"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${purchaseDisabled ? "bg-red-100 text-red-700" : "bg-sky-100 text-sky-800"}`}>
+                  {purchaseDisabled ? (isAr ? "ممنوع الشراء" : "Disabled") : (isAr ? "مسموح" : "Allowed")}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "السماح بالخصم" : "Allow Discount"}</p>
+                  <p className="text-[10px] text-slate-500">
+                    {discountBlocked ? (isAr ? "ممنوع الخصم" : "Blocked") : `${isAr ? "الحد الأقصى:" : "Max Disc:"} ${item.maxDiscountPercent || 10}%`}
+                  </p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${discountBlocked ? "bg-stone-100 text-stone-600" : "bg-amber-100 text-amber-800"}`}>
+                  {discountBlocked ? (isAr ? "ممنوع" : "Blocked") : `${item.maxDiscountPercent || 10}% Cap`}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "السماح كهدية ترويجية" : "Allow Gift (100% Free)"}</p>
+                  <p className="text-[10px] text-slate-500">{isAr ? "إمكانية إضافته كهدية في POS" : "Free promotional gift line"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${giftBlocked ? "bg-stone-100 text-stone-600" : "bg-yellow-100 text-yellow-900"}`}>
+                  {giftBlocked ? (isAr ? "ممنوع كهدية" : "Blocked") : (isAr ? "مسموح كهدية" : "Allowed")}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "الظهور في كاشير POS" : "POS Visibility"}</p>
+                  <p className="text-[10px] text-slate-500">{isAr ? "الظهور في واجهة البيع السريع" : "Visibility on cashier product grid"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${posHidden ? "bg-slate-200 text-slate-700" : "bg-emerald-100 text-emerald-800"}`}>
+                  {posHidden ? (isAr ? "مخفي من POS" : "Hidden") : (isAr ? "ظاهر في POS" : "Visible")}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200">
+                <div>
+                  <p className="font-bold text-slate-900">{isAr ? "مطلوب تاريخ الصلاحية" : "Expiry Tracking"}</p>
+                  <p className="text-[10px] text-slate-500">{isAr ? "تتبع الباتشات والصلاحية" : "Batch/Expiry verification"}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${expiryReq ? "bg-purple-100 text-purple-800" : "bg-slate-100 text-slate-600"}`}>
+                  {expiryReq ? (isAr ? "إلزامي" : "Required") : (isAr ? "غير إلزامي" : "Optional")}
+                </span>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
       {/* Edit Modal */}
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden border border-slate-200 text-xs text-slate-900">
             <div className="flex items-center justify-between border-b border-black/10 bg-[#0B0F17] p-4 px-6 text-white">
               <div className="flex items-center gap-2">
                 <Edit2 className="h-5 w-5 text-[#FDCE0C]" />
@@ -496,88 +538,198 @@ export default function ItemDetailPage() {
             <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Item Name (EN)</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Item Name (EN)</label>
                   <input
                     type="text"
                     required
                     value={editFormData.nameEn}
                     onChange={(e) => setEditFormData({ ...editFormData, nameEn: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 text-end">اسم الصنف (AR)</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1 text-end">اسم الصنف (AR)</label>
                   <input
                     type="text"
                     required
                     value={editFormData.nameAr}
                     onChange={(e) => setEditFormData({ ...editFormData, nameAr: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-end"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 text-end"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">SKU</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">SKU</label>
                   <input
                     type="text"
                     required
                     value={editFormData.sku}
                     onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-bold"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Barcode</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Barcode</label>
                   <input
                     type="text"
                     value={editFormData.barcode}
                     onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Brand</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Brand</label>
                   <input
                     type="text"
                     value={editFormData.brand}
                     onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Category</label>
+                  <select
+                    value={editFormData.category}
+                    onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value, subCategory: "" })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  >
+                    {categoriesList.map((c) => (
+                      <option key={c.id} value={c.code} className="text-slate-900 bg-white">
+                        {isAr ? c.nameAr : c.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Subcategory</label>
+                  <select
+                    value={editFormData.subCategory}
+                    onChange={(e) => setEditFormData({ ...editFormData, subCategory: e.target.value })}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="" className="text-slate-900 bg-white">None</option>
+                    {(categoriesList.find((c) => c.code === editFormData.category)?.subcategories || []).map((s) => (
+                      <option key={s.id} value={s.code} className="text-slate-900 bg-white">
+                        {isAr ? s.nameAr : s.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Product Image in Edit Modal */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-slate-800">Product Image</label>
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setEditImageMode("file")}
+                      className={`px-2 py-0.5 rounded font-bold ${
+                        editImageMode === "file" ? "bg-amber-100 text-amber-900" : "text-slate-500"
+                      }`}
+                    >
+                      File
+                    </button>
+                    <span>|</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditImageMode("url")}
+                      className={`px-2 py-0.5 rounded font-bold ${
+                        editImageMode === "url" ? "bg-amber-100 text-amber-900" : "text-slate-500"
+                      }`}
+                    >
+                      URL
+                    </button>
+                  </div>
+                </div>
+
+                {editImageMode === "file" ? (
+                  <label className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:bg-amber-50/20 cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleEditImageFile}
+                      className="hidden"
+                    />
+                    <UploadCloud className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-bold text-slate-700">Choose new image file</span>
+                  </label>
+                ) : (
+                  <div className="relative">
+                    <Link2 className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={editFormData.imageUrl}
+                      onChange={(e) => setEditFormData({ ...editFormData, imageUrl: e.target.value })}
+                      className="w-full rounded-xl border border-slate-300 bg-white ps-8 pe-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                )}
+
+                {editFormData.imageUrl && (
+                  <div className="mt-2 flex items-center justify-between p-2 rounded-xl border border-slate-200 bg-slate-50">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={editFormData.imageUrl}
+                        alt="Preview"
+                        className="h-8 w-8 rounded-lg object-cover border border-slate-300 bg-white"
+                      />
+                      <span className="text-[11px] font-bold text-slate-800">
+                        {editImageFileName || "Image Preview"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, imageUrl: "" })}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={editFormData.allowSale}
                     onChange={(e) => setEditFormData({ ...editFormData, allowSale: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-500"
                   />
                   <span className="font-bold text-slate-800">Allow Sale</span>
                 </label>
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={editFormData.allowPurchase}
                     onChange={(e) => setEditFormData({ ...editFormData, allowPurchase: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-500"
                   />
                   <span className="font-bold text-slate-800">Allow Purchase</span>
                 </label>
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={editFormData.allowDiscount}
                     onChange={(e) => setEditFormData({ ...editFormData, allowDiscount: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-500"
                   />
                   <span className="font-bold text-slate-800">Allow Discount</span>
                 </label>
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={editFormData.allowGift}
                     onChange={(e) => setEditFormData({ ...editFormData, allowGift: e.target.checked })}
+                    className="h-4 w-4 rounded accent-amber-500"
                   />
                   <span className="font-bold text-slate-800">Allow Gift</span>
                 </label>
@@ -585,36 +737,36 @@ export default function ItemDetailPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Sell Price (KD)</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Sell Price (KD)</label>
                   <input
                     type="number"
                     step="0.001"
                     required
                     value={editFormData.price}
                     onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-black"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Cost Price (KD)</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Cost Price (KD)</label>
                   <input
                     type="number"
                     step="0.001"
                     required
                     value={editFormData.cost}
                     onChange={(e) => setEditFormData({ ...editFormData, cost: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Max Disc %</label>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1">Max Disc %</label>
                   <input
                     type="number"
                     min={0}
                     max={100}
                     value={editFormData.maxDiscountPercent}
                     onChange={(e) => setEditFormData({ ...editFormData, maxDiscountPercent: e.target.value })}
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -623,7 +775,7 @@ export default function ItemDetailPage() {
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600"
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
                 >
                   Cancel
                 </button>

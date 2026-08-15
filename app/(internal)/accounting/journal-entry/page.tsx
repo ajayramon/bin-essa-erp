@@ -126,7 +126,7 @@ export default function JournalEntryPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="numeric-ltr w-full rounded-xl border border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-gold"
+            className="numeric-ltr w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
           />
         </div>
         <div>
@@ -135,7 +135,8 @@ export default function JournalEntryPage() {
             type="text"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            className="w-full rounded-xl border border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-gold"
+            placeholder="e.g. Opening Balance / Bank Transfer"
+            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
           />
         </div>
       </div>
@@ -174,10 +175,10 @@ export default function JournalEntryPage() {
                       <select
                         value={line.accountId}
                         onChange={(e) => updateLine(index, { accountId: e.target.value })}
-                        className="w-full rounded-lg border border-ink/10 px-2 py-1.5 text-sm sm:w-64"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-900 outline-none focus:border-amber-500 sm:w-64"
                       >
                         {accountsList.map((a) => (
-                          <option key={a.id} value={a.id}>
+                          <option key={a.id} value={a.id} className="text-slate-900 bg-white">
                             {accountLabel(a.id)}
                           </option>
                         ))}
@@ -192,7 +193,7 @@ export default function JournalEntryPage() {
                         onChange={(e) =>
                           updateLine(index, { debitKd: Number(e.target.value), creditKd: 0 })
                         }
-                        className="numeric-ltr w-28 rounded-lg border border-ink/10 px-2 py-1.5 text-sm"
+                        className="numeric-ltr w-28 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -204,7 +205,7 @@ export default function JournalEntryPage() {
                         onChange={(e) =>
                           updateLine(index, { creditKd: Number(e.target.value), debitKd: 0 })
                         }
-                        className="numeric-ltr w-28 rounded-lg border border-ink/10 px-2 py-1.5 text-sm"
+                        className="numeric-ltr w-28 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500"
                       />
                     </td>
                     <td className="px-3 py-2 text-end">
