@@ -528,38 +528,35 @@ export interface CreateCustomerPayload {
   email?: string;
   address?: string;
   branchId?: string;
-}
-
-export interface CreateCustomerResponse {
-  id: string;
-  code: string;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  branchId: string | null;
-  createdAt: string;
-  updatedAt: string;
+  customerGroup?: string;
+  creditLimit?: number;
+  paymentTerms?: string;
 }
 
 export interface CustomerResponse {
   id: string;
   code: string;
   name: string;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  branchId: string | null;
-  creditLimit: number;
-  paymentTerms: string;
-  createdAt: string;
-  updatedAt: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  branchId?: string | null;
+  customerGroup?: string;
+  creditLimit?: number;
+  paymentTerms?: string;
+  branch?: { id: string; name: string };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export async function listCustomersRequest(): Promise<CustomerResponse[]> {
-  const token = localStorage.getItem("bin-essa-access-token");
+export type CustomerRecord = CustomerResponse;
+export type CreateCustomerResponse = CustomerResponse;
+
+export async function listCustomersRequest(branchId?: string): Promise<CustomerResponse[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
   try {
-    const res = await fetch(`${API_BASE}/customers`, {
+    const res = await fetch(`${API_BASE}/customers${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -575,8 +572,8 @@ export async function listCustomersRequest(): Promise<CustomerResponse[]> {
 
 export async function createCustomerRequest(
   payload: CreateCustomerPayload
-): Promise<CreateCustomerResponse> {
-  const token = localStorage.getItem("bin-essa-access-token");
+): Promise<CustomerResponse> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const res = await fetch(`${API_BASE}/customers`, {
     method: "POST",
     headers: {
@@ -1165,12 +1162,13 @@ export function saveStoredItems(items: ItemResponse[]) {
   }
 }
 
-export async function listItemsRequest(): Promise<ItemResponse[]> {
+export async function listItemsRequest(branchId?: string): Promise<ItemResponse[]> {
   clearApiCache();
-  const token = localStorage.getItem("bin-essa-access-token");
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const storedItems = getStoredItems();
+  const query = branchId ? `&branchId=${encodeURIComponent(branchId)}` : "";
   try {
-    const res = await fetch(`${API_BASE}/items?_t=${Date.now()}`, {
+    const res = await fetch(`${API_BASE}/items?_t=${Date.now()}${query}`, {
       method: "GET",
       cache: "no-store",
       headers: {
@@ -1341,10 +1339,13 @@ const FALLBACK_SUPPLIERS: SupplierResponse[] = [
   },
 ];
 
-export async function listSuppliersRequest(): Promise<SupplierResponse[]> {
-  const token = localStorage.getItem("bin-essa-access-token");
+export type SupplierRecord = SupplierResponse;
+
+export async function listSuppliersRequest(branchId?: string): Promise<SupplierResponse[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
   try {
-    const res = await fetch(`${API_BASE}/suppliers`, {
+    const res = await fetch(`${API_BASE}/suppliers${query}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -2872,6 +2873,8 @@ export interface BranchResponse {
   code: string;
 }
 
+export type BranchRecord = BranchResponse;
+
 export async function listBranchesRequest(): Promise<BranchResponse[]> {
   const token = localStorage.getItem("bin-essa-access-token");
   try {
@@ -3559,4 +3562,1296 @@ export async function getCustomerArAgingReportRequest(): Promise<CustomerArAging
   }
   return [];
 }
+
+// ================= ENTERPRISE FULL BUSINESS SCOPE API CLIENT =================
+
+export async function getCustomerStatementRequest(customerId: string): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/customer-payments/statement/${customerId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for customer statement", e);
+  }
+  return null;
+}
+
+// 2. Stock Adjustments & Counts
+export interface StockAdjustmentRecord {
+  id: string;
+  adjustmentNumber: string;
+  branchId: string;
+  reason: string;
+  status: string;
+  totalValue: number;
+  notes?: string;
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantityChange: number;
+    unitCost: number;
+    totalCost: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listStockAdjustmentsRequest(branchId?: string): Promise<StockAdjustmentRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/stock-adjustments${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listStockAdjustments", e);
+  }
+  return [];
+}
+
+export async function createStockAdjustmentRequest(payload: {
+  adjustmentNumber: string;
+  branchId: string;
+  reason: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantityChange: number; unitCost?: number }>;
+}): Promise<StockAdjustmentRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/stock-adjustments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create stock adjustment");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface StockCountRecord {
+  id: string;
+  countNumber: string;
+  branchId: string;
+  status: string;
+  countedAt: string;
+  notes?: string;
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    systemQuantity: number;
+    countedQuantity: number;
+    variance: number;
+    unitCost: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listStockCountsRequest(branchId?: string): Promise<StockCountRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/stock-counts${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listStockCounts", e);
+  }
+  return [];
+}
+
+export async function createStockCountRequest(payload: {
+  countNumber: string;
+  branchId: string;
+  notes?: string;
+  lines: Array<{ itemId: string; countedQuantity: number; systemQuantity?: number; unitCost?: number }>;
+}): Promise<StockCountRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/stock-counts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create stock count");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface StockTransferRecord {
+  id: string;
+  transferNumber: string;
+  fromBranchId: string;
+  toBranchId: string;
+  status: string;
+  notes?: string;
+  fromBranch?: { id: string; name: string };
+  toBranch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantityRequested: number;
+    quantityDispatched?: number;
+    quantityReceived?: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listStockTransfersRequest(): Promise<StockTransferRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/stock-transfers`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listStockTransfers", e);
+  }
+  return [];
+}
+
+export async function createStockTransferRequest(payload: {
+  transferNumber: string;
+  fromBranchId: string;
+  toBranchId: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantityRequested: number }>;
+}): Promise<StockTransferRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/stock-transfers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create stock transfer");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 3. Purchasing Lifecycle (PR, GRN, Payment Vouchers)
+export interface PurchaseRequisitionRecord {
+  id: string;
+  prNumber: string;
+  branchId: string;
+  requestedByUserId?: string;
+  status: string;
+  notes?: string;
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantity: number;
+    notes?: string;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listPurchaseRequisitionsRequest(branchId?: string): Promise<PurchaseRequisitionRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/purchase-requisitions${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPurchaseRequisitions", e);
+  }
+  return [];
+}
+
+export async function createPurchaseRequisitionRequest(payload: {
+  prNumber: string;
+  branchId: string;
+  requestedByUserId?: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantity: number; notes?: string }>;
+}): Promise<PurchaseRequisitionRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/purchase-requisitions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create purchase requisition");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface GoodsReceiptRecord {
+  id: string;
+  grnNumber: string;
+  supplierId: string;
+  branchId: string;
+  purchaseOrderId?: string;
+  status: string;
+  notes?: string;
+  receivedAt: string;
+  supplier?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantityReceived: number;
+    unitCost: number;
+    lineTotal: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listGoodsReceiptsRequest(branchId?: string): Promise<GoodsReceiptRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/goods-receipts${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listGoodsReceipts", e);
+  }
+  return [];
+}
+
+export async function createGoodsReceiptRequest(payload: {
+  grnNumber: string;
+  supplierId: string;
+  branchId: string;
+  purchaseOrderId?: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantityReceived: number; unitCost: number }>;
+}): Promise<GoodsReceiptRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/goods-receipts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create goods receipt");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 4. Sales Lifecycle (Quotations, Orders, Deliveries, Receipt Vouchers)
+export interface QuotationRecord {
+  id: string;
+  quoteNumber: string;
+  customerId: string;
+  branchId: string;
+  validUntil?: string;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: string;
+  notes?: string;
+  customer?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listQuotationsRequest(branchId?: string): Promise<QuotationRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/quotations${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listQuotations", e);
+  }
+  return [];
+}
+
+export async function createQuotationRequest(payload: {
+  quoteNumber: string;
+  customerId: string;
+  branchId: string;
+  validUntil?: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantity: number; unitPrice: number }>;
+}): Promise<QuotationRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/quotations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create quotation");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface SalesOrderRecord {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  branchId: string;
+  quotationId?: string;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: string;
+  notes?: string;
+  date?: string;
+  customer?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listSalesOrdersRequest(branchId?: string): Promise<SalesOrderRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/sales-orders${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listSalesOrders", e);
+  }
+  return [];
+}
+
+export async function createSalesOrderRequest(payload: {
+  orderNumber: string;
+  customerId: string;
+  branchId: string;
+  quotationId?: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantity: number; unitPrice: number }>;
+}): Promise<SalesOrderRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/sales-orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create sales order");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface DeliveryNoteRecord {
+  id: string;
+  deliveryNumber: string;
+  customerId: string;
+  branchId: string;
+  salesOrderId?: string;
+  status: string;
+  notes?: string;
+  dispatchedAt: string;
+  customer?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  lines?: Array<{
+    id: string;
+    itemId: string;
+    quantity: number;
+    unitPrice: number;
+    item?: { id: string; name: string; sku: string };
+  }>;
+  createdAt: string;
+}
+
+export async function listDeliveryNotesRequest(branchId?: string): Promise<DeliveryNoteRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/delivery-notes${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listDeliveryNotes", e);
+  }
+  return [];
+}
+
+export async function createDeliveryNoteRequest(payload: {
+  deliveryNumber: string;
+  customerId: string;
+  branchId: string;
+  salesOrderId?: string;
+  notes?: string;
+  lines: Array<{ itemId: string; quantity: number; unitPrice: number }>;
+}): Promise<DeliveryNoteRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/delivery-notes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create delivery note");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 5. Vouchers (Receipt Vouchers & Payment Vouchers)
+export interface ReceiptVoucherRecord {
+  id: string;
+  voucherNumber: string;
+  date: string;
+  customerId: string;
+  branchId: string;
+  amount: number;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+  customer?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  createdAt: string;
+}
+
+export async function listReceiptVouchersRequest(branchId?: string): Promise<ReceiptVoucherRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/vouchers/receipts${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listReceiptVouchers", e);
+  }
+  return [];
+}
+
+export async function createReceiptVoucherRequest(payload: {
+  voucherNumber: string;
+  customerId: string;
+  branchId: string;
+  amount: number;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+}): Promise<ReceiptVoucherRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/vouchers/receipts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create receipt voucher");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface PaymentVoucherRecord {
+  id: string;
+  voucherNumber: string;
+  date: string;
+  supplierId: string;
+  branchId: string;
+  amount: number;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+  supplier?: { id: string; name: string; code: string };
+  branch?: { id: string; name: string };
+  createdAt: string;
+}
+
+export async function listPaymentVouchersRequest(branchId?: string): Promise<PaymentVoucherRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/vouchers/payments${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPaymentVouchers", e);
+  }
+  return [];
+}
+
+export async function createPaymentVoucherRequest(payload: {
+  voucherNumber: string;
+  supplierId: string;
+  branchId: string;
+  amount: number;
+  paymentMethod: string;
+  reference?: string;
+  notes?: string;
+}): Promise<PaymentVoucherRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/vouchers/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create payment voucher");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 6. Cash Management
+export interface CashAccountRecord {
+  id: string;
+  code: string;
+  name: string;
+  branchId?: string;
+  balance: number;
+  isMain: boolean;
+  isActive: boolean;
+  branch?: { id: string; name: string };
+}
+
+export async function listCashAccountsRequest(branchId?: string): Promise<CashAccountRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/cash/accounts${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listCashAccounts", e);
+  }
+  return [];
+}
+
+export async function createCashAccountRequest(payload: {
+  code: string;
+  name: string;
+  branchId?: string;
+  balance?: number;
+  isMain?: boolean;
+}): Promise<CashAccountRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/cash/accounts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create cash account");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface CashTransferRecord {
+  id: string;
+  transferNumber: string;
+  fromCashAccountId: string;
+  toCashAccountId: string;
+  amount: number;
+  status: string;
+  notes?: string;
+  fromCashAccount?: CashAccountRecord;
+  toCashAccount?: CashAccountRecord;
+  createdAt: string;
+}
+
+export async function listCashTransfersRequest(): Promise<CashTransferRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/cash/transfers`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listCashTransfers", e);
+  }
+  return [];
+}
+
+export async function createCashTransferRequest(payload: {
+  transferNumber: string;
+  fromCashAccountId: string;
+  toCashAccountId: string;
+  amount: number;
+  notes?: string;
+}): Promise<CashTransferRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/cash/transfers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create cash transfer");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 7. Bank Management
+export interface BankAccountRecord {
+  id: string;
+  code: string;
+  name: string;
+  bankName: string;
+  accountNumber: string;
+  iban?: string;
+  balance: number;
+  currency: string;
+  isActive: boolean;
+}
+
+export async function listBankAccountsRequest(): Promise<BankAccountRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/banks/accounts`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listBankAccounts", e);
+  }
+  return [];
+}
+
+export async function createBankAccountRequest(payload: {
+  code: string;
+  name: string;
+  bankName: string;
+  accountNumber: string;
+  iban?: string;
+  balance?: number;
+  currency?: string;
+}): Promise<BankAccountRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/banks/accounts`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create bank account");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface BankReconciliationRecord {
+  id: string;
+  bankAccountId: string;
+  statementDate: string;
+  statementEndingBalance: number;
+  bookBalance: number;
+  difference: number;
+  status: string;
+  notes?: string;
+  bankAccount?: BankAccountRecord;
+  createdAt: string;
+}
+
+export async function listBankReconciliationsRequest(bankAccountId?: string): Promise<BankReconciliationRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = bankAccountId ? `?bankAccountId=${encodeURIComponent(bankAccountId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/banks/reconciliations${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listBankReconciliations", e);
+  }
+  return [];
+}
+
+export async function createBankReconciliationRequest(payload: {
+  bankAccountId: string;
+  statementEndingBalance: number;
+  statementDate?: string;
+  notes?: string;
+}): Promise<BankReconciliationRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/banks/reconciliations`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create bank reconciliation");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 8. Cost Centers & Expenses
+export interface CostCenterRecord {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  parentCostCenterId?: string;
+  isActive: boolean;
+}
+
+export async function listCostCentersRequest(): Promise<CostCenterRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/cost-centers`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listCostCenters", e);
+  }
+  return [];
+}
+
+export async function createCostCenterRequest(payload: {
+  code: string;
+  name: string;
+  type?: string;
+  parentCostCenterId?: string;
+}): Promise<CostCenterRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/cost-centers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create cost center");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface ExpenseCategoryRecord {
+  id: string;
+  code: string;
+  name: string;
+  accountId?: string;
+  isActive: boolean;
+}
+
+export async function listExpenseCategoriesRequest(): Promise<ExpenseCategoryRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/expenses/categories`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listExpenseCategories", e);
+  }
+  return [];
+}
+
+export async function createExpenseCategoryRequest(payload: {
+  code: string;
+  name: string;
+  accountId?: string;
+}): Promise<ExpenseCategoryRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/expenses/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create expense category");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export interface ExpenseRecord {
+  id: string;
+  expenseNumber: string;
+  date: string;
+  branchId: string;
+  categoryId: string;
+  costCenterId?: string;
+  amount: number;
+  paymentMethod: string;
+  status: string;
+  notes?: string;
+  category?: ExpenseCategoryRecord;
+  costCenter?: CostCenterRecord;
+  branch?: { id: string; name: string };
+  createdAt: string;
+}
+
+export async function listExpensesRequest(branchId?: string): Promise<ExpenseRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/expenses${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listExpenses", e);
+  }
+  return [];
+}
+
+export async function createExpenseRequest(payload: {
+  expenseNumber: string;
+  branchId: string;
+  categoryId: string;
+  costCenterId?: string;
+  amount: number;
+  paymentMethod: string;
+  notes?: string;
+}): Promise<ExpenseRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/expenses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to record expense");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 9. Financial Statements & Reporting
+export interface IncomeStatementResponse {
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  operatingExpenses: number;
+  netProfit: number;
+  currency: string;
+}
+
+export async function getIncomeStatementRequest(
+  startDate?: string,
+  endDate?: string,
+  branchId?: string
+): Promise<IncomeStatementResponse> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = new URLSearchParams();
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+  if (branchId) query.set("branchId", branchId);
+  try {
+    const res = await fetch(`${API_BASE}/financial-reports/income-statement?${query.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for income statement", e);
+  }
+  return { revenue: 0, cogs: 0, grossProfit: 0, operatingExpenses: 0, netProfit: 0, currency: "KWD" };
+}
+
+export interface BalanceSheetResponse {
+  assets: { currentAssets: number; totalAssets: number };
+  liabilities: { currentLiabilities: number; totalLiabilities: number };
+  equity: { capital: number; retainedEarnings: number; totalEquity: number };
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+  currency: string;
+}
+
+export async function getBalanceSheetRequest(
+  asOfDate?: string,
+  branchId?: string
+): Promise<BalanceSheetResponse> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = new URLSearchParams();
+  if (asOfDate) query.set("asOfDate", asOfDate);
+  if (branchId) query.set("branchId", branchId);
+  try {
+    const res = await fetch(`${API_BASE}/financial-reports/balance-sheet?${query.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for balance sheet", e);
+  }
+  return {
+    assets: { currentAssets: 0, totalAssets: 0 },
+    liabilities: { currentLiabilities: 0, totalLiabilities: 0 },
+    equity: { capital: 0, retainedEarnings: 0, totalEquity: 0 },
+    totalLiabilitiesAndEquity: 0,
+    isBalanced: true,
+    currency: "KWD",
+  };
+}
+
+export interface CashFlowResponse {
+  operatingInflows: { salesCashInflow: number; receiptVouchersInflow: number; totalInflow: number };
+  operatingOutflows: { expenseCashOutflow: number; paymentVouchersOutflow: number; totalOutflow: number };
+  netCashFlow: number;
+  currency: string;
+}
+
+export async function getCashFlowRequest(
+  startDate?: string,
+  endDate?: string,
+  branchId?: string
+): Promise<CashFlowResponse> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = new URLSearchParams();
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+  if (branchId) query.set("branchId", branchId);
+  try {
+    const res = await fetch(`${API_BASE}/financial-reports/cash-flow?${query.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for cash flow", e);
+  }
+  return {
+    operatingInflows: { salesCashInflow: 0, receiptVouchersInflow: 0, totalInflow: 0 },
+    operatingOutflows: { expenseCashOutflow: 0, paymentVouchersOutflow: 0, totalOutflow: 0 },
+    netCashFlow: 0,
+    currency: "KWD",
+  };
+}
+
+export interface InventoryValuationResponse {
+  totalValuation: number;
+  totalItemsCount: number;
+  currency: string;
+  itemsValuation: Array<{
+    itemId: string;
+    sku: string;
+    name: string;
+    quantity: number;
+    unitCost: number;
+    valuation: number;
+  }>;
+}
+
+export async function getInventoryValuationRequest(branchId?: string): Promise<InventoryValuationResponse> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/financial-reports/inventory-valuation${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for inventory valuation", e);
+  }
+  return { totalValuation: 0, totalItemsCount: 0, currency: "KWD", itemsValuation: [] };
+}
+
+// 10. Customer Loyalty & Rewards
+export interface LoyaltyAccountRecord {
+  id: string;
+  customerId: string;
+  pointsBalance: number;
+  totalPointsEarned?: number;
+  tier: string;
+  transactions?: Array<{
+    id: string;
+    points: number;
+    type: string;
+    reference?: string;
+    notes?: string;
+    createdAt: string;
+  }>;
+}
+
+export async function getLoyaltyCustomerAccountRequest(customerId: string): Promise<LoyaltyAccountRecord | null> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/loyalty/customers/${customerId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for getLoyaltyCustomerAccount", e);
+  }
+  return null;
+}
+
+export async function createLoyaltyTransactionRequest(payload: {
+  customerId: string;
+  points: number;
+  type: string;
+  reference?: string;
+  notes?: string;
+  salesInvoiceId?: string;
+}): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/loyalty/transactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create loyalty transaction");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+// 11. Sales Targets & Commissions
+export interface SalesTargetRecord {
+  id: string;
+  userId: string;
+  branchId?: string;
+  targetPeriod?: string;
+  targetType?: string;
+  commissionRate?: number;
+  commissionEarned?: number;
+  startDate?: string;
+  endDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  targetAmount: number;
+  achievedAmount: number;
+  user?: { id: string; name: string };
+  branch?: { id: string; name: string };
+  createdAt: string;
+}
+
+export async function listSalesTargetsRequest(branchId?: string): Promise<SalesTargetRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/commissions/targets${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listSalesTargets", e);
+  }
+  return [];
+}
+
+export async function createSalesTargetRequest(payload: {
+  userId: string;
+  branchId?: string;
+  targetPeriod?: string;
+  targetType?: string;
+  commissionRate?: number;
+  startDate?: string;
+  endDate?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  targetAmount: number;
+}): Promise<SalesTargetRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/commissions/targets`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create sales target");
+  }
+  clearApiCache();
+  return res.json();
+}
+
+export async function calculateCommissionRequest(
+  userId: string,
+  payload: { period: string; startDate: string; endDate: string }
+): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const res = await fetch(`${API_BASE}/commissions/calculate/${userId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to calculate commission");
+  }
+  clearApiCache();
+  return res.json();
+}
+
 

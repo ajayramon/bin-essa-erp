@@ -22,4 +22,9 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentTerms?: string;
 }
+

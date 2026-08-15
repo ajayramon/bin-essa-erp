@@ -15,6 +15,9 @@ export class CustomersService {
         email: dto.email,
         address: dto.address,
         branchId: dto.branchId,
+        customerGroup: dto.customerGroup ?? 'STANDARD',
+        creditLimit: dto.creditLimit ?? 0,
+        paymentTerms: dto.paymentTerms ?? 'NET_30',
       },
     });
   }

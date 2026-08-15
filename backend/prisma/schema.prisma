@@ -11,16 +11,14 @@ datasource db {
   provider = "postgresql"
 }
 
-// ================= ENUMS (9) =================
+// ================= ENUMS (24) =================
 
-// ASSUMED: matches frontend BrandId type — verify against lib/types/index.ts
 enum BrandId {
   BIN_ESSA_SMOKING_CENTER
   BIN_ESSA_KHIRAN
   JM_ART_ZONE
 }
 
-// ASSUMED: matches frontend Role type — verify values/casing
 enum Role {
   ADMIN
   MANAGER
@@ -31,7 +29,6 @@ enum Role {
   B2B_CUSTOMER
 }
 
-// ASSUMED: matches frontend ItemCategory — verify exact category list
 enum ItemCategory {
   TOBACCO
   ACCESSORIES
@@ -40,13 +37,11 @@ enum ItemCategory {
   OTHER
 }
 
-// ASSUMED: matches frontend ItemVisibility
 enum ItemVisibility {
   ALL_BRANCHES
   SPECIFIC_BRANCHES
 }
 
-// ASSUMED: matches frontend PaymentMethod
 enum PaymentMethod {
   CASH
   CARD
@@ -57,7 +52,6 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
-// ASSUMED: matches frontend AccountType (standard chart-of-accounts types)
 enum AccountType {
   ASSET
   LIABILITY
@@ -66,8 +60,6 @@ enum AccountType {
   EXPENSE
 }
 
-// NOT explicitly in your type list — added because a real SalesInvoice needs a status.
-// FLAG: confirm this doesn't already exist under a different name in sales-invoice.ts
 enum InvoiceStatus {
   DRAFT
   POSTED
@@ -75,8 +67,6 @@ enum InvoiceStatus {
   VOID
 }
 
-// NOT explicitly in your type list — added so JournalEntry has a lifecycle state.
-// FLAG: confirm against lib/types/index.ts JournalEntry definition
 enum JournalEntryStatus {
   DRAFT
   POSTED
@@ -88,8 +78,6 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
-// NOT explicitly in your type list — added for ItemStock audit trail readiness.
-// FLAG: only needed if you track stock movement history; otherwise can be deleted
 enum StockMovementType {
   SALE
   PURCHASE
@@ -125,7 +113,140 @@ enum DiscountType {
   PROMOTION
 }
 
-// ================= MODELS (11) =================
+enum TransferStatus {
+  DRAFT
+  DISPATCHED
+  RECEIVED
+  CANCELLED
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+enum OrderStatus {
+  DRAFT
+  QUOTATION
+  CONFIRMED
+  CREDIT_HOLD
+  INVOICED
+  CANCELLED
+}
+
+enum PdcStatus {
+  RECEIVED
+  DEPOSITED
+  CLEARED
+  BOUNCED
+}
+
+enum SerialStatus {
+  IN_STOCK
+  SOLD
+  RETURNED
+}
+
+enum MovementType {
+  SALE
+  PURCHASE
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  RETURN
+}
+
+enum AdjustmentReason {
+  DAMAGE
+  SHRINKAGE
+  EXPIRY
+  COUNT_CORRECTION
+  OTHER
+}
+
+enum AdjustmentStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum StockCountStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BankTxType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  CHARGE
+  INTEREST
+}
+
+enum ReconStatus {
+  DRAFT
+  RECONCILED
+}
+
+enum CostCenterType {
+  BRANCH
+  WAREHOUSE
+  DEPARTMENT
+  CUSTOM
+}
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum LoyaltyTxType {
+  EARN
+  REDEEM
+  EXPIRE
+  RETURN_REVERSAL
+  MANUAL_ADJUSTMENT
+}
+
+enum TargetPeriod {
+  WEEKLY
+  MONTHLY
+  ANNUAL
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  EMERGENCY
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PrStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ORDERED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  EXPIRED
+  CONVERTED
+}
+
+// ================= CORE ENTERPRISE MODELS =================
 
 model Branch {
   id       String  @id @default(uuid())
@@ -138,18 +259,28 @@ model Branch {
   address  String?
   isActive Boolean @default(true)
 
-  users            User[]
-  itemStocks       ItemStock[]
-  customers        Customer[]
-  suppliers        Supplier[]
-  salesInvoices    SalesInvoice[]
-  journalEntries   JournalEntry[]
-  purchaseOrders   PurchaseOrder[]
-  purchaseInvoices PurchaseInvoice[]
-  salesOrders      SalesOrder[]
-  posShifts        PosShift[]
-  promotionBranches PromotionBranch[]
-
+  users                 User[]
+  itemStocks            ItemStock[]
+  customers             Customer[]
+  suppliers             Supplier[]
+  salesInvoices         SalesInvoice[]
+  journalEntries        JournalEntry[]
+  purchaseOrders        PurchaseOrder[]
+  purchaseInvoices      PurchaseInvoice[]
+  salesOrders           SalesOrder[]
+  posShifts             PosShift[]
+  promotionBranches     PromotionBranch[]
+  stockAdjustments      StockAdjustment[]
+  stockCounts           StockCount[]
+  cashAccounts          CashAccount[]
+  expenses              Expense[]
+  receiptVouchers       ReceiptVoucher[]
+  paymentVouchers       PaymentVoucher[]
+  purchaseRequisitions  PurchaseRequisition[]
+  goodsReceiptNotes     GoodsReceiptNote[]
+  quotations            Quotation[]
+  deliveryNotes         DeliveryNote[]
+  employees             Employee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,8 +296,8 @@ model User {
   branch       Branch? @relation(fields: [branchId], references: [id])
   isActive     Boolean @default(true)
 
-  salesInvoices SalesInvoice[]
-  posShifts     PosShift[]
+  salesInvoices      SalesInvoice[]
+  posShifts          PosShift[]
   discountPermission UserDiscountPermission?
 
   createdAt DateTime @default(now())
@@ -209,18 +340,24 @@ model Item {
   blockDiscount      Boolean @default(false)
   maxDiscountPercent Decimal @default(100.00) @db.Decimal(5, 2)
 
-  stocks               ItemStock[]
-  salesInvoiceLines    SalesInvoiceLine[]
-  purchaseOrderLines   PurchaseOrderLine[]
-  purchaseInvoiceLines PurchaseInvoiceLine[]
-  stockTransferLines   StockTransferLine[]
-  salesOrderLines      SalesOrderLine[]
-  promotionItems       PromotionItem[]
-  variants             ItemVariant[]
-  serials              ItemSerial[]
-  batches              ItemBatch[]
-  uoms                 ItemUom[]
-  additionalBarcodes   ItemBarcode[]
+  stocks                   ItemStock[]
+  salesInvoiceLines        SalesInvoiceLine[]
+  purchaseOrderLines       PurchaseOrderLine[]
+  purchaseInvoiceLines     PurchaseInvoiceLine[]
+  stockTransferLines       StockTransferLine[]
+  salesOrderLines          SalesOrderLine[]
+  promotionItems           PromotionItem[]
+  variants                 ItemVariant[]
+  serials                  ItemSerial[]
+  batches                  ItemBatch[]
+  uoms                     ItemUom[]
+  additionalBarcodes       ItemBarcode[]
+  stockAdjustmentLines     StockAdjustmentLine[]
+  stockCountLines          StockCountLine[]
+  purchaseRequisitionLines PurchaseRequisitionLine[]
+  goodsReceiptLines        GoodsReceiptLine[]
+  quotationLines           QuotationLine[]
+  deliveryNoteLines        DeliveryNoteLine[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -238,7 +375,7 @@ model ItemBarcode {
 model ItemUom {
   id              String   @id @default(uuid())
   itemId          String
-  unitName        String   // "Piece", "Pack", "Box", "Carton"
+  unitName        String   // "Piece", "Pack", "Box", "Carton", "KG", "Gram", "Set", "Bundle", "Package"
   conversionRatio Decimal  @db.Decimal(10, 3)
   barcode         String?  @unique
   retailPrice     Decimal? @db.Decimal(10, 3)
@@ -265,50 +402,59 @@ model ItemStock {
 }
 
 model Customer {
-  id           String   @id @default(uuid())
-  code         String   @unique // e.g. "cust-0001"
-  name         String
-  phone        String?
-  email        String?
-  address      String?
-  branchId     String?
-  creditLimit  Decimal  @default(0) @db.Decimal(10, 3)
-  paymentTerms String?  @default("NET_30")
-  branch       Branch?  @relation(fields: [branchId], references: [id])
+  id            String   @id @default(uuid())
+  code          String   @unique // e.g. "cust-0001"
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  branchId      String?
+  customerGroup String?  @default("STANDARD") // STANDARD, WHOLESALE, VIP
+  creditLimit   Decimal  @default(0) @db.Decimal(10, 3)
+  paymentTerms  String?  @default("NET_30")
+  branch        Branch?  @relation(fields: [branchId], references: [id])
 
-  salesInvoices SalesInvoice[]
-  salesOrders   SalesOrder[]
-  payments      CustomerPayment[]
-  pdcChecks     PdcCheck[]
+  salesInvoices      SalesInvoice[]
+  salesOrders        SalesOrder[]
+  payments           CustomerPayment[]
+  pdcChecks          PdcCheck[]
   promotionCustomers PromotionCustomer[]
+  quotations         Quotation[]
+  deliveryNotes      DeliveryNote[]
+  receiptVouchers    ReceiptVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-
 model Supplier {
-  id       String  @id @default(uuid())
-  code     String  @unique
-  name     String
-  phone    String?
-  email    String?
-  address  String?
-  branchId String?
-  branch   Branch? @relation(fields: [branchId], references: [id])
+  id           String  @id @default(uuid())
+  code         String  @unique
+  name         String
+  phone        String?
+  email        String?
+  address      String?
+  branchId     String?
+  paymentTerms String? @default("NET_30")
+  branch       Branch? @relation(fields: [branchId], references: [id])
 
-  purchaseOrders   PurchaseOrder[]
-  purchaseInvoices PurchaseInvoice[]
+  purchaseOrders    PurchaseOrder[]
+  purchaseInvoices  PurchaseInvoice[]
+  goodsReceiptNotes GoodsReceiptNote[]
+  paymentVouchers   PaymentVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Account {
-  id   String      @id @default(uuid())
-  code String      @unique // e.g. "1000" for Cash
-  name String
-  type AccountType
+  id              String      @id @default(uuid())
+  code            String      @unique // e.g. "1000" for Cash
+  name            String
+  type            AccountType
+  parentAccountId String?
+  isHeader        Boolean     @default(false)
+  isActive        Boolean     @default(true)
 
   journalEntryLines JournalEntryLine[]
 
@@ -326,11 +472,11 @@ model JournalEntry {
   branch      Branch?            @relation(fields: [branchId], references: [id])
 
   // Links back to auto-generated entries
-  salesInvoiceId String?       @unique
-  salesInvoice   SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+  salesInvoiceId    String?          @unique
+  salesInvoice      SalesInvoice?    @relation(fields: [salesInvoiceId], references: [id])
 
-  purchaseOrderId String?        @unique
-  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrderId   String?          @unique
+  purchaseOrder     PurchaseOrder?   @relation(fields: [purchaseOrderId], references: [id])
 
   purchaseInvoiceId String?          @unique
   purchaseInvoice   PurchaseInvoice? @relation(fields: [purchaseInvoiceId], references: [id])
@@ -338,6 +484,23 @@ model JournalEntry {
   customerPaymentId String?          @unique
   customerPayment   CustomerPayment? @relation(fields: [customerPaymentId], references: [id])
 
+  stockAdjustmentId String?          @unique
+  stockAdjustment   StockAdjustment? @relation(fields: [stockAdjustmentId], references: [id])
+
+  expenseId         String?          @unique
+  expense           Expense?         @relation(fields: [expenseId], references: [id])
+
+  cashTransferId    String?          @unique
+  cashTransfer      CashTransfer?    @relation(fields: [cashTransferId], references: [id])
+
+  receiptVoucherId  String?          @unique
+  receiptVoucher    ReceiptVoucher?  @relation(fields: [receiptVoucherId], references: [id])
+
+  paymentVoucherId  String?          @unique
+  paymentVoucher    PaymentVoucher?  @relation(fields: [paymentVoucherId], references: [id])
+
+  payrollPeriodId   String?          @unique
+  payrollPeriod     PayrollPeriod?   @relation(fields: [payrollPeriodId], references: [id])
 
   lines JournalEntryLine[]
 
@@ -376,7 +539,7 @@ model SalesInvoice {
   posShiftId           String?
   isReturn             Boolean       @default(false)
 
-  posShift     PosShift?     @relation(fields: [posShiftId], references: [id])
+  posShift     PosShift?          @relation(fields: [posShiftId], references: [id])
   lines        SalesInvoiceLine[]
   journalEntry JournalEntry?
 
@@ -435,7 +598,7 @@ model PurchaseInvoice {
   invoiceNumber String        @unique // e.g. "PINV-0001" or vendor bill #
   date          DateTime      @default(now())
   dueDate       DateTime?
-  paymentTerms  String?       @default("IMMEDIATE") // e.g. NET 30, IMMEDIATE, CREDIT
+  paymentTerms  String?       @default("IMMEDIATE")
   supplierId    String
   supplier      Supplier      @relation(fields: [supplierId], references: [id])
   branchId      String
@@ -462,20 +625,6 @@ model PurchaseInvoiceLine {
 
   purchaseInvoice PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
   item            Item            @relation(fields: [itemId], references: [id])
-}
-
-// ================= ENTERPRISE COMMERCIAL MODULES =================
-
-enum TransferStatus {
-  DRAFT
-  DISPATCHED
-  RECEIVED
-  CANCELLED
-}
-
-enum ShiftStatus {
-  OPEN
-  CLOSED
 }
 
 model StockTransfer {
@@ -548,30 +697,12 @@ model PosShift {
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String?
-  action      String   // e.g. "STOCK_TRANSFER", "PRICE_OVERRIDE", "INVOICE_VOID"
-  entity      String   // e.g. "SalesInvoice", "ItemStock"
+  action      String
+  entity      String
   entityId    String?
-  details     String?  // JSON formatted details of change
+  details     String?
   ipAddress   String?
   createdAt   DateTime @default(now())
-}
-
-// ================= MILESTONE 2: B2B COMMERCIAL & ACCOUNTS RECEIVABLE =================
-
-enum OrderStatus {
-  DRAFT
-  QUOTATION
-  CONFIRMED
-  CREDIT_HOLD
-  INVOICED
-  CANCELLED
-}
-
-enum PdcStatus {
-  RECEIVED
-  DEPOSITED
-  CLEARED
-  BOUNCED
 }
 
 model SalesOrder {
@@ -614,13 +745,12 @@ model CustomerPayment {
   customer      Customer      @relation(fields: [customerId], references: [id])
   amount        Decimal       @db.Decimal(10, 3)
   paymentMethod PaymentMethod
-  reference     String?       // Check # or Transfer Ref
+  reference     String?
   notes         String?
 
   journalEntry JournalEntry?
 
   createdAt DateTime @default(now())
-
   updatedAt DateTime @updatedAt
 }
 
@@ -641,8 +771,6 @@ model PdcCheck {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-// ================= PROMOTION & DISCOUNT ENGINE =================
 
 model UserDiscountPermission {
   id                      String   @id @default(uuid())
@@ -667,15 +795,15 @@ model Promotion {
   discountValue Decimal                @db.Decimal(10, 3)
   startDate     DateTime
   endDate       DateTime
-  startTime     String?                // e.g. "09:00"
-  endTime       String?                // e.g. "21:00"
-  maxQuantity   Int?                   // max eligible qty per transaction
+  startTime     String?
+  endTime       String?
+  maxQuantity   Int?
   isCombinable  Boolean                @default(false)
   isActive      Boolean                @default(true)
   targetType    PromotionTargetType    @default(ALL_PRODUCTS)
   branchScope   PromotionBranchScope   @default(ALL_BRANCHES)
   customerScope PromotionCustomerScope @default(ALL_CUSTOMERS)
-  customerGroup String?                // e.g. "VIP", "WHOLESALE"
+  customerGroup String?
 
   items     PromotionItem[]
   branches  PromotionBranch[]
@@ -743,14 +871,6 @@ model RolePermission {
   updatedAt DateTime @updatedAt
 }
 
-// ================= PRODUCT VARIANTS & SERIAL/BATCH TRACKING =================
-
-enum SerialStatus {
-  IN_STOCK
-  SOLD
-  RETURNED
-}
-
 model ItemVariant {
   id          String   @id @default(uuid())
   itemId      String
@@ -791,4 +911,583 @@ model ItemBatch {
   @@unique([itemId, batchNumber])
 }
 
+// ================= INVENTORY MOVEMENTS & STOCK OPERATIONS =================
 
+model InventoryMovement {
+  id            String       @id @default(uuid())
+  itemId        String
+  branchId      String
+  movementType  MovementType
+  quantity      Decimal      @db.Decimal(10, 3)
+  unitCost      Decimal      @db.Decimal(10, 3)
+  totalCost     Decimal      @db.Decimal(10, 3)
+  referenceType String?      // "SalesInvoice", "PurchaseInvoice", "StockTransfer", "StockAdjustment"
+  referenceId   String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+}
+
+model StockAdjustment {
+  id               String           @id @default(uuid())
+  adjustmentNumber String           @unique // e.g. "ADJ-0001"
+  branchId         String
+  branch           Branch           @relation(fields: [branchId], references: [id])
+  reason           AdjustmentReason @default(COUNT_CORRECTION)
+  status           AdjustmentStatus @default(POSTED)
+  totalValue       Decimal          @default(0) @db.Decimal(10, 3)
+  notes            String?
+
+  journalEntry     JournalEntry?
+  lines            StockAdjustmentLine[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model StockAdjustmentLine {
+  id                String          @id @default(uuid())
+  stockAdjustmentId String
+  itemId            String
+  quantityChange    Decimal         @db.Decimal(10, 3) // +10 or -5
+  unitCost          Decimal         @db.Decimal(10, 3)
+  totalCost         Decimal         @db.Decimal(10, 3)
+
+  stockAdjustment   StockAdjustment @relation(fields: [stockAdjustmentId], references: [id], onDelete: Cascade)
+  item              Item            @relation(fields: [itemId], references: [id])
+}
+
+model StockCount {
+  id          String           @id @default(uuid())
+  countNumber String           @unique // e.g. "SC-0001"
+  branchId    String
+  branch      Branch           @relation(fields: [branchId], references: [id])
+  status      StockCountStatus @default(IN_PROGRESS)
+  countedAt   DateTime         @default(now())
+  notes       String?
+
+  lines       StockCountLine[]
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model StockCountLine {
+  id              String     @id @default(uuid())
+  stockCountId    String
+  itemId          String
+  systemQuantity  Decimal    @db.Decimal(10, 3)
+  countedQuantity Decimal    @db.Decimal(10, 3)
+  variance        Decimal    @db.Decimal(10, 3)
+  unitCost        Decimal    @default(0) @db.Decimal(10, 3)
+
+  stockCount      StockCount @relation(fields: [stockCountId], references: [id], onDelete: Cascade)
+  item            Item       @relation(fields: [itemId], references: [id])
+}
+
+// ================= CASH & BANK MANAGEMENT =================
+
+model CashAccount {
+  id            String         @id @default(uuid())
+  code          String         @unique // e.g. "CASH-HQ", "CASH-BR01"
+  name          String
+  branchId      String?
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  balance       Decimal        @default(0) @db.Decimal(10, 3)
+  isMain        Boolean        @default(false)
+  isActive      Boolean        @default(true)
+
+  transfersFrom CashTransfer[] @relation("FromCashAccount")
+  transfersTo   CashTransfer[] @relation("ToCashAccount")
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model CashTransfer {
+  id                String       @id @default(uuid())
+  transferNumber    String       @unique // e.g. "CTX-0001"
+  fromCashAccountId String
+  toCashAccountId   String
+  amount            Decimal      @db.Decimal(10, 3)
+  status            String       @default("COMPLETED")
+  notes             String?
+
+  fromCashAccount   CashAccount  @relation("FromCashAccount", fields: [fromCashAccountId], references: [id])
+  toCashAccount     CashAccount  @relation("ToCashAccount", fields: [toCashAccountId], references: [id])
+
+  journalEntry      JournalEntry?
+
+  createdAt         DateTime     @default(now())
+}
+
+model BankAccount {
+  id            String              @id @default(uuid())
+  code          String              @unique // e.g. "NBK-001"
+  name          String
+  bankName      String
+  accountNumber String
+  iban          String?
+  balance       Decimal             @default(0) @db.Decimal(10, 3)
+  currency      String              @default("KWD")
+  isActive      Boolean             @default(true)
+
+  transactions    BankTransaction[]
+  reconciliations BankReconciliation[]
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model BankTransaction {
+  id            String      @id @default(uuid())
+  bankAccountId String
+  type          BankTxType
+  amount        Decimal     @db.Decimal(10, 3)
+  reference     String?
+  transactionDate DateTime  @default(now())
+  isReconciled  Boolean     @default(false)
+  notes         String?
+
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
+  reconItems    BankReconciliationItem[]
+
+  createdAt     DateTime    @default(now())
+}
+
+model BankReconciliation {
+  id                     String      @id @default(uuid())
+  bankAccountId          String
+  statementDate          DateTime
+  statementEndingBalance Decimal     @db.Decimal(10, 3)
+  bookBalance            Decimal     @db.Decimal(10, 3)
+  difference             Decimal     @default(0) @db.Decimal(10, 3)
+  status                 ReconStatus @default(DRAFT)
+  notes                  String?
+
+  bankAccount            BankAccount @relation(fields: [bankAccountId], references: [id])
+  items                  BankReconciliationItem[]
+
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+}
+
+model BankReconciliationItem {
+  id               String             @id @default(uuid())
+  reconciliationId String
+  transactionId    String
+  matched          Boolean            @default(true)
+  notes            String?
+
+  reconciliation   BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  transaction      BankTransaction    @relation(fields: [transactionId], references: [id])
+}
+
+// ================= COST CENTERS & EXPENSES =================
+
+model CostCenter {
+  id                 String         @id @default(uuid())
+  code               String         @unique // e.g. "CC-SALES-BR01"
+  name               String
+  type               CostCenterType @default(BRANCH)
+  parentCostCenterId String?
+  isActive           Boolean        @default(true)
+
+  expenses           Expense[]
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model ExpenseCategory {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  name      String
+  accountId String?
+  isActive  Boolean   @default(true)
+
+  expenses  Expense[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Expense {
+  id             String          @id @default(uuid())
+  expenseNumber  String          @unique // e.g. "EXP-0001"
+  date           DateTime        @default(now())
+  branchId       String
+  branch         Branch          @relation(fields: [branchId], references: [id])
+  categoryId     String
+  category       ExpenseCategory @relation(fields: [categoryId], references: [id])
+  amount         Decimal         @db.Decimal(10, 3)
+  paymentMethod  PaymentMethod   @default(CASH)
+  costCenterId   String?
+  costCenter     CostCenter?     @relation(fields: [costCenterId], references: [id])
+  status         String          @default("POSTED")
+  notes          String?
+
+  journalEntry   JournalEntry?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+// ================= LOYALTY & REWARDS =================
+
+model LoyaltyProgram {
+  id                String   @id @default(uuid())
+  name              String   @default("Standard Rewards")
+  pointsPerKwd      Decimal  @default(10) @db.Decimal(10, 3)
+  kwdPerPoint       Decimal  @default(0.010) @db.Decimal(10, 3)
+  minPointsToRedeem Int      @default(100)
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model LoyaltyAccount {
+  id            String        @id @default(uuid())
+  customerId    String        @unique
+  pointsBalance Int           @default(0)
+  tier          LoyaltyTier   @default(BRONZE)
+
+  transactions  LoyaltyTransaction[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model LoyaltyTransaction {
+  id               String         @id @default(uuid())
+  loyaltyAccountId String
+  salesInvoiceId   String?
+  points           Int
+  type             LoyaltyTxType  @default(EARN)
+  notes            String?
+
+  loyaltyAccount   LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime       @default(now())
+}
+
+// ================= SALES TARGETS & COMMISSIONS =================
+
+model SalesTarget {
+  id             String       @id @default(uuid())
+  userId         String
+  branchId       String?
+  targetPeriod   TargetPeriod @default(MONTHLY)
+  startDate      DateTime
+  endDate        DateTime
+  targetAmount   Decimal      @db.Decimal(10, 3)
+  achievedAmount Decimal      @default(0) @db.Decimal(10, 3)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model CommissionRule {
+  id                String   @id @default(uuid())
+  name              String
+  minAmount         Decimal  @default(0) @db.Decimal(10, 3)
+  maxAmount         Decimal  @db.Decimal(10, 3)
+  commissionPercent Decimal  @db.Decimal(5, 2)
+  fixedBonus        Decimal  @default(0) @db.Decimal(10, 3)
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CommissionCalculation {
+  id               String   @id @default(uuid())
+  userId           String
+  period           String
+  totalSales       Decimal  @default(0) @db.Decimal(10, 3)
+  returnsDeduction Decimal  @default(0) @db.Decimal(10, 3)
+  netSales         Decimal  @default(0) @db.Decimal(10, 3)
+  commissionEarned Decimal  @default(0) @db.Decimal(10, 3)
+  status           String   @default("APPROVED")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ================= HR & PAYROLL =================
+
+model Employee {
+  id                 String         @id @default(uuid())
+  code               String         @unique // e.g. "EMP-001"
+  name               String
+  civilId            String?        @unique
+  position           String
+  department         String?
+  branchId           String?
+  branch             Branch?        @relation(fields: [branchId], references: [id])
+  basicSalary        Decimal        @db.Decimal(10, 3)
+  housingAllowance   Decimal        @default(0) @db.Decimal(10, 3)
+  transportAllowance Decimal        @default(0) @db.Decimal(10, 3)
+  otherAllowances    Decimal        @default(0) @db.Decimal(10, 3)
+  hireDate           DateTime       @default(now())
+  isActive           Boolean        @default(true)
+
+  attendances        Attendance[]
+  leaveRequests      LeaveRequest[]
+  payrollSlips       PayrollSlip[]
+
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Attendance {
+  id            String   @id @default(uuid())
+  employeeId    String
+  date          DateTime
+  checkIn       String?
+  checkOut      String?
+  hoursWorked   Decimal  @default(8.0) @db.Decimal(5, 2)
+  overtimeHours Decimal  @default(0) @db.Decimal(5, 2)
+  status        String   @default("PRESENT")
+
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+}
+
+model LeaveRequest {
+  id         String      @id @default(uuid())
+  employeeId String
+  leaveType  LeaveType   @default(ANNUAL)
+  startDate  DateTime
+  endDate    DateTime
+  daysCount  Int
+  status     LeaveStatus @default(PENDING)
+  notes      String?
+
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model PayrollPeriod {
+  id              String        @id @default(uuid())
+  periodName      String        // e.g. "August 2026 Payroll"
+  month           Int
+  year            Int
+  totalGross      Decimal       @default(0) @db.Decimal(10, 3)
+  totalDeductions Decimal       @default(0) @db.Decimal(10, 3)
+  totalNet        Decimal       @default(0) @db.Decimal(10, 3)
+  status          String        @default("POSTED")
+
+  journalEntry    JournalEntry?
+  slips           PayrollSlip[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model PayrollSlip {
+  id               String        @id @default(uuid())
+  payrollPeriodId  String
+  employeeId       String
+  basicSalary      Decimal       @db.Decimal(10, 3)
+  allowances       Decimal       @default(0) @db.Decimal(10, 3)
+  deductions       Decimal       @default(0) @db.Decimal(10, 3)
+  overtimeAmount   Decimal       @default(0) @db.Decimal(10, 3)
+  commissionAmount Decimal       @default(0) @db.Decimal(10, 3)
+  netSalary        Decimal       @db.Decimal(10, 3)
+  status           String        @default("PAID")
+
+  payrollPeriod    PayrollPeriod @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee         Employee      @relation(fields: [employeeId], references: [id])
+
+  createdAt        DateTime      @default(now())
+}
+
+// ================= PURCHASING & SALES LIFECYCLE EXTENSIONS =================
+
+model PurchaseRequisition {
+  id                String                    @id @default(uuid())
+  prNumber          String                    @unique // e.g. "PR-0001"
+  branchId          String
+  branch            Branch                    @relation(fields: [branchId], references: [id])
+  requestedByUserId String?
+  status            PrStatus                  @default(PENDING)
+  notes             String?
+
+  lines             PurchaseRequisitionLine[]
+
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+}
+
+model PurchaseRequisitionLine {
+  id                    String              @id @default(uuid())
+  purchaseRequisitionId String
+  itemId                String
+  quantity              Decimal             @db.Decimal(10, 3)
+  notes                 String?
+
+  purchaseRequisition   PurchaseRequisition @relation(fields: [purchaseRequisitionId], references: [id], onDelete: Cascade)
+  item                  Item                @relation(fields: [itemId], references: [id])
+}
+
+model GoodsReceiptNote {
+  id              String             @id @default(uuid())
+  grnNumber       String             @unique // e.g. "GRN-0001"
+  purchaseOrderId String?
+  supplierId      String
+  supplier        Supplier           @relation(fields: [supplierId], references: [id])
+  branchId        String
+  branch          Branch             @relation(fields: [branchId], references: [id])
+  status          String             @default("RECEIVED")
+  receivedAt      DateTime           @default(now())
+  notes           String?
+
+  lines           GoodsReceiptLine[]
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model GoodsReceiptLine {
+  id                 String           @id @default(uuid())
+  goodsReceiptNoteId String
+  itemId             String
+  quantityReceived   Decimal          @db.Decimal(10, 3)
+  unitCost           Decimal          @db.Decimal(10, 3)
+  lineTotal          Decimal          @db.Decimal(10, 3)
+
+  goodsReceiptNote   GoodsReceiptNote @relation(fields: [goodsReceiptNoteId], references: [id], onDelete: Cascade)
+  item               Item             @relation(fields: [itemId], references: [id])
+}
+
+model Quotation {
+  id          String          @id @default(uuid())
+  quoteNumber String          @unique // e.g. "QT-0001"
+  customerId  String
+  customer    Customer        @relation(fields: [customerId], references: [id])
+  branchId    String
+  branch      Branch          @relation(fields: [branchId], references: [id])
+  validUntil  DateTime?
+  subtotal    Decimal         @db.Decimal(10, 3)
+  taxAmount   Decimal         @default(0) @db.Decimal(10, 3)
+  totalAmount Decimal         @db.Decimal(10, 3)
+  status      QuoteStatus     @default(DRAFT)
+  notes       String?
+
+  lines       QuotationLine[]
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model QuotationLine {
+  id          String    @id @default(uuid())
+  quotationId String
+  itemId      String
+  quantity    Decimal   @db.Decimal(10, 3)
+  unitPrice   Decimal   @db.Decimal(10, 3)
+  lineTotal   Decimal   @db.Decimal(10, 3)
+
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  item        Item      @relation(fields: [itemId], references: [id])
+}
+
+model DeliveryNote {
+  id             String             @id @default(uuid())
+  deliveryNumber String             @unique // e.g. "DN-0001"
+  salesOrderId   String?
+  customerId     String
+  customer       Customer           @relation(fields: [customerId], references: [id])
+  branchId       String
+  branch         Branch             @relation(fields: [branchId], references: [id])
+  status         String             @default("DELIVERED")
+  dispatchedAt   DateTime           @default(now())
+  deliveredAt    DateTime?
+  notes          String?
+
+  lines          DeliveryNoteLine[]
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model DeliveryNoteLine {
+  id             String       @id @default(uuid())
+  deliveryNoteId String
+  itemId         String
+  quantity       Decimal      @db.Decimal(10, 3)
+  unitPrice      Decimal      @db.Decimal(10, 3)
+
+  deliveryNote   DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+  item           Item         @relation(fields: [itemId], references: [id])
+}
+
+model ReceiptVoucher {
+  id            String        @id @default(uuid())
+  voucherNumber String        @unique // e.g. "RV-0001"
+  date          DateTime      @default(now())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  branchId      String
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  amount        Decimal       @db.Decimal(10, 3)
+  paymentMethod PaymentMethod @default(CASH)
+  reference     String?
+  notes         String?
+
+  journalEntry  JournalEntry?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model PaymentVoucher {
+  id            String        @id @default(uuid())
+  voucherNumber String        @unique // e.g. "PV-0001"
+  date          DateTime      @default(now())
+  supplierId    String
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+  branchId      String
+  branch        Branch        @relation(fields: [branchId], references: [id])
+  amount        Decimal       @db.Decimal(10, 3)
+  paymentMethod PaymentMethod @default(CASH)
+  reference     String?
+  notes         String?
+
+  journalEntry  JournalEntry?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// ================= PRICING ENGINE RULES =================
+
+model CustomerGroupPrice {
+  id            String   @id @default(uuid())
+  customerGroup String   // e.g. "WHOLESALE", "VIP"
+  itemId        String
+  unitPrice     Decimal  @db.Decimal(10, 3)
+  minQuantity   Decimal  @default(1) @db.Decimal(10, 3)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([customerGroup, itemId, minQuantity])
+}
+
+model ItemPriceTier {
+  id          String   @id @default(uuid())
+  itemId      String
+  tierName    String
+  minQuantity Decimal  @db.Decimal(10, 3)
+  unitPrice   Decimal  @db.Decimal(10, 3)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([itemId, minQuantity])
+}

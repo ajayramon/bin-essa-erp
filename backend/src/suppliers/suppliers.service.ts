@@ -32,6 +32,7 @@ export class SuppliersService {
         email: dto.email,
         address: dto.address,
         branchId: dto.branchId,
+        paymentTerms: dto.paymentTerms ?? 'NET_30',
       },
     });
   }

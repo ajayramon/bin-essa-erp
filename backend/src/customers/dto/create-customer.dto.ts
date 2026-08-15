@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateCustomerDto {
   @IsString()
@@ -22,4 +22,17 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  customerGroup?: string;
+
+  @IsOptional()
+  @IsNumber()
+  creditLimit?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentTerms?: string;
 }
+
