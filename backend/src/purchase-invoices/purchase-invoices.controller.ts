@@ -13,6 +13,11 @@ export class PurchaseInvoicesController {
     return this.purchaseInvoicesService.create(dto);
   }
 
+  @Post('returns')
+  createReturn(@Body() dto: CreatePurchaseInvoiceDto) {
+    return this.purchaseInvoicesService.createReturn(dto);
+  }
+
   @Get()
   findAll(@Req() req: any, @Query('branchId') queryBranchId?: string) {
     const user = req?.user;

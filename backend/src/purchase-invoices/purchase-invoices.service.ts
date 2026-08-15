@@ -192,4 +192,105 @@ export class PurchaseInvoicesService {
       throw error;
     }
   }
+
+  async createReturn(dto: CreatePurchaseInvoiceDto) {
+    const lineData = dto.lines.map((line) => {
+      const lineTotal = line.quantity * line.unitCost;
+      return {
+        itemId: line.itemId,
+        quantity: line.quantity,
+        unitCost: line.unitCost,
+        lineTotal,
+      };
+    });
+
+    const subtotal = lineData.reduce((sum, l) => sum + l.lineTotal, 0);
+    const taxAmount = dto.taxAmount ?? 0;
+    const totalAmount = subtotal + taxAmount;
+
+    return await this.prisma.$transaction(async (tx) => {
+      const [inventoryAccount, apAccount] = await Promise.all([
+        tx.account.findUnique({ where: { code: '1200' } }).then(async (acc) => {
+          return acc ?? tx.account.create({ data: { code: '1200', name: 'Inventory', type: 'ASSET' } });
+        }),
+        tx.account.findUnique({ where: { code: '2000' } }).then(async (acc) => {
+          return acc ?? tx.account.create({ data: { code: '2000', name: 'Accounts Payable', type: 'LIABILITY' } });
+        }),
+      ]);
+
+      // 1. Create Purchase Return record
+      const purchaseReturn = await tx.purchaseInvoice.create({
+        data: {
+          invoiceNumber: dto.invoiceNumber,
+          supplierId: dto.supplierId,
+          branchId: dto.branchId,
+          paymentTerms: 'RETURN',
+          status: 'POSTED',
+          subtotal,
+          taxAmount,
+          totalAmount,
+          lines: {
+            create: lineData,
+          },
+        },
+        include: {
+          lines: true,
+          supplier: true,
+          branch: true,
+        },
+      });
+
+      // 2. Decrement stock from warehouse/branch
+      for (const line of dto.lines) {
+        await tx.item.update({
+          where: { id: line.itemId },
+          data: {
+            stockQuantity: { decrement: Math.round(line.quantity) },
+          },
+        });
+
+        await tx.itemStock.upsert({
+          where: {
+            itemId_branchId: { itemId: line.itemId, branchId: dto.branchId },
+          },
+          update: { quantity: { decrement: line.quantity } },
+          create: { itemId: line.itemId, branchId: dto.branchId, quantity: -line.quantity },
+        });
+      }
+
+      // 3. Auto-post reversing journal entry: DEBIT Accounts Payable (2000), CREDIT Inventory (1200)
+      const journalEntry = await tx.journalEntry.create({
+        data: {
+          reference: `JE-${dto.invoiceNumber}`,
+          description: `Auto-posted from purchase return ${dto.invoiceNumber}`,
+          status: 'POSTED',
+          branchId: dto.branchId,
+          purchaseInvoiceId: purchaseReturn.id,
+          lines: {
+            create: [
+              {
+                accountId: apAccount.id,
+                debit: totalAmount,
+                credit: 0,
+              },
+              {
+                accountId: inventoryAccount.id,
+                debit: 0,
+                credit: totalAmount,
+              },
+            ],
+          },
+        },
+        include: {
+          lines: {
+            include: {
+              account: true,
+            },
+          },
+        },
+      });
+
+      return { ...purchaseReturn, journalEntry };
+    });
+  }
 }

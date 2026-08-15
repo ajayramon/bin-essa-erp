@@ -40,5 +40,19 @@ export class AppController {
       });
     }
   }
+
+  @Get('branches')
+  async getBranches() {
+    return this.prisma.branch.findMany({
+      orderBy: { code: 'asc' },
+    });
+  }
+
+  @Get('settings/branches')
+  async getSettingsBranches() {
+    return this.prisma.branch.findMany({
+      orderBy: { code: 'asc' },
+    });
+  }
 }
 

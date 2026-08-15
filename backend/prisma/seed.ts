@@ -10,15 +10,35 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  const branch = await prisma.branch.upsert({
-    where: { code: 'br-01' },
-    update: {},
-    create: {
-      code: 'br-01',
-      name: 'Bin Essa Smoking Center - Branch 1',
-      brandId: 'BIN_ESSA_SMOKING_CENTER',
-    },
-  });
+  const branchesData = [
+    { code: 'br-01', name: 'Bin Essa Smoking Center - Shuwaikh Main (HQ)', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-02', name: 'Bin Essa Smoking Center - Salmiya Counter', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-03', name: 'Bin Essa Smoking Center - Hawally Counter', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-04', name: 'Bin Essa Smoking Center - Kuwait City', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-05', name: 'Bin Essa Smoking Center - Farwaniya', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-06', name: 'Bin Essa Smoking Center - Fahaheel', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-07', name: 'Bin Essa Smoking Center - Jahra', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-08', name: 'Bin Essa Smoking Center - Mahboula', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-09', name: 'Bin Essa Smoking Center - Mangaf', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-10', name: 'Bin Essa Khiran - Marine & Outdoor', brandId: 'BIN_ESSA_KHIRAN' as const },
+    { code: 'br-11', name: 'Bin Essa Smoking Center - Avenues Mall', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-12', name: 'Bin Essa Smoking Center - Egaila', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
+    { code: 'br-13', name: 'JM Art Zone - Shuwaikh Design Center', brandId: 'JM_ART_ZONE' as const },
+    { code: 'br-14', name: 'JM Art Zone - Salmiya Studio', brandId: 'JM_ART_ZONE' as const },
+  ];
+
+  const branches: any[] = [];
+  for (const b of branchesData) {
+    const created = await prisma.branch.upsert({
+      where: { code: b.code },
+      update: { name: b.name, brandId: b.brandId },
+      create: b,
+    });
+    branches.push(created);
+  }
+
+  const branch = branches[0];
+  const salmiyaBranch = branches[1];
 
   const passwordHash = await bcrypt.hash('demo1234', 10);
 
