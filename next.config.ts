@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Use standalone output for Docker deployment, standard serverless bundle for Vercel
+  ...(process.env.VERCEL ? {} : { output: "standalone" }),
   async rewrites() {
-    const backendUrl = process.env.INTERNAL_API_URL;
+    const backendUrl = process.env.INTERNAL_API_URL || process.env.BACKEND_API_URL;
     if (!backendUrl) {
       return [];
     }
