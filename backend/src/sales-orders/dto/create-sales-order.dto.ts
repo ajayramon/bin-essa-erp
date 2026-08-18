@@ -24,12 +24,12 @@ export class CreateSalesOrderDto {
   @IsNotEmpty()
   customerId!: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   branchId?: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   notes?: string;
 
   @IsArray()

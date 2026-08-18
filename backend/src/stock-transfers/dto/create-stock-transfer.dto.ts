@@ -7,7 +7,7 @@ export class StockTransferLineDto {
   itemId!: string;
 
   @IsNumber()
-  @Min(1)
+  @Min(0.001)
   quantity!: number;
 }
 
@@ -24,8 +24,8 @@ export class CreateStockTransferDto {
   @IsNotEmpty()
   toBranchId!: string;
 
-  @IsOptional()
   @IsString()
+  @IsOptional()
   notes?: string;
 
   @IsArray()

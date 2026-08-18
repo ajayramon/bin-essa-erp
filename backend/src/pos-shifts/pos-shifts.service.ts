@@ -108,7 +108,8 @@ export class PosShiftsService {
       const discount = Number(inv.discountAmount || 0);
       discountsTotal += discount;
 
-      if (inv.isReturn) {
+      const isReturn = inv.isReturn || inv.invoiceNumber.startsWith('RET-');
+      if (isReturn) {
         returnsTotal += amount;
         if (inv.paymentMethod === 'CASH') {
           cashReturnsTotal += amount;

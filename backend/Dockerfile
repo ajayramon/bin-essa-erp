@@ -28,12 +28,9 @@ ENV PORT=4000
 COPY package*.json ./
 RUN npm install --omit=dev && npm cache clean --force
 
-COPY --from=builder --chown=node:node /app/dist ./dist
-COPY --from=builder --chown=node:node /app/generated ./generated
-COPY --from=builder --chown=node:node /app/prisma ./prisma
-COPY --from=builder --chown=node:node /app/prisma.config.js ./prisma.config.js
-
-USER node
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/generated ./generated
+COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
