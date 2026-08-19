@@ -20,6 +20,7 @@ import {
   ArrowRightLeft,
   FileCheck,
   FileSpreadsheet,
+  Plus,
 } from "lucide-react";
 
 export interface NavLeaf {
@@ -108,16 +109,30 @@ export const brandModules: NavEntry[] = [
   },
   {
     key: "inventory-ops",
-    labelEn: "Inventory Operations",
-    labelAr: "عمليات المخزون",
+    labelEn: "Inventory & Stock",
+    labelAr: "الأصناف والمخزون",
     icon: Package,
     children: [
       {
         key: "inventory-list",
-        labelEn: "Stock Catalog",
-        labelAr: "كتالوج الأصناف",
+        labelEn: "Item Master Catalog",
+        labelAr: "سجل وكتالوج الأصناف",
         href: "/inventory",
         icon: Package,
+      },
+      {
+        key: "inventory-new",
+        labelEn: "Create New Item",
+        labelAr: "إضافة صنف جديد",
+        href: "/inventory/new",
+        icon: Plus,
+      },
+      {
+        key: "stock-transfers",
+        labelEn: "Branch Transfers (TR)",
+        labelAr: "التحويلات بين الفروع",
+        href: "/inventory/transfers",
+        icon: ArrowRightLeft,
       },
       {
         key: "stock-adjustments",
@@ -129,16 +144,23 @@ export const brandModules: NavEntry[] = [
       {
         key: "stock-counts",
         labelEn: "Physical Cycle Counts",
-        labelAr: "الجرد الفعلي",
+        labelAr: "الجرد الفعلي والدوري",
         href: "/inventory/counts",
         icon: FileCheck,
       },
       {
-        key: "stock-transfers",
-        labelEn: "Branch Transfers",
-        labelAr: "التحويلات بين الفروع",
-        href: "/inventory/transfers",
-        icon: ArrowRightLeft,
+        key: "serial-tracking",
+        labelEn: "Serial Tracking",
+        labelAr: "تتبع الأرقام التسلسلية",
+        href: "/inventory/serial-tracking",
+        icon: Layers,
+      },
+      {
+        key: "item-modifiers",
+        labelEn: "Item Modifiers & Flavors",
+        labelAr: "خيارات الأصناف والنكهات",
+        href: "/inventory/item-modifiers",
+        icon: Tag,
       },
     ],
   },

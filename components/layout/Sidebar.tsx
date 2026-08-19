@@ -51,7 +51,21 @@ export function Sidebar() {
   // expanded, keyed "brandId:groupKey" so the same module can be open in
   // one brand section and closed in another.
   const [openGroups, setOpenGroups] = useState<Set<string>>(
-    () => new Set(["smoking:purchasing", "khiran:purchasing", "jmart:purchasing"])
+    () =>
+      new Set([
+        "smoking:inventory-ops",
+        "khiran:inventory-ops",
+        "jmart:inventory-ops",
+        "smoking:purchasing",
+        "khiran:purchasing",
+        "jmart:purchasing",
+        "smoking:sales-ops",
+        "khiran:sales-ops",
+        "jmart:sales-ops",
+        "smoking:accounting",
+        "khiran:accounting",
+        "jmart:accounting",
+      ])
   );
 
   // Whichever brand becomes current (via a Sidebar click or the Topbar
@@ -93,8 +107,8 @@ export function Sidebar() {
   const isGroupDashboardActive = pathname === groupDashboardItem.href;
 
   const roleAllowedKeys: Record<string, string[]> = {
-    cashier: ["pos", "sales-ops", "customers"],
-    sales_rep: ["pos", "sales-ops", "customers", "b2b"],
+    cashier: ["pos", "inventory-ops", "sales-ops", "customers"],
+    sales_rep: ["pos", "inventory-ops", "sales-ops", "customers", "b2b"],
     storekeeper: ["inventory-ops", "purchasing"],
     accountant: ["inventory-ops", "purchasing", "sales-ops", "accounting", "customers"],
     branch_manager: ["dashboard", "pos", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "settings"],
