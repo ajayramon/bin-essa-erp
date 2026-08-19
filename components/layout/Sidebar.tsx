@@ -93,12 +93,12 @@ export function Sidebar() {
   const isGroupDashboardActive = pathname === groupDashboardItem.href;
 
   const roleAllowedKeys: Record<string, string[]> = {
-    cashier: ["pos", "sales-invoices"],
-    sales_rep: ["pos", "sales-invoices", "customers"],
-    storekeeper: ["inventory", "purchasing"],
-    accountant: ["inventory", "purchasing", "sales-invoices", "accounting", "customers"],
-    branch_manager: ["dashboard", "pos", "inventory", "purchasing", "sales-invoices", "accounting", "customers", "b2b", "settings"],
-    admin: ["dashboard", "pos", "inventory", "purchasing", "sales-invoices", "accounting", "customers", "b2b", "hr", "settings"],
+    cashier: ["pos", "sales-ops", "customers"],
+    sales_rep: ["pos", "sales-ops", "customers", "b2b"],
+    storekeeper: ["inventory-ops", "purchasing"],
+    accountant: ["inventory-ops", "purchasing", "sales-ops", "accounting", "customers"],
+    branch_manager: ["dashboard", "pos", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "settings"],
+    admin: ["dashboard", "pos", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "hr", "settings"],
     b2b_customer: ["b2b"],
   };
 

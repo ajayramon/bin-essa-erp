@@ -564,7 +564,7 @@ async function runE2EWorkflow() {
     const expectedCash = 50.000 + 75.000 - 15.000;
     const actualCash = expectedCash; // 110.000 KD
 
-    const shiftToCloseId = shift?.id || shiftsRes.data?.id;
+    const shiftToCloseId = shift?.id;
     if (shiftToCloseId) {
       const closeRes = await api(`/api/pos-shifts/${shiftToCloseId}/close`, {
         method: 'PUT',

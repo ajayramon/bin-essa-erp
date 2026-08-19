@@ -17,6 +17,7 @@ import {
   closePosShiftRequest,
   reopenPosShiftRequest,
   adjustPosShiftRequest,
+  listItemsRequest,
   type PosShiftRecord,
 } from "@/lib/api";
 import {
@@ -66,21 +67,28 @@ export default function BranchPosPage() {
 
   // 1. Live Persistent Inventory State
   const [itemsCatalog, setItemsCatalog] = useState<Item[]>(() => getPersistentItemsCatalog());
-  const [customersList] = useState<Customer[]>(initialCustomers);
+  const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
   const [salespersonsList] = useState<Salesperson[]>(salespersons);
 
-  // Sync inventory whenever page regains focus or visibility
+  // Sync inventory whenever page regains focus or visibility, or branch changes
   useEffect(() => {
-    function syncStock() {
-      setItemsCatalog(getPersistentItemsCatalog());
+    async function syncCatalog() {
+      try {
+        const branchId = currentBranch ? currentBranch.id : undefined;
+        await listItemsRequest(branchId);
+        setItemsCatalog(getPersistentItemsCatalog());
+      } catch (err) {
+        setItemsCatalog(getPersistentItemsCatalog());
+      }
     }
-    window.addEventListener("focus", syncStock);
-    document.addEventListener("visibilitychange", syncStock);
+    syncCatalog();
+    window.addEventListener("focus", syncCatalog);
+    document.addEventListener("visibilitychange", syncCatalog);
     return () => {
-      window.removeEventListener("focus", syncStock);
-      document.removeEventListener("visibilitychange", syncStock);
+      window.removeEventListener("focus", syncCatalog);
+      document.removeEventListener("visibilitychange", syncCatalog);
     };
-  }, []);
+  }, [currentBranch]);
 
   const activeBranch = useMemo(() => {
     return (

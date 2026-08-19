@@ -6,10 +6,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
+async function seedMasterData() {
+  console.log('=== Seeding Master Setup Data (Branches, Users, Chart of Accounts) ===');
+
   const branchesData = [
     { code: 'br-01', name: 'Bin Essa Smoking Center - Shuwaikh Main (HQ)', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
     { code: 'br-02', name: 'Bin Essa Smoking Center - Salmiya Counter', brandId: 'BIN_ESSA_SMOKING_CENTER' as const },
@@ -36,25 +37,24 @@ async function main() {
     });
     branches.push(created);
   }
+  console.log(`Seeded ${branches.length} branches across Bin Essa Smoking, Khiran & JM Art Zone.`);
 
-  const branch = branches[0];
-  const salmiyaBranch = branches[1];
-
+  const mainBranch = branches[0];
   const passwordHash = await bcrypt.hash('demo1234', 10);
 
   const seedUsers = [
-    { username: 'admin', fullName: 'System Admin', role: 'ADMIN' as const, branchId: branch.id },
-    { username: 'manager', fullName: 'Branch Manager', role: 'MANAGER' as const, branchId: branch.id },
-    { username: 'cashier', fullName: 'Retail Cashier', role: 'CASHIER' as const, branchId: branch.id },
-    { username: 'accountant', fullName: 'Head Accountant', role: 'ACCOUNTANT' as const, branchId: branch.id },
-    { username: 'storekeeper', fullName: 'Warehouse Storekeeper', role: 'STOREKEEPER' as const, branchId: branch.id },
-    { username: 'sales_rep', fullName: 'B2B Sales Representative', role: 'SALES_REP' as const, branchId: branch.id },
+    { username: 'admin', fullName: 'System Admin', role: 'ADMIN' as const, branchId: mainBranch.id },
+    { username: 'manager', fullName: 'Branch Manager', role: 'MANAGER' as const, branchId: mainBranch.id },
+    { username: 'cashier', fullName: 'Retail Cashier', role: 'CASHIER' as const, branchId: mainBranch.id },
+    { username: 'accountant', fullName: 'Head Accountant', role: 'ACCOUNTANT' as const, branchId: mainBranch.id },
+    { username: 'storekeeper', fullName: 'Warehouse Storekeeper', role: 'STOREKEEPER' as const, branchId: mainBranch.id },
+    { username: 'sales_rep', fullName: 'B2B Sales Representative', role: 'SALES_REP' as const, branchId: mainBranch.id },
   ];
 
   for (const u of seedUsers) {
     await prisma.user.upsert({
       where: { username: u.username },
-      update: { passwordHash },
+      update: { passwordHash, fullName: u.fullName, role: u.role, branchId: u.branchId },
       create: {
         username: u.username,
         passwordHash,
@@ -64,7 +64,7 @@ async function main() {
       },
     });
   }
-
+  console.log(`Seeded ${seedUsers.length} system users with verified roles.`);
 
   const standardAccounts = [
     { code: '1000', name: 'Cash on Hand', type: 'ASSET' as const },
@@ -84,14 +84,20 @@ async function main() {
       create: acc,
     });
   }
+  console.log(`Seeded ${standardAccounts.length} standard Chart of Accounts.`);
 
-  console.log('Seeded 14 branches and 6 system roles/users.');
-  console.log('Seeded 8 standard Chart of Accounts (1000, 1010, 1100, 1200, 2000, 4000, 5000, 6000).');
+  const [bCount, uCount, aCount] = await Promise.all([
+    prisma.branch.count(),
+    prisma.user.count(),
+    prisma.account.count(),
+  ]);
+
+  console.log(`Summary: ${bCount} Branches, ${uCount} Users, ${aCount} GL Accounts.`);
 }
 
-main()
+seedMasterData()
   .catch((e) => {
-    console.error(e);
+    console.error('Error seeding master data:', e);
     process.exit(1);
   })
   .finally(async () => {
