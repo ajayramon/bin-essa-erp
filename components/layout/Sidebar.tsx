@@ -107,12 +107,12 @@ export function Sidebar() {
   const isGroupDashboardActive = pathname === groupDashboardItem.href;
 
   const roleAllowedKeys: Record<string, string[]> = {
-    cashier: ["pos", "inventory-ops", "sales-ops", "customers"],
-    sales_rep: ["pos", "inventory-ops", "sales-ops", "customers", "b2b"],
-    storekeeper: ["inventory-ops", "purchasing"],
-    accountant: ["inventory-ops", "purchasing", "sales-ops", "accounting", "customers"],
-    branch_manager: ["dashboard", "pos", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "settings"],
-    admin: ["dashboard", "pos", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "hr", "settings"],
+    cashier: ["pos", "inventory", "inventory-ops", "sales-ops", "customers"],
+    sales_rep: ["pos", "inventory", "inventory-ops", "sales-ops", "customers", "b2b"],
+    storekeeper: ["inventory", "inventory-ops", "purchasing"],
+    accountant: ["inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers"],
+    branch_manager: ["dashboard", "pos", "inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "settings"],
+    admin: ["dashboard", "pos", "inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "hr", "settings"],
     b2b_customer: ["b2b"],
   };
 
