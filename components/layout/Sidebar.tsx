@@ -117,8 +117,9 @@ export function Sidebar() {
   };
 
   const userRoleKey = (user.role || "admin").toLowerCase();
+  const isAdminUser = userRoleKey === "admin" || userRoleKey === "administrator";
   const allowedKeys = roleAllowedKeys[userRoleKey] ?? roleAllowedKeys.admin;
-  const filteredModules = brandModules.filter((entry) => allowedKeys.includes(entry.key));
+  const filteredModules = isAdminUser ? brandModules : brandModules.filter((entry) => allowedKeys.includes(entry.key));
 
   return (
     <aside className="flex h-full w-64 flex-col overflow-y-auto border-e border-ink/10 bg-paper">

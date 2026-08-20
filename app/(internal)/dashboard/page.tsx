@@ -12,6 +12,10 @@ import {
   Building2,
   RefreshCw,
   CheckCircle2,
+  Plus,
+  ArrowRight,
+  Layers,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { useSession } from "@/lib/context/SessionContext";
@@ -176,6 +180,93 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
+
+      {/* Quick Operational Launchpad */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* 1. Inventory & Products */}
+        <Link
+          href="/inventory"
+          className="group flex items-center justify-between rounded-2xl border border-amber-200 bg-linear-to-r from-amber-50 to-amber-100/50 p-4 shadow-sm transition hover:border-amber-400 hover:shadow-md"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-slate-950 font-bold shadow-xs">
+              <Package className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-950 group-hover:text-amber-900">
+                {isAr ? "إدارة المخزون والأصناف" : "Inventory & Products"}
+              </p>
+              <p className="text-[11px] text-amber-900/70">
+                {items.length} {isAr ? "صنف مسجل" : "Master SKUs"}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-amber-700 opacity-0 transition group-hover:opacity-100" />
+        </Link>
+
+        {/* 2. Add New Product */}
+        <Link
+          href="/inventory/new"
+          className="group flex items-center justify-between rounded-2xl border border-emerald-200 bg-linear-to-r from-emerald-50 to-emerald-100/50 p-4 shadow-sm transition hover:border-emerald-400 hover:shadow-md"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold shadow-xs">
+              <Plus className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-950 group-hover:text-emerald-900">
+                {isAr ? "إضافة صنف جديد" : "+ Add New Item"}
+              </p>
+              <p className="text-[11px] text-emerald-900/70">
+                {isAr ? "إنشاء كود وصنف" : "New SKU Master"}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-emerald-700 opacity-0 transition group-hover:opacity-100" />
+        </Link>
+
+        {/* 3. Launch POS */}
+        <Link
+          href="/pos"
+          className="group flex items-center justify-between rounded-2xl border border-slate-200 bg-linear-to-r from-slate-900 to-slate-800 p-4 shadow-sm transition hover:shadow-md text-white"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-slate-950 font-bold shadow-xs">
+              <ShoppingCart className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white group-hover:text-amber-300">
+                {isAr ? "نقطة البيع (POS)" : "POS Terminal"}
+              </p>
+              <p className="text-[11px] text-slate-300">
+                {isAr ? "كاشير المبيعات" : "Sales Counter"}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-amber-400 opacity-0 transition group-hover:opacity-100" />
+        </Link>
+
+        {/* 4. Purchase Invoices */}
+        <Link
+          href="/purchasing/purchase-invoices"
+          className="group flex items-center justify-between rounded-2xl border border-indigo-200 bg-linear-to-r from-indigo-50 to-indigo-100/50 p-4 shadow-sm transition hover:border-indigo-400 hover:shadow-md"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold shadow-xs">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-950 group-hover:text-indigo-900">
+                {isAr ? "فواتير المشتريات" : "Purchase Invoices"}
+              </p>
+              <p className="text-[11px] text-indigo-900/70">
+                {isAr ? "استلام وتوريد" : "Vendor Bills & GRN"}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-indigo-700 opacity-0 transition group-hover:opacity-100" />
+        </Link>
+      </div>
 
       {/* Top-line KPI Cards (Driven by Actual Transactions) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
