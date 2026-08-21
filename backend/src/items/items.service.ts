@@ -114,24 +114,25 @@ export class ItemsService {
 
   async update(id: string, dto: any) {
     await this.findOne(id);
+    const { branchId, uoms, additionalBarcodes, ...scalarFields } = dto;
     const updated = await this.prisma.item.update({
       where: { id },
-      data: dto,
+      data: scalarFields,
     });
 
-    if (dto.stockQuantity !== undefined && dto.branchId) {
+    if (dto.stockQuantity !== undefined && branchId) {
       try {
         await this.prisma.itemStock.upsert({
-          where: { itemId_branchId: { itemId: id, branchId: dto.branchId } },
+          where: { itemId_branchId: { itemId: id, branchId } },
           update: { quantity: dto.stockQuantity },
-          create: { itemId: id, branchId: dto.branchId, quantity: dto.stockQuantity },
+          create: { itemId: id, branchId, quantity: dto.stockQuantity },
         });
       } catch {
         // Non-blocking branch sync fallback
       }
     }
 
-    return updated;
+    return this.findOne(id);
   }
 
   async remove(id: string) {

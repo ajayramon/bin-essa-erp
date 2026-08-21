@@ -53,9 +53,9 @@ export function Sidebar() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(
     () =>
       new Set([
-        "smoking:inventory-ops",
-        "khiran:inventory-ops",
-        "jmart:inventory-ops",
+        "smoking:inventory",
+        "khiran:inventory",
+        "jmart:inventory",
         "smoking:purchasing",
         "khiran:purchasing",
         "jmart:purchasing",

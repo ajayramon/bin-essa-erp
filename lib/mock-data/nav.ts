@@ -21,6 +21,8 @@ import {
   FileCheck,
   FileSpreadsheet,
   Plus,
+  ClipboardCheck,
+  Barcode,
 } from "lucide-react";
 
 export interface NavLeaf {
@@ -109,10 +111,46 @@ export const brandModules: NavEntry[] = [
   },
   {
     key: "inventory",
-    labelEn: "Inventory",
-    labelAr: "المخزون",
-    href: "/inventory",
+    labelEn: "Inventory & Stock",
+    labelAr: "المخزون والمستودعات",
     icon: Package,
+    children: [
+      {
+        key: "item-master",
+        labelEn: "Item Master Catalog",
+        labelAr: "سجل بطاقات الأصناف",
+        href: "/inventory",
+        icon: Package,
+      },
+      {
+        key: "stock-adjustments",
+        labelEn: "Stock Adjustments",
+        labelAr: "تسويات المخزون",
+        href: "/inventory/adjustments",
+        icon: ArrowRightLeft,
+      },
+      {
+        key: "stock-transfers",
+        labelEn: "Stock Transfers",
+        labelAr: "التحويلات بين الفروع",
+        href: "/inventory/transfers",
+        icon: Truck,
+      },
+      {
+        key: "stock-counts",
+        labelEn: "Stock Counts & Audits",
+        labelAr: "الجرد الفعلي للمخزون",
+        href: "/inventory/counts",
+        icon: ClipboardCheck,
+      },
+      {
+        key: "serial-tracking",
+        labelEn: "Serial & Batch Tracking",
+        labelAr: "الأرقام التسلسلية والصلاحيات",
+        href: "/inventory/serial-tracking",
+        icon: Barcode,
+      },
+    ],
   },
   {
     key: "purchasing",
