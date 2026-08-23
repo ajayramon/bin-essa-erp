@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, ClipboardCheck, CheckCircle2, AlertCircle, ArrowUpDown } from "lucide-react";
+import Link from "next/link";
+import { Plus, Search, ClipboardCheck, CheckCircle2, AlertCircle, ArrowUpDown, Package, ArrowLeftRight, Truck, Barcode } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { useSession } from "@/lib/context/SessionContext";
 import {
@@ -19,6 +20,7 @@ function formatKD(amount: number) {
 export default function StockCountsPage() {
   const { locale, t } = useLocale();
   const { currentBranch, isHeadOffice } = useSession();
+  const isAr = locale === "ar";
 
   const [counts, setCounts] = useState<StockCountRecord[]>([]);
   const [items, setItems] = useState<ItemRecord[]>([]);
@@ -74,7 +76,7 @@ export default function StockCountsPage() {
   }, [currentBranch, isHeadOffice]);
 
   function handleOpenCreateModal() {
-    setCountNumber(`SC-${Date.now().toString().slice(-6)}`);
+    setCountNumber(`CNT-${Date.now().toString().slice(-6)}`);
     setNotes("");
     if (items.length > 0) {
       setSelectedItemId(items[0].id);
@@ -97,7 +99,7 @@ export default function StockCountsPage() {
 
   async function handleCreateStockCount(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentBranch?.id) return;
+    if (!currentBranch?.id || !selectedItemId) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -108,8 +110,8 @@ export default function StockCountsPage() {
         lines: [
           {
             itemId: selectedItemId,
-            countedQuantity,
             systemQuantity,
+            countedQuantity,
             unitCost,
           },
         ],
@@ -135,7 +137,7 @@ export default function StockCountsPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-5">
         <div>
           <h1 className="text-2xl font-bold text-ink">
             {locale === "ar" ? "الجرد الدوري والفعلي للمخزون" : "Physical Stock Counts & Audit"}
@@ -150,11 +152,54 @@ export default function StockCountsPage() {
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-paper shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-[#FDCE0C] shadow-sm hover:bg-slate-800 transition"
         >
           <Plus className="h-4 w-4" />
-          {locale === "ar" ? "جلسة جرد جديدة" : "New Cycle Count"}
+          {locale === "ar" ? "جرد جديد" : "+ New Stock Count"}
         </button>
+      </div>
+
+      {/* Sub-Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink/10 pb-3">
+        <Link
+          href="/inventory"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <Package className="h-4 w-4 text-slate-600" />
+          <span>{isAr ? "سجل بطاقات الأصناف (Item Master)" : "Item Master Catalog"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/adjustments"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <ArrowLeftRight className="h-4 w-4 text-amber-600" />
+          <span>{isAr ? "تسويات المخزون" : "Stock Adjustments"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/transfers"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <Truck className="h-4 w-4 text-blue-600" />
+          <span>{isAr ? "التحويلات بين الفروع" : "Stock Transfers"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/counts"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-[#FDCE0C] shadow-xs"
+        >
+          <ClipboardCheck className="h-4 w-4 text-[#FDCE0C]" />
+          <span>{isAr ? "الجرد الفعلي الدوري" : "Stock Counts & Audits"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/serial-tracking"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <Barcode className="h-4 w-4 text-purple-600" />
+          <span>{isAr ? "الأرقام التسلسلية والصلاحيات" : "Serial & Batch Tracking"}</span>
+        </Link>
       </div>
 
       {/* Search */}

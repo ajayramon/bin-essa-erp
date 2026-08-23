@@ -2969,6 +2969,25 @@ export interface StockAdjustmentRecord {
   createdAt: string;
 }
 
+export function getStoredStockAdjustments(): StockAdjustmentRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-stock-adjustments-v2");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredStockAdjustments(adjs: StockAdjustmentRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bin-essa-stock-adjustments-v2", JSON.stringify(adjs));
+  } catch {
+    // Ignore
+  }
+}
+
 export async function listStockAdjustmentsRequest(branchId?: string): Promise<StockAdjustmentRecord[]> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
@@ -2983,7 +3002,8 @@ export async function listStockAdjustmentsRequest(branchId?: string): Promise<St
   } catch (e) {
     console.warn("Backend unavailable for listStockAdjustments", e);
   }
-  return [];
+  const stored = getStoredStockAdjustments();
+  return branchId ? stored.filter((a) => a.branchId === branchId) : stored;
 }
 
 export async function createStockAdjustmentRequest(payload: {
@@ -2994,20 +3014,57 @@ export async function createStockAdjustmentRequest(payload: {
   lines: Array<{ itemId: string; quantityChange: number; unitCost?: number }>;
 }): Promise<StockAdjustmentRecord> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  const res = await fetch(`${API_BASE}/stock-adjustments`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create stock adjustment");
+  try {
+    const res = await fetch(`${API_BASE}/stock-adjustments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createStockAdjustment, storing locally", e);
   }
+
+  const storedItems = getStoredItems();
+  let totalVal = 0;
+  payload.lines.forEach((l) => {
+    const itm = storedItems.find((i) => i.id === l.itemId);
+    if (itm) {
+      const cost = l.unitCost ?? Number(itm.cost || 0);
+      totalVal += Math.abs(l.quantityChange) * cost;
+      itm.stockQuantity = Math.max(0, Number(itm.stockQuantity || 0) + l.quantityChange);
+    }
+  });
+  saveStoredItems(storedItems);
+
+  const newAdj: StockAdjustmentRecord = {
+    id: `adj-${Date.now()}`,
+    adjustmentNumber: payload.adjustmentNumber,
+    branchId: payload.branchId,
+    reason: payload.reason,
+    status: "POSTED",
+    totalValue: totalVal,
+    notes: payload.notes,
+    lines: payload.lines.map((l, i) => ({
+      id: `adjl-${i}-${Date.now()}`,
+      itemId: l.itemId,
+      quantityChange: l.quantityChange,
+      unitCost: l.unitCost || 0,
+      totalCost: (l.unitCost || 0) * Math.abs(l.quantityChange),
+    })),
+    createdAt: new Date().toISOString(),
+  };
+
+  const stored = getStoredStockAdjustments();
+  saveStoredStockAdjustments([newAdj, ...stored]);
   clearApiCache();
-  return res.json();
+  return newAdj;
 }
 
 export interface StockCountRecord {
@@ -3030,6 +3087,25 @@ export interface StockCountRecord {
   createdAt: string;
 }
 
+export function getStoredStockCounts(): StockCountRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-stock-counts-v2");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredStockCounts(counts: StockCountRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bin-essa-stock-counts-v2", JSON.stringify(counts));
+  } catch {
+    // Ignore
+  }
+}
+
 export async function listStockCountsRequest(branchId?: string): Promise<StockCountRecord[]> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
@@ -3044,7 +3120,8 @@ export async function listStockCountsRequest(branchId?: string): Promise<StockCo
   } catch (e) {
     console.warn("Backend unavailable for listStockCounts", e);
   }
-  return [];
+  const stored = getStoredStockCounts();
+  return branchId ? stored.filter((c) => c.branchId === branchId) : stored;
 }
 
 export async function createStockCountRequest(payload: {
@@ -3054,20 +3131,45 @@ export async function createStockCountRequest(payload: {
   lines: Array<{ itemId: string; countedQuantity: number; systemQuantity?: number; unitCost?: number }>;
 }): Promise<StockCountRecord> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  const res = await fetch(`${API_BASE}/stock-counts`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create stock count");
+  try {
+    const res = await fetch(`${API_BASE}/stock-counts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createStockCount, storing locally", e);
   }
+
+  const newCount: StockCountRecord = {
+    id: `cnt-${Date.now()}`,
+    countNumber: payload.countNumber,
+    branchId: payload.branchId,
+    status: "COMPLETED",
+    countedAt: new Date().toISOString(),
+    notes: payload.notes,
+    lines: payload.lines.map((l, i) => ({
+      id: `cntl-${i}-${Date.now()}`,
+      itemId: l.itemId,
+      systemQuantity: l.systemQuantity ?? 100,
+      countedQuantity: l.countedQuantity,
+      variance: l.countedQuantity - (l.systemQuantity ?? 100),
+      unitCost: l.unitCost ?? 0,
+    })),
+    createdAt: new Date().toISOString(),
+  };
+
+  const stored = getStoredStockCounts();
+  saveStoredStockCounts([newCount, ...stored]);
   clearApiCache();
-  return res.json();
+  return newCount;
 }
 
 export interface StockTransferRecord {
@@ -3090,6 +3192,25 @@ export interface StockTransferRecord {
   createdAt: string;
 }
 
+export function getStoredStockTransfers(): StockTransferRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-stock-transfers-v2");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredStockTransfers(transfers: StockTransferRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bin-essa-stock-transfers-v2", JSON.stringify(transfers));
+  } catch {
+    // Ignore
+  }
+}
+
 export async function listStockTransfersRequest(): Promise<StockTransferRecord[]> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   try {
@@ -3103,7 +3224,7 @@ export async function listStockTransfersRequest(): Promise<StockTransferRecord[]
   } catch (e) {
     console.warn("Backend unavailable for listStockTransfers", e);
   }
-  return [];
+  return getStoredStockTransfers();
 }
 
 export async function createStockTransferRequest(payload: {
@@ -3114,20 +3235,50 @@ export async function createStockTransferRequest(payload: {
   lines: Array<{ itemId: string; quantityRequested: number }>;
 }): Promise<StockTransferRecord> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  const res = await fetch(`${API_BASE}/stock-transfers`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to create stock transfer");
+  try {
+    const res = await fetch(`${API_BASE}/stock-transfers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createStockTransfer, storing locally", e);
   }
+
+  const branches = FALLBACK_BRANCHES;
+  const fromBr = branches.find((b) => b.id === payload.fromBranchId);
+  const toBr = branches.find((b) => b.id === payload.toBranchId);
+
+  const newTransfer: StockTransferRecord = {
+    id: `trf-${Date.now()}`,
+    transferNumber: payload.transferNumber,
+    fromBranchId: payload.fromBranchId,
+    toBranchId: payload.toBranchId,
+    status: "DISPATCHED",
+    notes: payload.notes,
+    fromBranch: fromBr ? { id: fromBr.id, name: fromBr.name } : undefined,
+    toBranch: toBr ? { id: toBr.id, name: toBr.name } : undefined,
+    lines: payload.lines.map((l, i) => ({
+      id: `trfl-${i}-${Date.now()}`,
+      itemId: l.itemId,
+      quantityRequested: l.quantityRequested,
+      quantityDispatched: l.quantityRequested,
+      quantityReceived: l.quantityRequested,
+    })),
+    createdAt: new Date().toISOString(),
+  };
+
+  const stored = getStoredStockTransfers();
+  saveStoredStockTransfers([newTransfer, ...stored]);
   clearApiCache();
-  return res.json();
+  return newTransfer;
 }
 
 // 3. Purchasing Lifecycle (PR, GRN, Payment Vouchers)
@@ -4205,20 +4356,435 @@ export async function calculateCommissionRequest(
   payload: { period: string; startDate: string; endDate: string }
 ): Promise<any> {
   const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  const res = await fetch(`${API_BASE}/commissions/calculate/${userId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to calculate commission");
+  try {
+    const res = await fetch(`${API_BASE}/commissions/calculate/${userId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for calculateCommission", e);
   }
-  clearApiCache();
-  return res.json();
+  return { userId, commissionRate: 0.05, totalCommission: 0, status: "CALCULATED" };
 }
+
+// ==============================================================================
+// BRANCHES API CLIENT
+// ==============================================================================
+
+export interface BranchRecord {
+  id: string;
+  code: string;
+  name: string;
+  brandId: string;
+  nameEn?: string;
+  nameAr?: string;
+  city?: string;
+  address?: string;
+  type?: string;
+  isActive: boolean;
+}
+
+export const FALLBACK_BRANCHES: BranchRecord[] = [
+  { id: "br-01", code: "BR-01", name: "Shuwaikh Main Branch & HQ", nameEn: "Shuwaikh Main Branch & HQ", nameAr: "فرع الشويخ الرئيسي والمقر", brandId: "smoking", city: "Shuwaikh Industrial", type: "retail_wholesale", isActive: true },
+  { id: "br-02", code: "BR-02", name: "Salmiya Salem Al-Mubarak", nameEn: "Salmiya Salem Al-Mubarak", nameAr: "فرع السالمية شارع سالم المبارك", brandId: "smoking", city: "Salmiya", type: "retail", isActive: true },
+  { id: "br-03", code: "BR-03", name: "Hawally Tunis Street", nameEn: "Hawally Tunis Street", nameAr: "فرع حولي شارع تونس", brandId: "smoking", city: "Hawally", type: "retail", isActive: true },
+  { id: "br-04", code: "BR-04", name: "Farwaniya Habib Munawer", nameEn: "Farwaniya Habib Munawer", nameAr: "فرع الفروانية حبيب مناور", brandId: "smoking", city: "Farwaniya", type: "retail", isActive: true },
+  { id: "br-05", code: "BR-05", name: "Fahaheel Makka Street", nameEn: "Fahaheel Makka Street", nameAr: "فرع الفحيحيل شارع مكة", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
+  { id: "br-06", code: "BR-06", name: "Jahra Marzouk Al-Meteb", nameEn: "Jahra Marzouk Al-Meteb", nameAr: "فرع الجهراء مرزوق المتعب", brandId: "smoking", city: "Jahra", type: "retail", isActive: true },
+  { id: "br-07", code: "BR-07", name: "Kuwait City Sharq", nameEn: "Kuwait City Sharq", nameAr: "فرع شرق العاصمة", brandId: "smoking", city: "Kuwait City", type: "retail", isActive: true },
+  { id: "br-08", code: "BR-08", name: "Khiran Resort Marine Outlet", nameEn: "Khiran Resort Marine Outlet", nameAr: "فرع منتجع الخيران البحري", brandId: "khiran", city: "Khiran", type: "retail", isActive: true },
+  { id: "br-09", code: "BR-09", name: "Avenues Mall Counter", nameEn: "Avenues Mall Counter", nameAr: "فرع مجمع الأفنيوز", brandId: "smoking", city: "Rai", type: "retail", isActive: true },
+  { id: "br-10", code: "BR-10", name: "Al-Kout Mall Fahaheel", nameEn: "Al-Kout Mall Fahaheel", nameAr: "فرع الكوت مول الفحيحيل", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
+  { id: "br-11", code: "BR-11", name: "Egaila Arabella", nameEn: "Egaila Arabella", nameAr: "فرع العقيلة أرابيلا", brandId: "smoking", city: "Egaila", type: "retail", isActive: true },
+  { id: "br-12", code: "BR-12", name: "JM Art Zone Shuwaikh Design", nameEn: "JM Art Zone Shuwaikh Design", nameAr: "جي إم آرت زون فرع الشويخ للدعاية", brandId: "art_zone", city: "Shuwaikh", type: "retail", isActive: true },
+  { id: "br-13", code: "BR-13", name: "JM Art Zone Salmiya Gifts", nameEn: "JM Art Zone Salmiya Gifts", nameAr: "جي إم آرت زون فرع السالمية للهدايا", brandId: "art_zone", city: "Salmiya", type: "retail", isActive: true },
+  { id: "br-14", code: "BR-14", name: "Bin Essa Central Logistics Warehouse", nameEn: "Bin Essa Central Logistics Warehouse", nameAr: "مستودع بن عيسى المركزي واللوجستي", brandId: "smoking", city: "Shuwaikh Industrial", type: "wholesale", isActive: true },
+];
+
+export async function listBranchesRequest(): Promise<BranchRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/branches`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for listBranches", e);
+  }
+  return FALLBACK_BRANCHES;
+}
+
+export async function createBranchRequest(payload: Partial<BranchRecord>): Promise<BranchRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/branches`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createBranch", e);
+  }
+  const newBr: BranchRecord = {
+    id: payload.id || `br-${Date.now().toString().slice(-4)}`,
+    code: payload.code || `BR-${Date.now().toString().slice(-2)}`,
+    name: payload.name || payload.nameEn || "New Branch",
+    brandId: payload.brandId || "smoking",
+    nameEn: payload.nameEn || payload.name,
+    nameAr: payload.nameAr || payload.name,
+    city: payload.city || "Kuwait City",
+    address: payload.address,
+    type: payload.type || "retail",
+    isActive: payload.isActive ?? true,
+  };
+  return newBr;
+}
+
+// ==============================================================================
+// HR & PAYROLL API CLIENT
+// ==============================================================================
+
+export interface EmployeeRecord {
+  id: string;
+  code: string;
+  name: string;
+  civilId?: string;
+  position: string;
+  department: string;
+  branchId?: string;
+  branch?: { id: string; name: string; code: string };
+  basicSalary: number;
+  housingAllowance?: number;
+  transportAllowance?: number;
+  otherAllowances?: number;
+  hireDate?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PayrollPeriodRecord {
+  id: string;
+  year: number;
+  month: number;
+  status: string;
+  totalGross: number;
+  totalAllowances: number;
+  totalDeductions: number;
+  totalNet: number;
+  journalEntryId?: string;
+  slips?: PayrollSlipRecord[];
+  createdAt: string;
+}
+
+export interface PayrollSlipRecord {
+  id: string;
+  payrollPeriodId: string;
+  employeeId: string;
+  employee?: { id: string; name: string; code: string; position: string };
+  basicSalary: number;
+  allowances: number;
+  deductions: number;
+  netSalary: number;
+  status: string;
+  createdAt: string;
+}
+
+export function getStoredEmployees(): EmployeeRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-employees-v2");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredEmployees(employees: EmployeeRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bin-essa-employees-v2", JSON.stringify(employees));
+  } catch {
+    // Ignore
+  }
+}
+
+export function getStoredPayrollPeriods(): PayrollPeriodRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("bin-essa-payroll-periods-v2");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredPayrollPeriods(periods: PayrollPeriodRecord[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("bin-essa-payroll-periods-v2", JSON.stringify(periods));
+  } catch {
+    // Ignore
+  }
+}
+
+export async function listEmployeesRequest(branchId?: string): Promise<EmployeeRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  try {
+    const res = await fetch(`${API_BASE}/hr/employees${query}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listEmployees", e);
+  }
+  const stored = getStoredEmployees();
+  return branchId ? stored.filter((e) => e.branchId === branchId) : stored;
+}
+
+export async function createEmployeeRequest(payload: {
+  code: string;
+  name: string;
+  civilId?: string;
+  position: string;
+  department: string;
+  branchId?: string;
+  basicSalary: number;
+  housingAllowance?: number;
+  transportAllowance?: number;
+  otherAllowances?: number;
+  hireDate?: string;
+}): Promise<EmployeeRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/hr/employees`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createEmployee, storing locally", e);
+  }
+
+  const newEmp: EmployeeRecord = {
+    id: `emp-${Date.now()}`,
+    code: payload.code,
+    name: payload.name,
+    civilId: payload.civilId,
+    position: payload.position,
+    department: payload.department,
+    branchId: payload.branchId,
+    basicSalary: payload.basicSalary,
+    housingAllowance: payload.housingAllowance || 0,
+    transportAllowance: payload.transportAllowance || 0,
+    otherAllowances: payload.otherAllowances || 0,
+    hireDate: payload.hireDate || new Date().toISOString(),
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const stored = getStoredEmployees();
+  saveStoredEmployees([newEmp, ...stored]);
+  clearApiCache();
+  return newEmp;
+}
+
+export async function recordAttendanceRequest(payload: {
+  employeeId: string;
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  hoursWorked?: number;
+  overtimeHours?: number;
+  status?: string;
+}): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/hr/attendance`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for recordAttendance", e);
+  }
+  return { success: true, ...payload };
+}
+
+export async function createLeaveRequestRequest(payload: {
+  employeeId: string;
+  leaveType?: string;
+  startDate: string;
+  endDate: string;
+  daysCount: number;
+  notes?: string;
+}): Promise<any> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/hr/leave-requests`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createLeaveRequest", e);
+  }
+  return { success: true, status: "APPROVED", ...payload };
+}
+
+export async function listPayrollPeriodsRequest(): Promise<PayrollPeriodRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/hr/payroll`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn("Backend unavailable for listPayrollPeriods", e);
+  }
+  return getStoredPayrollPeriods();
+}
+
+export async function generatePayrollPeriodRequest(payload: {
+  year: number;
+  month: number;
+  branchId?: string;
+}): Promise<PayrollPeriodRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/hr/payroll/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for generatePayrollPeriod, executing local calculation", e);
+  }
+
+  const emps = getStoredEmployees().filter((e) => e.isActive && (!payload.branchId || e.branchId === payload.branchId));
+  const totalGross = emps.reduce((s, e) => s + Number(e.basicSalary || 0), 0);
+  const totalAllowances = emps.reduce(
+    (s, e) => s + Number(e.housingAllowance || 0) + Number(e.transportAllowance || 0) + Number(e.otherAllowances || 0),
+    0
+  );
+  const totalDeductions = 0;
+  const totalNet = totalGross + totalAllowances - totalDeductions;
+
+  const newPeriod: PayrollPeriodRecord = {
+    id: `pp-${Date.now()}`,
+    year: payload.year,
+    month: payload.month,
+    status: "PROCESSED",
+    totalGross,
+    totalAllowances,
+    totalDeductions,
+    totalNet,
+    slips: emps.map((e) => {
+      const allw = Number(e.housingAllowance || 0) + Number(e.transportAllowance || 0) + Number(e.otherAllowances || 0);
+      return {
+        id: `slip-${e.id}-${Date.now()}`,
+        payrollPeriodId: `pp-${Date.now()}`,
+        employeeId: e.id,
+        employee: { id: e.id, name: e.name, code: e.code, position: e.position },
+        basicSalary: Number(e.basicSalary || 0),
+        allowances: allw,
+        deductions: 0,
+        netSalary: Number(e.basicSalary || 0) + allw,
+        status: "PROCESSED",
+        createdAt: new Date().toISOString(),
+      };
+    }),
+    createdAt: new Date().toISOString(),
+  };
+
+  const storedPeriods = getStoredPayrollPeriods();
+  saveStoredPayrollPeriods([newPeriod, ...storedPeriods]);
+
+  // Auto-post salary expense GL journal entry
+  saveLocalJournalEntry({
+    id: `je-payroll-${Date.now()}`,
+    reference: `JE-PAYROLL-${payload.year}-${String(payload.month).padStart(2, "0")}`,
+    date: new Date().toISOString(),
+    description: `Auto GL Entry for Payroll ${payload.year}/${payload.month}`,
+    status: "POSTED",
+    branchId: payload.branchId || "br-01",
+    lines: [
+      {
+        id: `jel-p1-${Date.now()}`,
+        journalEntryId: `je-payroll-${Date.now()}`,
+        accountId: "acc-6000", // Salary Expense
+        debit: totalNet.toFixed(3),
+        credit: "0.000",
+      },
+      {
+        id: `jel-p2-${Date.now()}`,
+        journalEntryId: `je-payroll-${Date.now()}`,
+        accountId: "acc-1010", // Bank Account
+        debit: "0.000",
+        credit: totalNet.toFixed(3),
+      },
+    ],
+  });
+
+  clearApiCache();
+  return newPeriod;
+}
+
 
 

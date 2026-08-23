@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Package, ArrowLeftRight, Truck, ClipboardCheck, Barcode, Plus } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { listItemsRequest, type ItemRecord } from "@/lib/api";
 
@@ -271,44 +272,81 @@ export default function SerialTrackingPage() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-ink/10 pb-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/inventory"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-ink/15 bg-white px-3 py-2 text-xs font-bold text-ink shadow-xs hover:bg-gold hover:border-gold transition-colors"
-          >
-            ← Back to Inventory
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-ink">
-              {locale === "ar"
-                ? "تتبع الأرقام التسلسلية والشحنات"
-                : "Serial Number & Batch Expiry Tracking"}
-            </h1>
-            <p className="text-xs text-ink/50 mt-0.5">
-              {locale === "ar"
-                ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
-                : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-ink">
+            {locale === "ar"
+              ? "تتبع الأرقام التسلسلية والشحنات"
+              : "Serial Number & Batch Expiry Tracking"}
+          </h1>
+          <p className="text-xs text-ink/50 mt-0.5">
+            {locale === "ar"
+              ? "تتبع أجهزة الفيب والأجهزة الإلكترونية بالرقم التسلسلي ومراقبة تواريخ صلاحية الشحنات"
+              : "Hardware device serial registration (vape pods/kits) & perishable batch expiration monitoring."}
+          </p>
         </div>
 
         <div className="flex items-center gap-2">
           {activeTab === "SERIALS" ? (
             <button
               onClick={() => setShowSerialModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-gold hover:text-ink transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-[#FDCE0C] shadow-sm hover:bg-slate-800 transition-colors"
             >
-              <span>➕</span> Register Serial #
+              <Plus className="h-4 w-4" />
+              <span>{locale === "ar" ? "+ تسجيل رقم تسلسلي" : "+ Register Serial #"}</span>
             </button>
           ) : (
             <button
               onClick={() => setShowBatchModal(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white shadow hover:bg-gold hover:text-ink transition-colors"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-[#FDCE0C] shadow-sm hover:bg-slate-800 transition-colors"
             >
-              <span>➕</span> Register New Batch
+              <Plus className="h-4 w-4" />
+              <span>{locale === "ar" ? "+ تسجيل دفعة جديدة" : "+ Register New Batch"}</span>
             </button>
           )}
         </div>
+      </div>
+
+      {/* Sub-Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink/10 pb-3">
+        <Link
+          href="/inventory"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <Package className="h-4 w-4 text-slate-600" />
+          <span>{locale === "ar" ? "سجل بطاقات الأصناف (Item Master)" : "Item Master Catalog"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/adjustments"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <ArrowLeftRight className="h-4 w-4 text-amber-600" />
+          <span>{locale === "ar" ? "تسويات المخزون" : "Stock Adjustments"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/transfers"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <Truck className="h-4 w-4 text-blue-600" />
+          <span>{locale === "ar" ? "التحويلات بين الفروع" : "Stock Transfers"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/counts"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-950 transition"
+        >
+          <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+          <span>{locale === "ar" ? "الجرد الفعلي الدوري" : "Stock Counts & Audits"}</span>
+        </Link>
+
+        <Link
+          href="/inventory/serial-tracking"
+          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-[#FDCE0C] shadow-xs"
+        >
+          <Barcode className="h-4 w-4 text-[#FDCE0C]" />
+          <span>{locale === "ar" ? "الأرقام التسلسلية والصلاحيات" : "Serial & Batch Tracking"}</span>
+        </Link>
       </div>
 
       {/* Executive Smart Analytics Cards */}
