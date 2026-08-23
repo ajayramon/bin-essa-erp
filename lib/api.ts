@@ -943,6 +943,7 @@ export interface ItemResponse {
   visibility: string;
   price: string | number;
   cost: string | number;
+  costPrice?: string | number;
   unit: string;
   stockQuantity: number;
   isActive: boolean;

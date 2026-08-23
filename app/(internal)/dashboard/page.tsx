@@ -115,7 +115,7 @@ export default function DashboardPage() {
   const inventoryAccount = trialBalance?.rows?.find((r) => r.code === "1200");
 
   const itemsValuation = items.reduce(
-    (sum, item) => sum + Number(item.stockQuantity || 0) * Number(item.costPrice || 0),
+    (sum, item) => sum + Number(item.stockQuantity || 0) * Number(item.cost || 0),
     0
   );
   const totalInventoryValuation =
