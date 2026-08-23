@@ -89,7 +89,7 @@ export class HrPayrollService {
           include: { lines: { include: { account: true } } },
         },
       },
-      orderBy: { year: 'desc', month: 'desc' },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
     });
   }
 

@@ -18,6 +18,7 @@ import {
   reopenPosShiftRequest,
   adjustPosShiftRequest,
   listItemsRequest,
+  listCustomersRequest,
   type PosShiftRecord,
 } from "@/lib/api";
 import {
@@ -70,13 +71,36 @@ export default function BranchPosPage() {
   const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
   const [salespersonsList] = useState<Salesperson[]>(salespersons);
 
-  // Sync inventory whenever page regains focus or visibility, or branch changes
+  // Sync inventory and customers whenever page regains focus or visibility, or branch changes
   useEffect(() => {
     async function syncCatalog() {
       try {
         const branchId = currentBranch ? currentBranch.id : undefined;
-        await listItemsRequest(branchId);
+        const [_, custs] = await Promise.all([
+          listItemsRequest(branchId),
+          listCustomersRequest(branchId).catch(() => []),
+        ]);
         setItemsCatalog(getPersistentItemsCatalog());
+        if (custs && custs.length > 0) {
+          setCustomersList((prev) => {
+            const map = new Map<string, Customer>();
+            prev.forEach((c) => map.set(c.id, c));
+            custs.forEach((c) =>
+              map.set(c.id, {
+                id: c.id,
+                nameEn: c.name,
+                nameAr: c.name,
+                phone: c.phone || "",
+                email: c.email,
+                customerType: (c.customerGroup as any) || "individual",
+                balance: Number(c.currentBalance || 0),
+                creditLimit: Number(c.creditLimit || 0),
+                loyaltyPoints: c.loyaltyPoints || 0,
+              })
+            );
+            return Array.from(map.values());
+          });
+        }
       } catch (err) {
         setItemsCatalog(getPersistentItemsCatalog());
       }

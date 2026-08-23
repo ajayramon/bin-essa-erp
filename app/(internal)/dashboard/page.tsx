@@ -114,9 +114,14 @@ export default function DashboardPage() {
   const bankAccount = trialBalance?.rows?.find((r) => r.code === "1010");
   const inventoryAccount = trialBalance?.rows?.find((r) => r.code === "1200");
 
-  const cashOnHand = cashAccount ? Math.max(0, cashAccount.debit - cashAccount.credit) : 0;
-  const bankBalance = bankAccount ? Math.max(0, bankAccount.debit - bankAccount.credit) : 0;
-  const totalInventoryValuation = inventoryAccount ? Math.max(0, inventoryAccount.debit - inventoryAccount.credit) : 0;
+  const itemsValuation = items.reduce(
+    (sum, item) => sum + Number(item.stockQuantity || 0) * Number(item.costPrice || 0),
+    0
+  );
+  const totalInventoryValuation =
+    inventoryAccount && (inventoryAccount.debit > 0 || inventoryAccount.credit > 0)
+      ? Math.max(0, inventoryAccount.debit - inventoryAccount.credit)
+      : itemsValuation;
 
   // 3. Real Low Stock Alerts from persistent DB items
   const lowStockItems = items.filter((item) => {
