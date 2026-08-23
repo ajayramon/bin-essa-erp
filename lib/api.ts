@@ -698,8 +698,8 @@ export interface CreateJournalEntryResponse {
   date: string;
   description: string;
   status: "DRAFT" | "POSTED";
-  branchId: string | null;
-  salesInvoiceId: string | null;
+  branchId?: string | null;
+  salesInvoiceId?: string | null;
   lines: JournalEntryLineResponse[];
 }
 
