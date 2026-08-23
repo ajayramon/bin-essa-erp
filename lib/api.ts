@@ -2234,34 +2234,88 @@ export interface RolePermissionRecord {
   modules: string[];
 }
 
-export interface BranchResponse {
+export interface BranchRecord {
   id: string;
-  name: string;
   code: string;
+  name: string;
+  brandId?: string;
+  nameEn?: string;
+  nameAr?: string;
+  city?: string;
+  address?: string;
+  type?: string;
+  isActive?: boolean;
 }
 
-export type BranchRecord = BranchResponse;
+export type BranchResponse = BranchRecord;
 
-export async function listBranchesRequest(): Promise<BranchResponse[]> {
-  const token = localStorage.getItem("bin-essa-access-token");
+export const FALLBACK_BRANCHES: BranchRecord[] = [
+  { id: "br-01", code: "BR-01", name: "Shuwaikh Main Branch & HQ", nameEn: "Shuwaikh Main Branch & HQ", nameAr: "فرع الشويخ الرئيسي والمقر", brandId: "smoking", city: "Shuwaikh Industrial", type: "retail_wholesale", isActive: true },
+  { id: "br-02", code: "BR-02", name: "Salmiya Salem Al-Mubarak", nameEn: "Salmiya Salem Al-Mubarak", nameAr: "فرع السالمية شارع سالم المبارك", brandId: "smoking", city: "Salmiya", type: "retail", isActive: true },
+  { id: "br-03", code: "BR-03", name: "Hawally Tunis Street", nameEn: "Hawally Tunis Street", nameAr: "فرع حولي شارع تونس", brandId: "smoking", city: "Hawally", type: "retail", isActive: true },
+  { id: "br-04", code: "BR-04", name: "Farwaniya Habib Munawer", nameEn: "Farwaniya Habib Munawer", nameAr: "فرع الفروانية حبيب مناور", brandId: "smoking", city: "Farwaniya", type: "retail", isActive: true },
+  { id: "br-05", code: "BR-05", name: "Fahaheel Makka Street", nameEn: "Fahaheel Makka Street", nameAr: "فرع الفحيحيل شارع مكة", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
+  { id: "br-06", code: "BR-06", name: "Jahra Marzouk Al-Meteb", nameEn: "Jahra Marzouk Al-Meteb", nameAr: "فرع الجهراء مرزوق المتعب", brandId: "smoking", city: "Jahra", type: "retail", isActive: true },
+  { id: "br-07", code: "BR-07", name: "Kuwait City Sharq", nameEn: "Kuwait City Sharq", nameAr: "فرع شرق العاصمة", brandId: "smoking", city: "Kuwait City", type: "retail", isActive: true },
+  { id: "br-08", code: "BR-08", name: "Khiran Resort Marine Outlet", nameEn: "Khiran Resort Marine Outlet", nameAr: "فرع منتجع الخيران البحري", brandId: "khiran", city: "Khiran", type: "retail", isActive: true },
+  { id: "br-09", code: "BR-09", name: "Avenues Mall Counter", nameEn: "Avenues Mall Counter", nameAr: "فرع مجمع الأفنيوز", brandId: "smoking", city: "Rai", type: "retail", isActive: true },
+  { id: "br-10", code: "BR-10", name: "Al-Kout Mall Fahaheel", nameEn: "Al-Kout Mall Fahaheel", nameAr: "فرع الكوت مول الفحيحيل", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
+  { id: "br-11", code: "BR-11", name: "Egaila Arabella", nameEn: "Egaila Arabella", nameAr: "فرع العقيلة أرابيلا", brandId: "smoking", city: "Egaila", type: "retail", isActive: true },
+  { id: "br-12", code: "BR-12", name: "JM Art Zone Shuwaikh Design", nameEn: "JM Art Zone Shuwaikh Design", nameAr: "جي إم آرت زون فرع الشويخ للدعاية", brandId: "art_zone", city: "Shuwaikh", type: "retail", isActive: true },
+  { id: "br-13", code: "BR-13", name: "JM Art Zone Salmiya Gifts", nameEn: "JM Art Zone Salmiya Gifts", nameAr: "جي إم آرت زون فرع السالمية للهدايا", brandId: "art_zone", city: "Salmiya", type: "retail", isActive: true },
+  { id: "br-14", code: "BR-14", name: "Bin Essa Central Logistics Warehouse", nameEn: "Bin Essa Central Logistics Warehouse", nameAr: "مستودع بن عيسى المركزي واللوجستي", brandId: "smoking", city: "Shuwaikh Industrial", type: "wholesale", isActive: true },
+];
+
+export async function listBranchesRequest(): Promise<BranchRecord[]> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
   try {
-    const res = await fetch(`${API_BASE}/settings/branches`, {
+    const res = await fetch(`${API_BASE}/branches`, {
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (res.ok) return res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
   } catch (e) {
     console.warn("Backend unavailable for listBranches", e);
   }
-  return [
-    { id: "br-01", name: "Salmiya Main", code: "BR-01" },
-    { id: "br-02", name: "Hawally Branch", code: "BR-02" },
-    { id: "br-03", name: "Farwaniya Branch", code: "BR-03" },
-    { id: "br-15", name: "Khiran Marine", code: "BR-15" },
-    { id: "br-16", name: "JM Art Zone", code: "BR-16" },
-  ];
+  return FALLBACK_BRANCHES;
+}
+
+export async function createBranchRequest(payload: Partial<BranchRecord>): Promise<BranchRecord> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  try {
+    const res = await fetch(`${API_BASE}/branches`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      clearApiCache();
+      return res.json();
+    }
+  } catch (e) {
+    console.warn("Backend unavailable for createBranch", e);
+  }
+  const newBr: BranchRecord = {
+    id: payload.id || `br-${Date.now().toString().slice(-4)}`,
+    code: payload.code || `BR-${Date.now().toString().slice(-2)}`,
+    name: payload.name || payload.nameEn || "New Branch",
+    brandId: payload.brandId || "smoking",
+    nameEn: payload.nameEn || payload.name,
+    nameAr: payload.nameAr || payload.name,
+    city: payload.city || "Kuwait City",
+    address: payload.address,
+    type: payload.type || "retail",
+    isActive: payload.isActive ?? true,
+  };
+  return newBr;
 }
 
 export async function listUsersRequest(): Promise<UserRecord[]> {
@@ -4373,92 +4427,6 @@ export async function calculateCommissionRequest(
     console.warn("Backend unavailable for calculateCommission", e);
   }
   return { userId, commissionRate: 0.05, totalCommission: 0, status: "CALCULATED" };
-}
-
-// ==============================================================================
-// BRANCHES API CLIENT
-// ==============================================================================
-
-export interface BranchRecord {
-  id: string;
-  code: string;
-  name: string;
-  brandId: string;
-  nameEn?: string;
-  nameAr?: string;
-  city?: string;
-  address?: string;
-  type?: string;
-  isActive: boolean;
-}
-
-export const FALLBACK_BRANCHES: BranchRecord[] = [
-  { id: "br-01", code: "BR-01", name: "Shuwaikh Main Branch & HQ", nameEn: "Shuwaikh Main Branch & HQ", nameAr: "فرع الشويخ الرئيسي والمقر", brandId: "smoking", city: "Shuwaikh Industrial", type: "retail_wholesale", isActive: true },
-  { id: "br-02", code: "BR-02", name: "Salmiya Salem Al-Mubarak", nameEn: "Salmiya Salem Al-Mubarak", nameAr: "فرع السالمية شارع سالم المبارك", brandId: "smoking", city: "Salmiya", type: "retail", isActive: true },
-  { id: "br-03", code: "BR-03", name: "Hawally Tunis Street", nameEn: "Hawally Tunis Street", nameAr: "فرع حولي شارع تونس", brandId: "smoking", city: "Hawally", type: "retail", isActive: true },
-  { id: "br-04", code: "BR-04", name: "Farwaniya Habib Munawer", nameEn: "Farwaniya Habib Munawer", nameAr: "فرع الفروانية حبيب مناور", brandId: "smoking", city: "Farwaniya", type: "retail", isActive: true },
-  { id: "br-05", code: "BR-05", name: "Fahaheel Makka Street", nameEn: "Fahaheel Makka Street", nameAr: "فرع الفحيحيل شارع مكة", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
-  { id: "br-06", code: "BR-06", name: "Jahra Marzouk Al-Meteb", nameEn: "Jahra Marzouk Al-Meteb", nameAr: "فرع الجهراء مرزوق المتعب", brandId: "smoking", city: "Jahra", type: "retail", isActive: true },
-  { id: "br-07", code: "BR-07", name: "Kuwait City Sharq", nameEn: "Kuwait City Sharq", nameAr: "فرع شرق العاصمة", brandId: "smoking", city: "Kuwait City", type: "retail", isActive: true },
-  { id: "br-08", code: "BR-08", name: "Khiran Resort Marine Outlet", nameEn: "Khiran Resort Marine Outlet", nameAr: "فرع منتجع الخيران البحري", brandId: "khiran", city: "Khiran", type: "retail", isActive: true },
-  { id: "br-09", code: "BR-09", name: "Avenues Mall Counter", nameEn: "Avenues Mall Counter", nameAr: "فرع مجمع الأفنيوز", brandId: "smoking", city: "Rai", type: "retail", isActive: true },
-  { id: "br-10", code: "BR-10", name: "Al-Kout Mall Fahaheel", nameEn: "Al-Kout Mall Fahaheel", nameAr: "فرع الكوت مول الفحيحيل", brandId: "smoking", city: "Fahaheel", type: "retail", isActive: true },
-  { id: "br-11", code: "BR-11", name: "Egaila Arabella", nameEn: "Egaila Arabella", nameAr: "فرع العقيلة أرابيلا", brandId: "smoking", city: "Egaila", type: "retail", isActive: true },
-  { id: "br-12", code: "BR-12", name: "JM Art Zone Shuwaikh Design", nameEn: "JM Art Zone Shuwaikh Design", nameAr: "جي إم آرت زون فرع الشويخ للدعاية", brandId: "art_zone", city: "Shuwaikh", type: "retail", isActive: true },
-  { id: "br-13", code: "BR-13", name: "JM Art Zone Salmiya Gifts", nameEn: "JM Art Zone Salmiya Gifts", nameAr: "جي إم آرت زون فرع السالمية للهدايا", brandId: "art_zone", city: "Salmiya", type: "retail", isActive: true },
-  { id: "br-14", code: "BR-14", name: "Bin Essa Central Logistics Warehouse", nameEn: "Bin Essa Central Logistics Warehouse", nameAr: "مستودع بن عيسى المركزي واللوجستي", brandId: "smoking", city: "Shuwaikh Industrial", type: "wholesale", isActive: true },
-];
-
-export async function listBranchesRequest(): Promise<BranchRecord[]> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  try {
-    const res = await fetch(`${API_BASE}/branches`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data;
-    }
-  } catch (e) {
-    console.warn("Backend unavailable for listBranches", e);
-  }
-  return FALLBACK_BRANCHES;
-}
-
-export async function createBranchRequest(payload: Partial<BranchRecord>): Promise<BranchRecord> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
-  try {
-    const res = await fetch(`${API_BASE}/branches`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) {
-      clearApiCache();
-      return res.json();
-    }
-  } catch (e) {
-    console.warn("Backend unavailable for createBranch", e);
-  }
-  const newBr: BranchRecord = {
-    id: payload.id || `br-${Date.now().toString().slice(-4)}`,
-    code: payload.code || `BR-${Date.now().toString().slice(-2)}`,
-    name: payload.name || payload.nameEn || "New Branch",
-    brandId: payload.brandId || "smoking",
-    nameEn: payload.nameEn || payload.name,
-    nameAr: payload.nameAr || payload.name,
-    city: payload.city || "Kuwait City",
-    address: payload.address,
-    type: payload.type || "retail",
-    isActive: payload.isActive ?? true,
-  };
-  return newBr;
 }
 
 // ==============================================================================
