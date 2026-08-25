@@ -114,6 +114,9 @@ export default function DashboardPage() {
   const bankAccount = trialBalance?.rows?.find((r) => r.code === "1010");
   const inventoryAccount = trialBalance?.rows?.find((r) => r.code === "1200");
 
+  const cashOnHand = cashAccount ? Math.max(0, cashAccount.debit - cashAccount.credit) : 0;
+  const bankBalance = bankAccount ? Math.max(0, bankAccount.debit - bankAccount.credit) : 0;
+
   const itemsValuation = items.reduce(
     (sum, item) => sum + Number(item.stockQuantity || 0) * Number(item.cost || 0),
     0

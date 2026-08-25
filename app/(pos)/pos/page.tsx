@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { useSession } from "@/lib/context/SessionContext";
-import { items as initialItems } from "@/lib/mock-data/items";
 import { customers as initialCustomers } from "@/lib/mock-data/customers";
 import { branches } from "@/lib/mock-data/branches";
 import { salespersons, type Salesperson } from "@/lib/mock-data/salespersons";
