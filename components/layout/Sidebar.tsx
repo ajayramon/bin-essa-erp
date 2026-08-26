@@ -107,13 +107,42 @@ export function Sidebar() {
   const isGroupDashboardActive = pathname === groupDashboardItem.href;
 
   const roleAllowedKeys: Record<string, string[]> = {
-    cashier: ["pos", "inventory", "inventory-ops", "sales-ops", "customers"],
-    sales_rep: ["pos", "inventory", "inventory-ops", "sales-ops", "customers", "b2b"],
-    storekeeper: ["inventory", "inventory-ops", "purchasing"],
-    accountant: ["inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers"],
-    branch_manager: ["dashboard", "pos", "inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "settings"],
-    admin: ["dashboard", "pos", "inventory", "inventory-ops", "purchasing", "sales-ops", "accounting", "customers", "promotions-group", "b2b", "hr", "settings"],
+    cashier: ["pos", "customers"],
+    sales_rep: ["customers", "sales-ops", "promotions-group"],
+    storekeeper: ["inventory", "purchasing", "sales-ops"],
+    accountant: ["dashboard", "customers", "sales-ops", "purchasing", "accounting"],
+    manager: ["dashboard", "pos", "inventory", "customers", "sales-ops", "purchasing", "promotions-group", "hr"],
+    branch_manager: ["dashboard", "pos", "inventory", "customers", "sales-ops", "purchasing", "promotions-group", "hr"],
+    admin: ["dashboard", "pos", "inventory", "customers", "sales-ops", "purchasing", "accounting", "promotions-group", "b2b", "hr", "settings"],
+    administrator: ["dashboard", "pos", "inventory", "customers", "sales-ops", "purchasing", "accounting", "promotions-group", "b2b", "hr", "settings"],
     b2b_customer: ["b2b"],
+  };
+
+  const roleChildAllowedKeys: Record<string, Record<string, string[]>> = {
+    storekeeper: {
+      purchasing: ["goods-receipts"],
+      "sales-ops": ["delivery-notes"],
+    },
+    sales_rep: {
+      "sales-ops": ["sales-quotations", "sales-orders", "delivery-notes", "customer-receipts"],
+      "promotions-group": ["promotions", "loyalty-program"],
+    },
+    accountant: {
+      "sales-ops": ["customer-receipts"],
+      purchasing: ["purchase-invoices-list", "supplier-payments"],
+    },
+    manager: {
+      purchasing: ["purchase-requisitions", "purchase-orders-list", "goods-receipts"],
+      "sales-ops": ["sales-quotations", "sales-orders", "delivery-notes", "customer-receipts"],
+      "promotions-group": ["promotions", "loyalty-program"],
+      hr: ["employees", "payroll"],
+    },
+    branch_manager: {
+      purchasing: ["purchase-requisitions", "purchase-orders-list", "goods-receipts"],
+      "sales-ops": ["sales-quotations", "sales-orders", "delivery-notes", "customer-receipts"],
+      "promotions-group": ["promotions", "loyalty-program"],
+      hr: ["employees", "payroll"],
+    },
   };
 
   const userRoleKey = (user.role || "admin").toLowerCase();
@@ -186,6 +215,9 @@ export function Sidebar() {
                       openGroups={openGroups}
                       toggleGroup={toggleGroup}
                       onLeafClick={() => handleLeafClick(brand.id)}
+                      isAdminUser={isAdminUser}
+                      userRoleKey={userRoleKey}
+                      roleChildAllowedKeys={roleChildAllowedKeys}
                     />
                   ))}
                 </div>
@@ -208,6 +240,9 @@ function NavEntryRow({
   openGroups,
   toggleGroup,
   onLeafClick,
+  isAdminUser,
+  userRoleKey,
+  roleChildAllowedKeys,
 }: {
   entry: NavEntry;
   brandId: BrandId;
@@ -218,6 +253,9 @@ function NavEntryRow({
   openGroups: Set<string>;
   toggleGroup: (key: string) => void;
   onLeafClick: () => void;
+  isAdminUser: boolean;
+  userRoleKey: string;
+  roleChildAllowedKeys: Record<string, Record<string, string[]>>;
 }) {
   const label = locale === "ar" ? entry.labelAr : entry.labelEn;
   const Icon = entry.icon;
@@ -225,6 +263,13 @@ function NavEntryRow({
   if (isNavGroup(entry)) {
     const groupKey = `${brandId}:${entry.key}`;
     const isOpen = openGroups.has(groupKey);
+
+    const childRestrictions = roleChildAllowedKeys[userRoleKey]?.[entry.key];
+    const allowedChildren = isAdminUser || !childRestrictions
+      ? entry.children
+      : entry.children.filter((child) => childRestrictions.includes(child.key));
+
+    if (allowedChildren.length === 0) return null;
 
     return (
       <div>
@@ -246,7 +291,7 @@ function NavEntryRow({
 
         {isOpen && (
           <div className="mt-0.5 space-y-0.5 ps-6">
-            {entry.children.map((child) => (
+            {allowedChildren.map((child) => (
               <NavEntryRow
                 key={child.key}
                 entry={child}
@@ -258,6 +303,9 @@ function NavEntryRow({
                 openGroups={openGroups}
                 toggleGroup={toggleGroup}
                 onLeafClick={onLeafClick}
+                isAdminUser={isAdminUser}
+                userRoleKey={userRoleKey}
+                roleChildAllowedKeys={roleChildAllowedKeys}
               />
             ))}
           </div>

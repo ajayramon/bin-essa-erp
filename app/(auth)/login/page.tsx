@@ -134,55 +134,79 @@ export default function LoginPage() {
         {/* 1-Click Preset Roles for Fast Testing */}
         <div className="mt-6 pt-5 border-t border-neutral-800">
           <div className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2.5 text-center">
-            Fast Login Presets
+            Role Login Presets (Password: demo1234)
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => {
                 setUsername("admin");
-                setPassword("admin123");
+                setPassword("demo1234");
               }}
               className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
             >
               <div className="font-bold text-[#FDCE0C]">Admin</div>
-              <div className="text-[10px] text-neutral-400">Ahmad (HQ)</div>
+              <div className="text-[10px] text-neutral-400">Full Enterprise ERP</div>
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setUsername("manager");
-                setPassword("manager123");
+                setPassword("demo1234");
               }}
               className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
             >
-              <div className="font-bold text-sky-400">Manager</div>
-              <div className="text-[10px] text-neutral-400">Fahad (BR-01)</div>
+              <div className="font-bold text-sky-400">Branch Manager</div>
+              <div className="text-[10px] text-neutral-400">Ops & POS Approval</div>
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setUsername("cashier");
-                setPassword("cashier123");
+                setPassword("demo1234");
               }}
               className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
             >
               <div className="font-bold text-emerald-400">Cashier</div>
-              <div className="text-[10px] text-neutral-400">Ravi (POS)</div>
+              <div className="text-[10px] text-neutral-400">POS Counter Only</div>
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setUsername("accountant");
-                setPassword("accountant123");
+                setPassword("demo1234");
               }}
               className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
             >
               <div className="font-bold text-purple-400">Accountant</div>
-              <div className="text-[10px] text-neutral-400">Priya (Finance)</div>
+              <div className="text-[10px] text-neutral-400">GL, AR/AP & Reports</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUsername("storekeeper");
+                setPassword("demo1234");
+              }}
+              className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
+            >
+              <div className="font-bold text-amber-400">Storekeeper</div>
+              <div className="text-[10px] text-neutral-400">Stock, GRN & DN</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUsername("sales_rep");
+                setPassword("demo1234");
+              }}
+              className="px-2.5 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700/80 transition text-left"
+            >
+              <div className="font-bold text-teal-400">Sales Rep</div>
+              <div className="text-[10px] text-neutral-400">B2B Quotations & RV</div>
             </button>
           </div>
         </div>
