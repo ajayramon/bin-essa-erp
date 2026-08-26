@@ -6,12 +6,12 @@ import * as bcrypt from 'bcrypt';
 import { Role } from '../../generated/prisma/client';
 
 const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
-  ADMIN: ['dashboard', 'groupDashboard', 'pos', 'inventory', 'purchasing', 'accounting', 'hr', 'b2b', 'settings', 'promotions'],
-  MANAGER: ['dashboard', 'pos', 'inventory', 'purchasing', 'accounting', 'customers', 'b2b', 'settings', 'promotions'],
-  CASHIER: ['pos', 'sales-invoices'],
-  ACCOUNTANT: ['inventory', 'purchasing', 'accounting', 'customers'],
-  STOREKEEPER: ['inventory', 'purchasing'],
-  SALES_REP: ['pos', 'sales-invoices', 'customers'],
+  ADMIN: ['dashboard', 'groupDashboard', 'pos', 'inventory', 'customers', 'sales-ops', 'purchasing', 'accounting', 'hr', 'b2b', 'settings', 'promotions-group'],
+  MANAGER: ['dashboard', 'pos', 'inventory', 'customers', 'sales-ops', 'purchasing', 'promotions-group', 'hr'],
+  CASHIER: ['pos', 'customers'],
+  ACCOUNTANT: ['dashboard', 'customers', 'sales-ops', 'purchasing', 'accounting'],
+  STOREKEEPER: ['inventory', 'purchasing', 'sales-ops'],
+  SALES_REP: ['customers', 'sales-ops', 'promotions-group'],
   B2B_CUSTOMER: ['b2b'],
 };
 
