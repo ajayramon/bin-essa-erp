@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsNumber, IsBoolean, Min } from 'class-validator';
-import { ItemCategory, ItemVisibility } from '../../../generated/prisma/client';
+import { ItemVisibility } from '../../../generated/prisma/client';
 
 export class CreateItemDto {
   @IsString()
@@ -20,8 +20,8 @@ export class CreateItemDto {
   @IsString()
   nameAr?: string;
 
-  @IsEnum(ItemCategory)
-  category: ItemCategory;
+  @IsString()
+  category: string;
 
   @IsOptional()
   @IsString()

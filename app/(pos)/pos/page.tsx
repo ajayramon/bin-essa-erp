@@ -17,7 +17,9 @@ import {
   reopenPosShiftRequest,
   adjustPosShiftRequest,
   listItemsRequest,
+  listCategoriesRequest,
   listCustomersRequest,
+  type Category,
   type PosShiftRecord,
 } from "@/lib/api";
 import {
@@ -67,6 +69,7 @@ export default function BranchPosPage() {
 
   // 1. Live Persistent Inventory State
   const [itemsCatalog, setItemsCatalog] = useState<Item[]>(() => getPersistentItemsCatalog());
+  const [categoryMasterList, setCategoryMasterList] = useState<Category[]>([]);
   const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
   const [salespersonsList] = useState<Salesperson[]>(salespersons);
 
@@ -75,11 +78,13 @@ export default function BranchPosPage() {
     async function syncCatalog() {
       try {
         const branchId = currentBranch ? currentBranch.id : undefined;
-        const [_, custs] = await Promise.all([
+        const [_, custs, categories] = await Promise.all([
           listItemsRequest(branchId),
           listCustomersRequest(branchId).catch(() => []),
+          listCategoriesRequest(),
         ]);
         setItemsCatalog(getPersistentItemsCatalog());
+        setCategoryMasterList(categories);
         if (custs && custs.length > 0) {
           setCustomersList((prev) => {
             const map = new Map<string, Customer>();
@@ -277,19 +282,15 @@ export default function BranchPosPage() {
 
     return [
       { id: "all", label: locale === "ar" ? "جميع الأصناف" : "All Items", count: counts.all ?? 0 },
-      { id: "disposable_vapes", label: locale === "ar" ? "سحبات جاهزة (فيب)" : "Disposable Vapes", count: counts.disposable_vapes ?? 0 },
-      { id: "pod_systems", label: locale === "ar" ? "أجهزة بود ونكهات" : "Pod Systems & Liquids", count: counts.pod_systems ?? 0 },
-      { id: "nicotine_pouches", label: locale === "ar" ? "أكياس النيكوتين (سيبيريا/فوكس)" : "Nicotine Pouches", count: counts.nicotine_pouches ?? 0 },
-      { id: "dokha_medwakh", label: locale === "ar" ? "دوخة ومدواخ" : "Dokha & Medwakh", count: counts.dokha_medwakh ?? 0 },
-      { id: "cigarette_lighters", label: locale === "ar" ? "ولاعات (كريكيت/فويغو)" : "Cigarette Lighters", count: counts.cigarette_lighters ?? 0 },
-      { id: "rolling_papers", label: locale === "ar" ? "ورق لف ومخاريط (RAW)" : "Rolling Papers & Cones", count: counts.rolling_papers ?? 0 },
-      { id: "rolling_tobacco_hbt", label: locale === "ar" ? "تبغ لف السجائر (HBT)" : "Rolling Tobacco (HBT)", count: counts.rolling_tobacco_hbt ?? 0 },
-      { id: "pipe_accessories", label: locale === "ar" ? "مستلزمات الغليون (بايب)" : "Pipe Accessories", count: counts.pipe_accessories ?? 0 },
-      { id: "general_smoking_accessories", label: locale === "ar" ? "مستلزمات تدخين وفحم كراون" : "Charcoal & Accessories", count: counts.general_smoking_accessories ?? 0 },
-      { id: "marine_outdoor", label: locale === "ar" ? "بن عيسى الخيران (بحري)" : "Khiran Marine & Outdoor", count: counts.marine_outdoor ?? 0 },
-      { id: "custom_gifts_signage", label: locale === "ar" ? "جي إم آرت زون (هدايا/أكريليك)" : "JM Art Zone Gifts", count: counts.custom_gifts_signage ?? 0 },
+      ...categoryMasterList
+        .filter((category) => category.isActive)
+        .map((category) => ({
+          id: category.code,
+          label: locale === "ar" ? category.nameAr : category.nameEn,
+          count: counts[category.code] ?? 0,
+        })),
     ];
-  }, [itemsCatalog, locale]);
+  }, [categoryMasterList, itemsCatalog, locale]);
 
   // Cart Quantities map
   const cartQuantities = useMemo(() => {

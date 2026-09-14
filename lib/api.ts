@@ -336,39 +336,94 @@ export function saveStoredCategories(categories: Category[]) {
   }
 }
 
+function getCategoryRequestHeaders() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bin-essa-access-token") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function readCategoryResponse(response: Response): Promise<Category> {
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to save inventory category");
+  }
+  return response.json();
+}
+
 export async function listCategoriesRequest(): Promise<Category[]> {
-  return getStoredCategories();
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/inventory-categories`, {
+      cache: "no-store",
+      headers: getCategoryRequestHeaders(),
+    });
+  } catch (error) {
+    console.warn("Inventory category API unavailable, using local fallback", error);
+    return getStoredCategories();
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.message ?? "Failed to load inventory categories");
+  }
+
+  let categories: Category[] = await response.json();
+  if (categories.length === 0) {
+    categories = [];
+    for (const category of FALLBACK_CATEGORIES) {
+      const created = await readCategoryResponse(await fetch(`${API_BASE}/inventory-categories`, {
+        method: "POST",
+        headers: getCategoryRequestHeaders(),
+        body: JSON.stringify({
+          code: category.code,
+          nameEn: category.nameEn,
+          nameAr: category.nameAr,
+          isActive: category.isActive,
+          subcategories: category.subcategories,
+        }),
+      }));
+      categories.push(created);
+    }
+  }
+  saveStoredCategories(categories);
+  return categories;
 }
 
 export async function saveCategoryRequest(category: Omit<Category, "id"> & { id?: string }): Promise<Category> {
-  const current = getStoredCategories();
-  const id = category.id || `cat-${Date.now()}`;
-  const existingIdx = current.findIndex((c) => c.id === id || c.code === category.code);
-  const newCat: Category = {
-    id,
-    code: category.code,
-    nameEn: category.nameEn,
-    nameAr: category.nameAr,
-    isActive: category.isActive ?? true,
-    subcategories: category.subcategories || [],
-  };
-
-  let updated: Category[];
-  if (existingIdx >= 0) {
-    updated = [...current];
-    updated[existingIdx] = newCat;
-  } else {
-    updated = [...current, newCat];
+  let response: Response;
+  try {
+    response = await fetch(
+      category.id
+        ? `${API_BASE}/inventory-categories/${encodeURIComponent(category.id)}`
+        : `${API_BASE}/inventory-categories`,
+      {
+        method: category.id ? "PATCH" : "POST",
+        headers: getCategoryRequestHeaders(),
+        body: JSON.stringify(category),
+      }
+    );
+  } catch {
+    throw new Error("Unable to connect to ERP server. Category was not saved.");
   }
+
+  const saved = await readCategoryResponse(response);
+  const current = getStoredCategories();
+  const existingIdx = current.findIndex((item) => item.id === saved.id || item.code === saved.code);
+  const updated = [...current];
+  if (existingIdx >= 0) updated[existingIdx] = saved;
+  else updated.push(saved);
   saveStoredCategories(updated);
-  return newCat;
+  return saved;
 }
 
 export async function toggleCategoryStatus(id: string): Promise<Category[]> {
   const current = getStoredCategories();
-  const updated = current.map((c) => (c.id === id ? { ...c, isActive: !c.isActive } : c));
-  saveStoredCategories(updated);
-  return updated;
+  const category = current.find((item) => item.id === id);
+  if (!category) throw new Error("Inventory category not found");
+  await saveCategoryRequest({ ...category, isActive: !category.isActive });
+  return listCategoriesRequest();
 }
 
 export interface CreateItemPayload {

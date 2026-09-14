@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { ItemsModule } from './items/items.module';
+import { InventoryCategoriesModule } from './inventory-categories/inventory-categories.module';
 import { CustomersModule } from './customers/customers.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { SalesInvoicesModule } from './sales-invoices/sales-invoices.module';
@@ -51,6 +52,7 @@ import { PricingEngineModule } from './pricing-engine/pricing-engine.module';
     AuthModule,
     UsersModule,
     ItemsModule,
+    InventoryCategoriesModule,
     CustomersModule,
     SuppliersModule,
     SalesInvoicesModule,

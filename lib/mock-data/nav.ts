@@ -77,7 +77,7 @@ export const brandModules: NavEntry[] = [
         labelEn: "Stock Adjustments",
         labelAr: "تسويات المخزون",
         href: "/inventory/adjustments",
-        icon: ArrowLeftRight,
+        icon: ArrowRightLeft,
       },
       {
         key: "stock-transfers",

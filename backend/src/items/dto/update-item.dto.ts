@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsNumber, IsBoolean, Min } from 'class-validator';
-import { ItemCategory, ItemVisibility } from '../../../generated/prisma/client';
+import { ItemVisibility } from '../../../generated/prisma/client';
 
 export class UpdateItemDto {
   @IsOptional()
@@ -23,8 +23,8 @@ export class UpdateItemDto {
   nameAr?: string;
 
   @IsOptional()
-  @IsEnum(ItemCategory)
-  category?: ItemCategory;
+  @IsString()
+  category?: string;
 
   @IsOptional()
   @IsString()

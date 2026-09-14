@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Plus, Edit2, Check, AlertCircle, FolderTree, Power, Layers } from "lucide-react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import {
@@ -47,6 +47,8 @@ export function CategoryManagementModal({
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const categoryListRef = useRef<HTMLDivElement>(null);
+  const revealCategoryIdRef = useRef<string | null>(null);
 
   const loadCategories = async () => {
     const list = await listCategoriesRequest();
@@ -67,6 +69,19 @@ export function CategoryManagementModal({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const categoryId = revealCategoryIdRef.current;
+    if (!categoryId) return;
+
+    const categoryElement = categoryListRef.current?.querySelector<HTMLElement>(
+      `[data-category-id="${categoryId}"]`
+    );
+    if (categoryElement) {
+      categoryElement.scrollIntoView({ block: "nearest" });
+      revealCategoryIdRef.current = null;
+    }
+  }, [categories, selectedCatId]);
+
   if (!isOpen) return null;
 
   const selectedCategory = categories.find((c) => c.id === selectedCatId) || categories[0];
@@ -83,7 +98,7 @@ export function CategoryManagementModal({
 
     const code = catCode.trim() || catNameEn.toLowerCase().replace(/[^a-z0-9]/g, "_");
     try {
-      await saveCategoryRequest({
+      const createdCategory = await saveCategoryRequest({
         code,
         nameEn: catNameEn.trim(),
         nameAr: catNameAr.trim(),
@@ -95,6 +110,8 @@ export function CategoryManagementModal({
       setCatCode("");
       setIsAddingCat(false);
       setSuccess(isAr ? "تمت إضافة الفئة بنجاح" : "Category created successfully.");
+      revealCategoryIdRef.current = createdCategory.id;
+      setSelectedCatId(createdCategory.id);
       await loadCategories();
       onCategoriesUpdated?.();
     } catch (err) {
@@ -303,7 +320,7 @@ export function CategoryManagementModal({
             )}
 
             {/* Categories Scrollable List */}
-            <div className="flex-1 overflow-y-auto space-y-1.5 pe-1">
+            <div ref={categoryListRef} className="min-h-0 flex-1 overflow-y-auto space-y-1.5 pe-1">
               {categories.map((cat) => {
                 const isSelected = selectedCategory?.id === cat.id;
                 const isEditing = editingCatId === cat.id;
@@ -346,6 +363,7 @@ export function CategoryManagementModal({
                 return (
                   <div
                     key={cat.id}
+                    data-category-id={cat.id}
                     onClick={() => setSelectedCatId(cat.id)}
                     className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected

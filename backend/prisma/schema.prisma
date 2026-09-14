@@ -29,14 +29,6 @@ enum Role {
   B2B_CUSTOMER
 }
 
-enum ItemCategory {
-  TOBACCO
-  ACCESSORIES
-  ELECTRONICS
-  ART_SUPPLIES
-  OTHER
-}
-
 enum ItemVisibility {
   ALL_BRANCHES
   SPECIFIC_BRANCHES
@@ -311,7 +303,7 @@ model Item {
   name               String
   nameEn             String?
   nameAr             String?
-  category           ItemCategory
+  category           String
   subCategory        String?
   brand              String?
   countryOfOrigin    String?
@@ -361,6 +353,31 @@ model Item {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model InventoryCategory {
+  id            String                 @id @default(uuid())
+  code          String                 @unique
+  nameEn        String
+  nameAr        String
+  isActive      Boolean                @default(true)
+  subcategories InventorySubcategory[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model InventorySubcategory {
+  id         String            @id @default(uuid())
+  categoryId String
+  code       String            @unique
+  nameEn     String
+  nameAr     String
+  isActive   Boolean           @default(true)
+  category   InventoryCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([categoryId])
 }
 
 model ItemBarcode {

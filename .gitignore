@@ -40,6 +40,7 @@ yarn-error.log*
 *.sql
 *.sql.gz
 *.dump
+!backend/prisma/migrations/**/*.sql
 
 # vercel
 .vercel
