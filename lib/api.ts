@@ -365,8 +365,12 @@ export async function listCategoriesRequest(): Promise<Category[]> {
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.message ?? "Failed to load inventory categories");
+    if (response.status === 401 || response.status === 403) {
+      const body = await response.json().catch(() => null);
+      throw new Error(body?.message ?? "Not authorized to load inventory categories");
+    }
+    console.warn(`Inventory category API returned ${response.status}, using local fallback`);
+    return getStoredCategories();
   }
 
   let categories: Category[] = await response.json();

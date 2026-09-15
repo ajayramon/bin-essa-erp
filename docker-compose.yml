@@ -95,13 +95,11 @@ services:
 
   # 4. NestJS Backend Microservice API
   backend:
-    image: node:20-alpine
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: bin_essa_backend
     restart: always
-    working_dir: /app
-    volumes:
-      - ./backend:/app
-    command: node dist/src/main.js
     environment:
       PORT: ${BACKEND_PORT:-4000}
       NODE_ENV: ${NODE_ENV:-production}
