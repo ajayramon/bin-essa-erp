@@ -32,7 +32,6 @@
     "typescript": "^5"
   },
   "devDependencies": {
-    "@flydotio/dockerfile": "^0.7.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.10"
   }

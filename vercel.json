@@ -3,14 +3,5 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "installCommand": "npm install --include=dev",
-  "env": {
-    "BACKEND_API_URL": "https://backend-dark-hillside-603.fly.dev"
-  },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://backend-dark-hillside-603.fly.dev/:path*"
-    }
-  ],
   "cleanUrls": true
 }
