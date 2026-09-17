@@ -320,7 +320,12 @@ export function CategoryManagementModal({
             )}
 
             {/* Categories Scrollable List */}
-            <div ref={categoryListRef} className="min-h-0 flex-1 overflow-y-auto space-y-1.5 pe-1">
+            <div
+              ref={categoryListRef}
+              className="category-master-scroll min-h-0 flex-1 overflow-y-scroll space-y-1.5 pe-2"
+              role="list"
+              aria-label={isAr ? "الفئات الرئيسية" : "Main categories"}
+            >
               {categories.map((cat) => {
                 const isSelected = selectedCategory?.id === cat.id;
                 const isEditing = editingCatId === cat.id;
@@ -364,6 +369,7 @@ export function CategoryManagementModal({
                   <div
                     key={cat.id}
                     data-category-id={cat.id}
+                    role="listitem"
                     onClick={() => setSelectedCatId(cat.id)}
                     className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
                       isSelected
@@ -414,6 +420,13 @@ export function CategoryManagementModal({
                 );
               })}
             </div>
+            {categories.length > 10 && (
+              <p className="pt-2 text-center text-[10px] font-semibold text-slate-500">
+                {isAr
+                  ? `مرر لعرض جميع الفئات (${categories.length})`
+                  : `Scroll down to view all ${categories.length} categories`}
+              </p>
+            )}
           </div>
 
           {/* Right Column: Subcategories for Selected Category (7 cols) */}

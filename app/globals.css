@@ -74,6 +74,26 @@ textarea::placeholder {
   unicode-bidi: isolate;
 }
 
+.category-master-scroll {
+  scrollbar-color: #94a3b8 #f1f5f9;
+  scrollbar-width: auto;
+}
+
+.category-master-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.category-master-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 5px;
+}
+
+.category-master-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border: 2px solid #f1f5f9;
+  border-radius: 5px;
+}
+
 ::selection {
   background: #FDCE0C;
   color: #000000;
